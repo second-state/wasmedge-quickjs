@@ -360,6 +360,17 @@ unsafe fn set(
     }
 }
 
+unsafe fn delete(ctx: *mut JSContext, name: &str, this_obj: JSValue) -> Result<(), String> {
+    if JS_ValueGetTag_real(this_obj) == JS_TAG_OBJECT {
+        let atom = JS_NewAtom(ctx, make_c_string("xx").as_ptr());
+        JS_DeleteProperty(ctx, this_obj, atom, JS_PROP_THROW as i32);
+        JS_FreeAtom(ctx, atom);
+        Ok(())
+    } else {
+        Err("this is Not Object".into())
+    }
+}
+
 pub struct Value {
     ctx: *mut JSContext,
     v: JSValue,
