@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 http_req = { git = "https://github.com/L-jasmine/http_req", branch = "master" }
+argparse = "0.2.2"
