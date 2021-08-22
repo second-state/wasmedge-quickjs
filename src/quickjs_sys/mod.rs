@@ -19,7 +19,7 @@ impl Runtime {
             js_std_add_console(ctx);
             js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
             js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
-            Context(ctx)
+            Context(ctx, self)
         }
     }
 }
@@ -79,9 +79,9 @@ where
     }
 }
 
-pub struct Context(*mut JSContext);
+pub struct Context<'a>(*mut JSContext, &'a Runtime);
 
-impl Context {
+impl Context<'_> {
     pub fn get_global(&mut self) -> Value {
         unsafe {
             Value {
@@ -173,7 +173,7 @@ impl Context {
     }
 }
 
-impl Drop for Context {
+impl Drop for Context<'_> {
     fn drop(&mut self) {
         unsafe { JS_FreeContext(self.0) }
     }
