@@ -1,16 +1,62 @@
 use super::*;
 use std::convert::TryFrom;
 
-pub fn add_http(ctx: &mut Context) {
-    let mut g = ctx.get_global();
-    let mut http_obj = ctx.new_object();
-    http_obj.set("get", ctx.new_function("http_get", Some(get)));
-    http_obj.set("post", ctx.new_function("http_post", Some(post)));
-    http_obj.set("put", ctx.new_function("http_put", Some(put)));
-    http_obj.set("patch", ctx.new_function("http_patch", Some(patch)));
-    http_obj.set("delete", ctx.new_function("http_delete", Some(delete)));
+pub(super) fn init_module_http(ctx: &mut Context) {
+    unsafe {
+        let ctx = ctx.0;
+        let init_js = include_str!("../../js_lib/http.js");
+        let global = get_global(ctx);
+        set(
+            ctx,
+            "http_get",
+            global,
+            new_function(ctx, "http_get", Some(get)),
+        );
+        set(
+            ctx,
+            "http_post",
+            global,
+            new_function(ctx, "http_post", Some(post)),
+        );
+        set(
+            ctx,
+            "http_put",
+            global,
+            new_function(ctx, "http_put", Some(put)),
+        );
+        set(
+            ctx,
+            "http_patch",
+            global,
+            new_function(ctx, "http_patch", Some(patch)),
+        );
+        set(
+            ctx,
+            "http_delete",
+            global,
+            new_function(ctx, "http_delete", Some(delete)),
+        );
 
-    g.set("http", http_obj);
+        let mut val = JS_Eval(
+            ctx,
+            make_c_string(init_js).as_ptr(),
+            init_js.len() as u32,
+            make_c_string("http").as_ptr() as *const i8,
+            JS_EVAL_TYPE_MODULE as i32,
+        );
+
+        super::delete(ctx, "http_get", global);
+        super::delete(ctx, "http_post", global);
+        super::delete(ctx, "http_put", global);
+        super::delete(ctx, "http_patch", global);
+        super::delete(ctx, "http_delete", global);
+
+        if JS_IsException_real(val) > 0 {
+            js_std_dump_error(ctx);
+        }
+        JS_FreeValue_real(ctx, val);
+        JS_FreeValue_real(ctx, global);
+    }
 }
 
 unsafe fn parse_response(

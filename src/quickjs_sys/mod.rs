@@ -1,5 +1,5 @@
 #[cfg(feature = "http")]
-mod http;
+mod http_module;
 mod require_module;
 
 use std::collections::HashMap;
@@ -29,7 +29,7 @@ impl Runtime {
             let mut ctx = Context(ctx, self);
             require_module::init_module_require(&mut ctx);
             #[cfg(feature = "http")]
-            http::add_http(&mut ctx);
+            http_module::init_module_http(&mut ctx);
 
             ctx
         }
@@ -362,7 +362,7 @@ unsafe fn set(
 
 unsafe fn delete(ctx: *mut JSContext, name: &str, this_obj: JSValue) -> Result<(), String> {
     if JS_ValueGetTag_real(this_obj) == JS_TAG_OBJECT {
-        let atom = JS_NewAtom(ctx, make_c_string("xx").as_ptr());
+        let atom = JS_NewAtom(ctx, make_c_string(name).as_ptr());
         JS_DeleteProperty(ctx, this_obj, atom, JS_PROP_THROW as i32);
         JS_FreeAtom(ctx, atom);
         Ok(())
