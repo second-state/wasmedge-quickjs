@@ -1,3 +1,4 @@
+#[cfg(feature = "http")]
 mod http;
 
 use std::collections::HashMap;
@@ -25,7 +26,7 @@ impl Runtime {
             js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
             js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
             let mut ctx = Context(ctx, self);
-
+            #[cfg(feature = "http")]
             http::add_http(&mut ctx);
 
             ctx
