@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::str::from_utf8;
-include!("../../lib/binding.rs");
+mod qjs {
+    include!("../../lib/binding.rs");
+}
 
+use qjs::*;
 pub struct Runtime(*mut JSRuntime);
 
 impl Runtime {
@@ -19,7 +22,11 @@ impl Runtime {
             js_std_add_console(ctx);
             js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
             js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
-            Context(ctx, self)
+            let mut ctx = Context(ctx, self);
+
+            http::add_http(&mut ctx);
+
+            ctx
         }
     }
 }
@@ -82,7 +89,7 @@ where
 pub struct Context<'a>(*mut JSContext, &'a Runtime);
 
 impl Context<'_> {
-    pub fn get_global(&mut self) -> Value {
+    fn get_global(&mut self) -> Value {
         unsafe {
             Value {
                 ctx: self.0,
@@ -105,7 +112,7 @@ impl Context<'_> {
         }
     }
 
-    pub fn new_function(&mut self, name: &str, func: JSCFunction) -> Value {
+    fn new_function(&mut self, name: &str, func: JSCFunction) -> Value {
         unsafe {
             let v = new_function(self.0, name, func);
             Value {
@@ -116,7 +123,7 @@ impl Context<'_> {
         }
     }
 
-    pub fn new_object(&mut self) -> Value {
+    fn new_object(&mut self) -> Value {
         unsafe {
             Value {
                 ctx: self.0,
@@ -126,7 +133,7 @@ impl Context<'_> {
         }
     }
 
-    pub fn new_bool(&mut self, b: bool) -> Value {
+    fn new_bool(&mut self, b: bool) -> Value {
         unsafe {
             Value {
                 ctx: self.0,
@@ -136,7 +143,7 @@ impl Context<'_> {
         }
     }
 
-    pub fn new_array_buff(&mut self, buff: &[u8]) -> Value {
+    fn new_array_buff(&mut self, buff: &[u8]) -> Value {
         unsafe {
             let buff = JS_NewArrayBufferCopy(self.0, buff.as_ptr() as *const u8, buff.len() as u32);
             Value {
@@ -147,7 +154,7 @@ impl Context<'_> {
         }
     }
 
-    pub fn new_string(&mut self, s: &str) -> Value {
+    fn new_string(&mut self, s: &str) -> Value {
         unsafe {
             let v = JS_NewStringLen(self.0, s.as_ptr() as *const i8, s.len() as u32);
             Value {
@@ -158,17 +165,17 @@ impl Context<'_> {
         }
     }
 
-    pub fn free_value(&mut self, v: Value) {
+    fn free_value(&mut self, v: Value) {
         unsafe {
             JS_FreeValue_real(self.0, v.v);
         }
     }
 
-    pub fn deserialize_array(&mut self, v: JSValue) -> Result<Vec<Value>, String> {
+    fn deserialize_array(&mut self, v: JSValue) -> Result<Vec<Value>, String> {
         unsafe { deserialize_array(self.0, v) }
     }
 
-    pub fn deserialize_object(&mut self, obj: JSValue) -> Result<HashMap<String, Value>, String> {
+    fn deserialize_object(&mut self, obj: JSValue) -> Result<HashMap<String, Value>, String> {
         unsafe { deserialize_object(self.0, obj) }
     }
 }

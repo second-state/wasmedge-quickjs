@@ -4,7 +4,6 @@ fn main() {
     use quickjs_sys as q;
     let mut rt = q::Runtime::new();
     let mut ctx = rt.new_context();
-    quickjs_sys::http::add_http(&mut ctx);
 
     let code = r#"
     print("hello");
