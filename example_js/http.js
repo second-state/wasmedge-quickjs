@@ -1,4 +1,6 @@
-print("hello")
+import {require} from 'require'
+const add = require('./example_js/add.js')
+print("add:",add(1,2))
 
 if(false){
     print('get-test')
@@ -44,7 +46,7 @@ if(false){
     print(String.fromCharCode.apply(null,body_str))
 }
 
-if(true){
+if(false){
     print('delete-test')
     let r = http.delete("http://18.235.124.214/delete?a=123","haha=1");
     print(r.status)

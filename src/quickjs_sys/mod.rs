@@ -1,5 +1,6 @@
 #[cfg(feature = "http")]
 mod http;
+mod require_module;
 
 use std::collections::HashMap;
 use std::str::from_utf8;
@@ -26,6 +27,7 @@ impl Runtime {
             js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
             js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
             let mut ctx = Context(ctx, self);
+            require_module::init_module_require(&mut ctx);
             #[cfg(feature = "http")]
             http::add_http(&mut ctx);
 
@@ -109,9 +111,8 @@ impl Context<'_> {
                 make_c_string(code).as_ptr() as *mut std::os::raw::c_void,
                 code.len() as i32,
                 make_c_string(filename).as_ptr() as *const i8,
-                JS_EVAL_TYPE_GLOBAL as i32,
+                JS_EVAL_TYPE_MODULE as i32,
             );
-            js_std_loop(self.0);
         }
     }
 
