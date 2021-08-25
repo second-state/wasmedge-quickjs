@@ -4,6 +4,8 @@ mod require_module;
 
 use std::collections::HashMap;
 use std::str::from_utf8;
+
+#[allow(warnings)]
 mod qjs {
     include!("../../lib/binding.rs");
 }
