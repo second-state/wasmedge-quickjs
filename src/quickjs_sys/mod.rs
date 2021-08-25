@@ -11,41 +11,6 @@ mod qjs {
 }
 
 use qjs::*;
-pub struct Runtime(*mut JSRuntime);
-
-impl Runtime {
-    pub fn new() -> Runtime {
-        unsafe { Runtime(JS_NewRuntime()) }
-    }
-
-    pub fn new_context(&mut self) -> Context {
-        unsafe {
-            let ctx = JS_NewContext(self.0);
-            JS_AddIntrinsicBigFloat(ctx);
-            JS_AddIntrinsicBigDecimal(ctx);
-            JS_AddIntrinsicOperators(ctx);
-            JS_EnableBignumExt(ctx, 1);
-            js_std_add_console(ctx);
-            js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
-            js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
-            let mut ctx = Context(ctx, self);
-            require_module::init_module_require(&mut ctx);
-            #[cfg(feature = "http")]
-            http_module::init_module_http(&mut ctx);
-
-            ctx
-        }
-    }
-}
-
-impl Drop for Runtime {
-    fn drop(&mut self) {
-        unsafe {
-            js_std_free_handlers(self.0);
-            JS_FreeRuntime(self.0);
-        }
-    }
-}
 
 struct DroppableValue<T, F>
 where
@@ -93,14 +58,37 @@ where
     }
 }
 
-pub struct Context<'a>(*mut JSContext, &'a Runtime);
+pub struct Context {
+    rt: *mut JSRuntime,
+    ctx: *mut JSContext,
+}
 
-impl Context<'_> {
+impl Context {
+    pub fn new() -> Context {
+        unsafe {
+            let rt = JS_NewRuntime();
+            JS_SetModuleLoaderFunc(rt, None, Some(js_module_loader), 0 as *mut std::ffi::c_void);
+            let ctx = JS_NewContext(rt);
+            JS_AddIntrinsicBigFloat(ctx);
+            JS_AddIntrinsicBigDecimal(ctx);
+            JS_AddIntrinsicOperators(ctx);
+            JS_EnableBignumExt(ctx, 1);
+            js_std_add_console(ctx);
+            js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
+            js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
+            let mut ctx = Context { rt, ctx };
+            require_module::init_module_require(&mut ctx);
+            #[cfg(feature = "http")]
+            http_module::init_module_http(&mut ctx);
+            ctx
+        }
+    }
+
     fn get_global(&mut self) -> Value {
         unsafe {
             Value {
-                ctx: self.0,
-                v: get_global(self.0),
+                ctx: self.ctx,
+                v: get_global(self.ctx),
                 tag: JS_TAG_OBJECT,
             }
         }
@@ -109,7 +97,7 @@ impl Context<'_> {
     pub fn eval_str(&mut self, code: &str, filename: &str) {
         unsafe {
             js_eval_buf(
-                self.0,
+                self.ctx,
                 make_c_string(code).as_ptr() as *mut std::os::raw::c_void,
                 code.len() as i32,
                 make_c_string(filename).as_ptr() as *const i8,
@@ -120,9 +108,9 @@ impl Context<'_> {
 
     fn new_function(&mut self, name: &str, func: JSCFunction) -> Value {
         unsafe {
-            let v = new_function(self.0, name, func);
+            let v = new_function(self.ctx, name, func);
             Value {
-                ctx: self.0,
+                ctx: self.ctx,
                 v,
                 tag: JS_ValueGetTag_real(v),
             }
@@ -132,8 +120,8 @@ impl Context<'_> {
     fn new_object(&mut self) -> Value {
         unsafe {
             Value {
-                ctx: self.0,
-                v: JS_NewObject(self.0),
+                ctx: self.ctx,
+                v: JS_NewObject(self.ctx),
                 tag: JS_TAG_OBJECT,
             }
         }
@@ -142,8 +130,8 @@ impl Context<'_> {
     fn new_bool(&mut self, b: bool) -> Value {
         unsafe {
             Value {
-                ctx: self.0,
-                v: JS_NewBool_real(self.0, if b { 1 } else { 0 }),
+                ctx: self.ctx,
+                v: JS_NewBool_real(self.ctx, if b { 1 } else { 0 }),
                 tag: JS_TAG_BOOL,
             }
         }
@@ -151,9 +139,10 @@ impl Context<'_> {
 
     fn new_array_buff(&mut self, buff: &[u8]) -> Value {
         unsafe {
-            let buff = JS_NewArrayBufferCopy(self.0, buff.as_ptr() as *const u8, buff.len() as u32);
+            let buff =
+                JS_NewArrayBufferCopy(self.ctx, buff.as_ptr() as *const u8, buff.len() as u32);
             Value {
-                ctx: self.0,
+                ctx: self.ctx,
                 v: buff,
                 tag: JS_TAG_OBJECT,
             }
@@ -162,9 +151,9 @@ impl Context<'_> {
 
     fn new_string(&mut self, s: &str) -> Value {
         unsafe {
-            let v = JS_NewStringLen(self.0, s.as_ptr() as *const i8, s.len() as u32);
+            let v = JS_NewStringLen(self.ctx, s.as_ptr() as *const i8, s.len() as u32);
             Value {
-                ctx: self.0,
+                ctx: self.ctx,
                 v,
                 tag: JS_TAG_STRING,
             }
@@ -173,22 +162,25 @@ impl Context<'_> {
 
     fn free_value(&mut self, v: Value) {
         unsafe {
-            JS_FreeValue_real(self.0, v.v);
+            JS_FreeValue_real(self.ctx, v.v);
         }
     }
 
     fn deserialize_array(&mut self, v: JSValue) -> Result<Vec<Value>, String> {
-        unsafe { deserialize_array(self.0, v) }
+        unsafe { deserialize_array(self.ctx, v) }
     }
 
     fn deserialize_object(&mut self, obj: JSValue) -> Result<HashMap<String, Value>, String> {
-        unsafe { deserialize_object(self.0, obj) }
+        unsafe { deserialize_object(self.ctx, obj) }
     }
 }
 
-impl Drop for Context<'_> {
+impl Drop for Context {
     fn drop(&mut self) {
-        unsafe { JS_FreeContext(self.0) }
+        unsafe {
+            JS_FreeContext(self.ctx);
+            JS_FreeRuntime(self.rt);
+        }
     }
 }
 

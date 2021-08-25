@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 pub(super) fn init_module_http(ctx: &mut Context) {
     unsafe {
-        let ctx = ctx.0;
+        let ctx = ctx.ctx;
         let init_js = include_str!("../../js_lib/http.js");
         let global = get_global(ctx);
         set(

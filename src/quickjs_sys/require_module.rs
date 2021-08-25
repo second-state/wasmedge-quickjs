@@ -1,7 +1,7 @@
 use super::*;
 pub(super) fn init_module_require(ctx: &mut Context) {
     unsafe {
-        let ctx = ctx.0;
+        let ctx = ctx.ctx;
         let init_js = include_str!("../../js_lib/require.js");
         let mut val = JS_Eval(
             ctx,

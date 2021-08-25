@@ -15,8 +15,7 @@ fn args_parse() -> String {
 
 fn main() {
     use quickjs_sys as q;
-    let mut rt = q::Runtime::new();
-    let mut ctx = rt.new_context();
+    let mut ctx = q::Context::new();
 
     let file_path = args_parse();
     let code = std::fs::read_to_string(&file_path);
