@@ -85,6 +85,8 @@ impl Context {
             require_module::init_module_require(&mut ctx);
             #[cfg(feature = "http")]
             http_module::init_module_http(&mut ctx);
+            #[cfg(feature = "img")]
+            img_module::init_module_image(ctx.ctx);
             ctx
         }
     }
@@ -340,6 +342,10 @@ unsafe fn to_i64(ctx: *mut JSContext, v: JSValue) -> Result<i64, String> {
     } else {
         Err("value is Not Int".into())
     }
+}
+
+unsafe fn js_throw_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> JSValue {
+    JS_ThrowInternalError(ctx, make_c_string(message).as_ptr().cast())
 }
 
 fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
