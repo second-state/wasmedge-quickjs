@@ -10,6 +10,10 @@ edition = "2018"
 http_req = { git = "https://github.com/L-jasmine/http_req", branch = "master" }
 argparse = "0.2.2"
 
+image = { version = "0.23.0", default-features = false, features = ["jpeg", "png"] }
+imageproc = "0.22.0"
+
 [features]
 default = []
 http = []
+img = []

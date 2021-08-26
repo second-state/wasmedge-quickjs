@@ -1,5 +1,7 @@
 #[cfg(feature = "http")]
 mod http_module;
+#[cfg(feature = "img")]
+mod img_module;
 mod require_module;
 
 use std::collections::HashMap;
