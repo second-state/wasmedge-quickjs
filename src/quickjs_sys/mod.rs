@@ -68,6 +68,7 @@ impl Context {
         unsafe {
             let rt = JS_NewRuntime();
             JS_SetModuleLoaderFunc(rt, None, Some(js_module_loader), 0 as *mut std::ffi::c_void);
+            js_std_init_handlers(rt);
             let ctx = JS_NewContext(rt);
             JS_AddIntrinsicBigFloat(ctx);
             JS_AddIntrinsicBigDecimal(ctx);
@@ -103,6 +104,7 @@ impl Context {
                 make_c_string(filename).as_ptr() as *const i8,
                 JS_EVAL_TYPE_MODULE as i32,
             );
+            js_std_loop(self.ctx);
         }
     }
 
@@ -177,6 +179,7 @@ impl Context {
 impl Drop for Context {
     fn drop(&mut self) {
         unsafe {
+            js_std_free_handlers(self.rt);
             JS_FreeContext(self.ctx);
             JS_FreeRuntime(self.rt);
         }
