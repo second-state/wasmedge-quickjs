@@ -1,3 +1,5 @@
+#[macro_use]
+mod macros;
 #[cfg(feature = "http")]
 mod http_module;
 #[cfg(feature = "img")]
