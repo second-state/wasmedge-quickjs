@@ -40,7 +40,7 @@ pub(super) fn init_module_http(ctx: &mut Context) {
         let mut val = JS_Eval(
             ctx,
             make_c_string(init_js).as_ptr(),
-            init_js.len() as u32,
+            init_js.len(),
             make_c_string("http").as_ptr() as *const i8,
             JS_EVAL_TYPE_MODULE as i32,
         );
@@ -118,8 +118,8 @@ unsafe fn parse_body(ctx: *mut JSContext, body: JSValue) -> Vec<u8> {
     if JS_IsString_real(body) >= 1 {
         return Vec::from(to_string(ctx, body).unwrap());
     }
-    let mut len = 0u32;
-    let ptr = JS_GetArrayBuffer(ctx, &mut len as *mut u32, body);
+    let mut len = 0;
+    let ptr = JS_GetArrayBuffer(ctx, &mut len, body);
     if !ptr.is_null() && len > 0 {
         return Vec::from_raw_parts(ptr, len as usize, (len + 1) as usize).to_vec();
     }

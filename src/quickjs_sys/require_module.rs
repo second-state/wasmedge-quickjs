@@ -6,7 +6,7 @@ pub(super) fn init_module_require(ctx: &mut Context) {
         let mut val = JS_Eval(
             ctx,
             make_c_string(init_js).as_ptr(),
-            init_js.len() as u32,
+            init_js.len(),
             make_c_string("require").as_ptr() as *const i8,
             JS_EVAL_TYPE_MODULE as i32,
         );

@@ -139,8 +139,7 @@ impl Context {
 
     fn new_array_buff(&mut self, buff: &[u8]) -> Value {
         unsafe {
-            let buff =
-                JS_NewArrayBufferCopy(self.ctx, buff.as_ptr() as *const u8, buff.len() as u32);
+            let buff = JS_NewArrayBufferCopy(self.ctx, buff.as_ptr() as *const u8, buff.len());
             Value {
                 ctx: self.ctx,
                 v: buff,
@@ -151,7 +150,7 @@ impl Context {
 
     fn new_string(&mut self, s: &str) -> Value {
         unsafe {
-            let v = JS_NewStringLen(self.ctx, s.as_ptr() as *const i8, s.len() as u32);
+            let v = JS_NewStringLen(self.ctx, s.as_ptr() as *const i8, s.len());
             Value {
                 ctx: self.ctx,
                 v,
@@ -189,11 +188,11 @@ unsafe fn get_global(context: *mut JSContext) -> JSValue {
 }
 
 unsafe fn new_string(context: *mut JSContext, s: &str) -> JSValue {
-    JS_NewStringLen(context, s.as_ptr() as *const i8, s.len() as u32)
+    JS_NewStringLen(context, s.as_ptr() as *const i8, s.len())
 }
 
 unsafe fn new_array_buff(context: *mut JSContext, buff: &[u8]) -> JSValue {
-    JS_NewArrayBufferCopy(context, buff.as_ptr() as *const u8, buff.len() as u32)
+    JS_NewArrayBufferCopy(context, buff.as_ptr() as *const u8, buff.len())
 }
 
 unsafe fn new_function(context: *mut JSContext, name: &str, func: JSCFunction) -> JSValue {
