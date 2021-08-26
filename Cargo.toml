@@ -1,0 +1,15 @@
+[package]
+name = "quickjs-rs-wasi"
+version = "0.1.0"
+authors = ["csh"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+http_req = { git = "https://github.com/L-jasmine/http_req", branch = "master" }
+argparse = "0.2.2"
+
+[features]
+default = []
+http = []
