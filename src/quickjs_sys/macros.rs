@@ -22,7 +22,7 @@ macro_rules! CFUNC_DEF {
 }
 
 #[macro_export]
-macro_rules! CFUNC_DEF {
+macro_rules! JS_CGETSET_DEF {
     ($name:expr,$get:ident,$set:ident) => {
         JSCFunctionListEntry {
             name: $name.as_ptr() as *const i8,
