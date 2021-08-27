@@ -9,7 +9,7 @@ pub struct JsImage(pub DynamicImage);
 
 impl JsImage {
     pub fn resize(&self, w: u32, h: u32) -> JsImage {
-        JsImage(self.0.resize(w, h, FilterType::Nearest))
+        JsImage(self.0.resize_exact(w, h, FilterType::Nearest))
     }
 
     pub fn draw_filled_rect(&mut self, (x, y): (i32, i32), (w, h): (u32, u32), color: [u8; 4]) {
@@ -38,7 +38,7 @@ impl JsImage {
     }
 }
 // bindings
-unsafe extern "C" fn save_to_file(
+unsafe extern "C" fn bind_save_to_file(
     ctx: *mut JSContext,
     this_val: JSValue,
     argc: ::std::os::raw::c_int,
@@ -69,6 +69,146 @@ unsafe extern "C" fn save_to_file(
     };
 }
 
+unsafe extern "C" fn bind_save_to_buf(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    if argv.is_null() || argc == 0 {
+        return js_throw_error(ctx, "param image_format is require");
+    }
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let param = *argv;
+    return if JS_IsString_real(param) > 0 {
+        let format = match to_string(ctx, param) {
+            Ok(path) => path,
+            Err(e) => return js_throw_error(ctx, e),
+        };
+        let data = match img.save_to_buf(format.as_str()) {
+            Ok(buf) => buf,
+            Err(e) => return js_throw_error(ctx, e.to_string()),
+        };
+        JS_NewArrayBufferCopy(ctx, data.as_ptr(), data.len())
+    } else {
+        js_exception()
+    };
+}
+
+unsafe extern "C" fn bind_resize(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let mut w = 0;
+    let mut h = 0;
+    if argv.is_null() || argc < 2 {
+        return js_throw_error(ctx, "image.resize argv need 2");
+    }
+    if JS_ToUint32_real(ctx, &mut w, *argv.offset(0)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut h, *argv.offset(1)) > 0 {
+        return js_exception();
+    }
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let new_img = img.resize(w, h);
+    JsImage_to_JSValue(ctx, Box::new(new_img))
+}
+
+unsafe extern "C" fn bind_draw_hollow_rect(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let mut top_x = 0;
+    let mut top_y = 0;
+    let mut w = 0;
+    let mut h = 0;
+    let mut color = 0;
+    if argv.is_null() || argc < 5 {
+        return js_throw_error(ctx, "image.resize argv need 5");
+    }
+    if JS_ToInt32(ctx, &mut top_x, *argv.offset(0)) > 0 {
+        return js_exception();
+    }
+    if JS_ToInt32(ctx, &mut top_y, *argv.offset(1)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut w, *argv.offset(2)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut h, *argv.offset(3)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut color, *argv.offset(4)) > 0 {
+        return js_exception();
+    }
+
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
+    img.draw_hollow_rect((top_x, top_y), (w, h), color_arr);
+    js_undefined()
+}
+
+unsafe extern "C" fn bind_draw_filled_rect(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let mut top_x = 0;
+    let mut top_y = 0;
+    let mut w = 0;
+    let mut h = 0;
+    let mut color = 0;
+    if argv.is_null() || argc < 5 {
+        return js_throw_error(ctx, "image.resize argv need 5");
+    }
+    if JS_ToInt32(ctx, &mut top_x, *argv.offset(0)) > 0 {
+        return js_exception();
+    }
+    if JS_ToInt32(ctx, &mut top_y, *argv.offset(1)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut w, *argv.offset(2)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut h, *argv.offset(3)) > 0 {
+        return js_exception();
+    }
+    if JS_ToUint32_real(ctx, &mut color, *argv.offset(4)) > 0 {
+        return js_exception();
+    }
+
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
+    img.draw_filled_rect((top_x, top_y), (w, h), color_arr);
+    js_undefined()
+}
+
 // unsafe rust
 
 unsafe extern "C" fn js_finalizer(rt: *mut JSRuntime, val: JSValue) {
@@ -76,6 +216,16 @@ unsafe extern "C" fn js_finalizer(rt: *mut JSRuntime, val: JSValue) {
     if !s.is_null() {
         Box::from_raw(s);
     }
+}
+
+unsafe fn JsImage_to_JSValue(ctx: *mut JSContext, img: Box<JsImage>) -> JSValue {
+    let obj = JS_NewObjectClass(ctx, JS_IMG_CLASS_ID as i32);
+    if JS_IsException_real(obj) > 0 {
+        return obj;
+    }
+    let ptr_data = Box::leak(img);
+    JS_SetOpaque(obj, (ptr_data as *mut JsImage).cast());
+    obj
 }
 
 unsafe extern "C" fn js_ctor(
@@ -114,18 +264,7 @@ unsafe extern "C" fn js_ctor(
         Box::new(JsImage(img))
     };
 
-    let proto = JS_GetPropertyStr(ctx, new_target, make_c_string("prototype").as_ptr());
-    if JS_IsException_real(proto) > 0 {
-        return proto;
-    }
-    let obj = JS_NewObjectProtoClass(ctx, proto, JS_IMG_CLASS_ID);
-    JS_FreeValue_real(ctx, proto);
-
-    let ptr_data = Box::leak(img);
-
-    JS_SetOpaque(obj, (ptr_data as *mut JsImage).cast());
-
-    return obj;
+    return JsImage_to_JSValue(ctx, img);
 }
 
 pub static mut JS_IMG_CLASS_ID: JSClassID = 0;
@@ -139,8 +278,13 @@ static mut JS_IMG_CLASS_DEF: JSClassDef = JSClassDef {
     exotic: ::std::ptr::null_mut(),
 };
 
-static mut JS_IMG_PROTO_FUNCS: [JSCFunctionListEntry; 1] =
-    [CFUNC_DEF!("save_to_file\0", save_to_file, 1)];
+static mut JS_IMG_PROTO_FUNCS: [JSCFunctionListEntry; 5] = [
+    CFUNC_DEF!("save_to_file\0", bind_save_to_file, 1),
+    CFUNC_DEF!("save_to_buf\0", bind_save_to_buf, 1),
+    CFUNC_DEF!("resize\0", bind_resize, 2),
+    CFUNC_DEF!("draw_hollow_rect\0", bind_draw_hollow_rect, 5),
+    CFUNC_DEF!("draw_filled_rect\0", bind_draw_filled_rect, 5),
+];
 
 unsafe extern "C" fn js_module_init(
     ctx: *mut JSContext,
