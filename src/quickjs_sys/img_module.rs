@@ -1,6 +1,6 @@
 use super::*;
 use image::imageops::FilterType;
-use image::{Bgr, DynamicImage, ImageBuffer, ImageError, ImageFormat, Rgb, Rgba};
+use image::{Bgr, DynamicImage, ImageFormat, Rgba};
 use imageproc::drawing::{draw_filled_rect_mut, draw_hollow_rect_mut, draw_text_mut, Canvas};
 use imageproc::rect::Rect;
 use std::path::Path;
@@ -35,6 +35,22 @@ impl JsImage {
         };
         self.0.write_to(&mut buf, form).map_err(|e| e.to_string())?;
         Ok(buf)
+    }
+
+    pub fn to_rgb(&self) -> Self {
+        JsImage(DynamicImage::ImageRgb8(self.0.to_rgb8()))
+    }
+
+    pub fn to_bgr(&self) -> Self {
+        JsImage(DynamicImage::ImageBgr8(self.0.to_bgr8()))
+    }
+
+    pub fn to_luma(&self) -> Self {
+        JsImage(DynamicImage::ImageLuma8(self.0.to_luma8()))
+    }
+
+    pub fn pixels(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 // bindings
@@ -98,6 +114,48 @@ unsafe extern "C" fn bind_save_to_buf(
     } else {
         js_exception()
     };
+}
+
+unsafe extern "C" fn bind_pixels(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let pixels = img.pixels();
+
+    JS_NewArrayBufferCopy(ctx, pixels.as_ptr(), pixels.len())
+}
+
+unsafe extern "C" fn bind_pixels_32f(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+
+    let pixels = img.pixels();
+    let mut pixels_32f = vec![0f32; pixels.len()];
+    for (i, p) in pixels.iter().enumerate() {
+        pixels_32f[i] = (*p / u8::MAX) as f32;
+    }
+
+    JS_NewArrayBufferCopy(
+        ctx,
+        pixels_32f.as_ptr().cast(),
+        pixels_32f.len() * std::mem::size_of::<f32>(),
+    )
 }
 
 unsafe extern "C" fn bind_resize(
@@ -209,6 +267,51 @@ unsafe extern "C" fn bind_draw_filled_rect(
     js_undefined()
 }
 
+unsafe extern "C" fn bind_to_rgb(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+    let new_img = img.to_rgb();
+    JsImage_to_JSValue(ctx, Box::new(new_img))
+}
+
+unsafe extern "C" fn bind_to_bgr(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+    let new_img = img.to_bgr();
+    JsImage_to_JSValue(ctx, Box::new(new_img))
+}
+
+unsafe extern "C" fn bind_to_luma(
+    ctx: *mut JSContext,
+    this_val: JSValue,
+    argc: ::std::os::raw::c_int,
+    argv: *mut JSValue,
+) -> JSValue {
+    let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
+    if img_ptr.is_null() {
+        return js_exception();
+    }
+    let img = img_ptr.as_mut().unwrap();
+    let new_img = img.to_luma();
+    JsImage_to_JSValue(ctx, Box::new(new_img))
+}
+
 // unsafe rust
 
 unsafe extern "C" fn js_finalizer(rt: *mut JSRuntime, val: JSValue) {
@@ -278,10 +381,15 @@ static mut JS_IMG_CLASS_DEF: JSClassDef = JSClassDef {
     exotic: ::std::ptr::null_mut(),
 };
 
-static mut JS_IMG_PROTO_FUNCS: [JSCFunctionListEntry; 5] = [
+static mut JS_IMG_PROTO_FUNCS: [JSCFunctionListEntry; 10] = [
     CFUNC_DEF!("save_to_file\0", bind_save_to_file, 1),
     CFUNC_DEF!("save_to_buf\0", bind_save_to_buf, 1),
     CFUNC_DEF!("resize\0", bind_resize, 2),
+    CFUNC_DEF!("pixels\0", bind_pixels, 0),
+    CFUNC_DEF!("pixels_32f\0", bind_pixels_32f, 0),
+    CFUNC_DEF!("to_rgb\0", bind_to_rgb, 0),
+    CFUNC_DEF!("to_bgr\0", bind_to_bgr, 0),
+    CFUNC_DEF!("to_luma\0", bind_to_luma, 0),
     CFUNC_DEF!("draw_hollow_rect\0", bind_draw_hollow_rect, 5),
     CFUNC_DEF!("draw_filled_rect\0", bind_draw_filled_rect, 5),
 ];
