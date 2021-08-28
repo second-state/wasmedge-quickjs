@@ -148,7 +148,7 @@ unsafe extern "C" fn bind_pixels_32f(
     let pixels = img.pixels();
     let mut pixels_32f = vec![0f32; pixels.len()];
     for (i, p) in pixels.iter().enumerate() {
-        pixels_32f[i] = (*p / u8::MAX) as f32;
+        pixels_32f[i] = (*p as f32) / 255.;
     }
 
     JS_NewArrayBufferCopy(
