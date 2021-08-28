@@ -17,3 +17,4 @@ imageproc = "0.22.0"
 default = []
 http = []
 img = []
+tensorflow = ["img"]

@@ -5,6 +5,8 @@ mod http_module;
 #[cfg(feature = "img")]
 mod img_module;
 mod require_module;
+#[cfg(feature = "tensorflow")]
+mod tensorflow_module;
 
 use std::collections::HashMap;
 use std::str::from_utf8;
@@ -87,6 +89,10 @@ impl Context {
             http_module::init_module_http(&mut ctx);
             #[cfg(feature = "img")]
             img_module::init_module_image(ctx.ctx);
+            #[cfg(feature = "tensorflow")]
+            tensorflow_module::init_module_tensorflow(ctx.ctx);
+            #[cfg(feature = "tensorflow")]
+            tensorflow_module::init_module_tensorflow_lite(ctx.ctx);
             ctx
         }
     }
