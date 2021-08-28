@@ -4126,6 +4126,12 @@ extern "C" {
         n: ::std::os::raw::c_ulong,
     ) -> *mut ::std::os::raw::c_void;
 }
+extern "C" {
+    pub fn js_undefined() -> JSValue;
+}
+extern "C" {
+    pub fn js_exception() -> JSValue;
+}
 pub type __builtin_va_list = [__va_list_tag; 1usize];
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

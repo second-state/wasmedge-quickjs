@@ -2,7 +2,11 @@
 mod macros;
 #[cfg(feature = "http")]
 mod http_module;
+#[cfg(feature = "img")]
+mod img_module;
 mod require_module;
+#[cfg(feature = "tensorflow")]
+mod tensorflow_module;
 
 use std::collections::HashMap;
 use std::str::from_utf8;
@@ -83,6 +87,12 @@ impl Context {
             require_module::init_module_require(&mut ctx);
             #[cfg(feature = "http")]
             http_module::init_module_http(&mut ctx);
+            #[cfg(feature = "img")]
+            img_module::init_module_image(ctx.ctx);
+            #[cfg(feature = "tensorflow")]
+            tensorflow_module::init_module_tensorflow(ctx.ctx);
+            #[cfg(feature = "tensorflow")]
+            tensorflow_module::init_module_tensorflow_lite(ctx.ctx);
             ctx
         }
     }
@@ -223,7 +233,7 @@ unsafe fn deserialize_array(context: *mut JSContext, v: JSValue) -> Result<Vec<V
             js_std_dump_error(context);
             return Err("Could not build array".into());
         }
-
+        JS_DupValue_real(context, value_raw);
         values.push(Value {
             ctx: context,
             v: value_raw,
@@ -340,8 +350,12 @@ unsafe fn to_i64(ctx: *mut JSContext, v: JSValue) -> Result<i64, String> {
     }
 }
 
+unsafe fn js_throw_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> JSValue {
+    JS_ThrowInternalError(ctx, make_c_string(message).as_ptr().cast())
+}
+
 fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
-    std::ffi::CString::new(s).unwrap()
+    std::ffi::CString::new(s).unwrap_or(Default::default())
 }
 
 unsafe fn set(
