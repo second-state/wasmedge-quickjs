@@ -227,7 +227,7 @@ unsafe fn deserialize_array(context: *mut JSContext, v: JSValue) -> Result<Vec<V
             js_std_dump_error(context);
             return Err("Could not build array".into());
         }
-
+        JS_DupValue_real(context, value_raw);
         values.push(Value {
             ctx: context,
             v: value_raw,
@@ -349,7 +349,7 @@ unsafe fn js_throw_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> J
 }
 
 fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
-    std::ffi::CString::new(s).unwrap()
+    std::ffi::CString::new(s).unwrap_or(Default::default())
 }
 
 unsafe fn set(
