@@ -5,7 +5,7 @@ print("add:",add(1,2))
 
 if(true){
     print('get-test')
-    let r = GET("http://18.235.124.214/get?a=123",{"a":"b","c":[1,2,3]})
+    let r = GET("http://54.198.109.87/get?a=123",{"a":"b","c":[1,2,3]})
     print(r.status)
     let headers = r.headers
     print(JSON.stringify(headers))
@@ -16,7 +16,7 @@ if(true){
 
 if(false){
     print('post-test')
-    let r1 = POST("http://18.235.124.214/post?a=123","haha=1",{"a":"b","c":[1,2,3]})
+    let r1 = POST("http://54.198.109.87/post?a=123","haha=1",{"a":"b","c":[1,2,3]})
     print(r1.status)
     let headers1 = r1.headers
     print(JSON.stringify(headers1))
@@ -27,7 +27,7 @@ if(false){
 
 if(false){
     print('put-test')
-    let r = PUT("http://18.235.124.214/put?a=123","haha=1",{"a":"b","c":[1,2,3]})
+    let r = PUT("http://54.198.109.87/put?a=123","haha=1",{"a":"b","c":[1,2,3]})
     print(r.status)
     let headers = r.headers
     print(JSON.stringify(headers))
@@ -38,7 +38,7 @@ if(false){
 
 if(false){
     print('patch-test')
-    let r = PATCH("http://18.235.124.214/patch?a=123","haha=1",{"a":"b","c":[1,2,3]})
+    let r = PATCH("http://54.198.109.87/patch?a=123","haha=1",{"a":"b","c":[1,2,3]})
     print(r.status)
     let headers = r.headers
     print(JSON.stringify(headers))
@@ -49,7 +49,7 @@ if(false){
 
 if(true){
     print('delete-test')
-    let r = DELETE("http://18.235.124.214/delete?a=123","haha=1");
+    let r = DELETE("http://54.198.109.87/delete?a=123","haha=1");
     print(r.status)
     let headers = r.headers
     print(JSON.stringify(headers))
