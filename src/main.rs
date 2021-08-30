@@ -16,15 +16,6 @@ fn args_parse() -> String {
 fn main() {
     use quickjs_sys as q;
     let mut ctx = q::Context::new();
-
-    let file_path = args_parse();
-    let code = std::fs::read_to_string(&file_path);
-    match code {
-        Ok(code) => {
-            ctx.eval_str(code.as_str(), &file_path);
-        }
-        Err(e) => {
-            eprintln!("{}", e.to_string());
-        }
-    }
+    let code = include_str!("../demo.js");
+    ctx.eval_str(code, "<input>");
 }
