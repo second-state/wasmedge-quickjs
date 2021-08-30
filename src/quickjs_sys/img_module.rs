@@ -60,8 +60,8 @@ unsafe extern "C" fn bind_save_to_file(
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
-    if argv.is_null() || argc == 0 {
-        return js_throw_error(ctx, "param path or data is require");
+    if argv.is_null() || argc < 1 {
+        return js_throw_type_error(ctx, "too few arguments to function ‘save_to_file’");
     }
     let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
     if img_ptr.is_null() {
@@ -73,7 +73,7 @@ unsafe extern "C" fn bind_save_to_file(
     return if JS_IsString_real(param) > 0 {
         let path = match to_string(ctx, param) {
             Ok(path) => path,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         let r = img.save_to_file(path);
         match r {
@@ -92,7 +92,7 @@ unsafe extern "C" fn bind_save_to_buf(
     argv: *mut JSValue,
 ) -> JSValue {
     if argv.is_null() || argc == 0 {
-        return js_throw_error(ctx, "param image_format is require");
+        return js_throw_type_error(ctx, "too few arguments to function ‘save_to_buf’");
     }
     let img_ptr = JS_GetOpaque(this_val, JS_IMG_CLASS_ID) as *mut JsImage;
     if img_ptr.is_null() {
@@ -104,7 +104,7 @@ unsafe extern "C" fn bind_save_to_buf(
     return if JS_IsString_real(param) > 0 {
         let format = match to_string(ctx, param) {
             Ok(path) => path,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         let data = match img.save_to_buf(format.as_str()) {
             Ok(buf) => buf,
@@ -167,7 +167,7 @@ unsafe extern "C" fn bind_resize(
     let mut w = 0;
     let mut h = 0;
     if argv.is_null() || argc < 2 {
-        return js_throw_error(ctx, "image.resize argv need 2");
+        return js_throw_type_error(ctx, "too few arguments to function ‘resize’");
     }
     if JS_ToUint32_real(ctx, &mut w, *argv.offset(0)) > 0 {
         return js_exception();
@@ -197,7 +197,7 @@ unsafe extern "C" fn bind_draw_hollow_rect(
     let mut h = 0;
     let mut color = 0;
     if argv.is_null() || argc < 5 {
-        return js_throw_error(ctx, "image.resize argv need 5");
+        return js_throw_type_error(ctx, "too few arguments to function ‘hollow_rect’");
     }
     if JS_ToInt32(ctx, &mut top_x, *argv.offset(0)) > 0 {
         return js_exception();
@@ -238,7 +238,7 @@ unsafe extern "C" fn bind_draw_filled_rect(
     let mut h = 0;
     let mut color = 0;
     if argv.is_null() || argc < 5 {
-        return js_throw_error(ctx, "image.resize argv need 5");
+        return js_throw_type_error(ctx, "too few arguments to function ‘filled_rect’");
     }
     if JS_ToInt32(ctx, &mut top_x, *argv.offset(0)) > 0 {
         return js_exception();
@@ -338,13 +338,13 @@ unsafe extern "C" fn js_ctor(
     argv: *mut JSValue,
 ) -> JSValue {
     if argv.is_null() || argc == 0 {
-        return js_throw_error(ctx, "param path or data is require");
+        return js_throw_type_error(ctx, "too few arguments");
     }
     let param = *argv;
     let img = if JS_IsString_real(param) > 0 {
         let path = match to_string(ctx, param) {
             Ok(path) => path,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         let img = match image::open(path) {
             Ok(img) => img,
@@ -355,7 +355,7 @@ unsafe extern "C" fn js_ctor(
         let mut psize = 0;
         let ptr = JS_GetArrayBuffer(ctx, &mut psize, param);
         if ptr.is_null() || psize == 0 {
-            return js_throw_error(ctx, "param error");
+            return js_exception();
         }
         let buf = Vec::from_raw_parts(ptr, psize, psize);
         let img = image::load_from_memory(buf.as_slice());

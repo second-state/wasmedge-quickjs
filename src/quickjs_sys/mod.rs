@@ -354,6 +354,10 @@ unsafe fn js_throw_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> J
     JS_ThrowInternalError(ctx, make_c_string(message).as_ptr().cast())
 }
 
+unsafe fn js_throw_type_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> JSValue {
+    JS_ThrowTypeError(ctx, make_c_string(message).as_ptr().cast())
+}
+
 fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
     std::ffi::CString::new(s).unwrap_or(Default::default())
 }
