@@ -1,6 +1,7 @@
 import * as std from 'std';
 
 print('hello')
+print('args:',...args)
 
 //write fs
 let wf = std.open('demo.txt','w')
