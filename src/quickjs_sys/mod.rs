@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod host_fun_demo_module;
 #[cfg(feature = "http")]
 mod http_module;
 #[cfg(feature = "img")]
@@ -93,6 +94,8 @@ impl Context {
             tensorflow_module::init_module_tensorflow(ctx.ctx);
             #[cfg(feature = "tensorflow")]
             tensorflow_module::init_module_tensorflow_lite(ctx.ctx);
+
+            host_fun_demo_module::init_module(ctx.ctx);
             ctx
         }
     }
