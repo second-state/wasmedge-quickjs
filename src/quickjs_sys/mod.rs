@@ -107,6 +107,22 @@ impl Context {
         }
     }
 
+    pub fn put_args<T: AsRef<[String]>>(&mut self, args: T) {
+        unsafe {
+            let args_obj = JS_NewArray(self.ctx);
+            let args = args.as_ref();
+            let mut i = 0;
+            for arg in args {
+                let arg_js_string = JS_NewStringLen(self.ctx, arg.as_ptr().cast(), arg.len());
+                JS_SetPropertyUint32(self.ctx, args_obj, i, arg_js_string);
+                i += 1;
+            }
+            let global = get_global(self.ctx);
+            JS_SetPropertyStr(self.ctx, global, "args\0".as_ptr().cast(), args_obj);
+            JS_FreeValue_real(self.ctx, global);
+        }
+    }
+
     pub fn eval_str(&mut self, code: &str, filename: &str) {
         unsafe {
             js_eval_buf(
