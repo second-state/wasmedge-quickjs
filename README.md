@@ -1,20 +1,26 @@
 # A wasi quickjs binding for rust
-and support wasmedge socket!
+this branch show how to import a custom host function into quickjs.
 
 # Build
 ```shell
-cargo wasi build --release
+#build wasm
+$ cargo wasi build --release
+
+#build custom webassembly Runtime
+$ cd wasmedge_c
+
+#build a custom Runtime
+wasmedge_c/$ gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
 ```
 
 # Run
 ```shell
-wasmedge --dir .:. target/wasm32-wasi/debug/quickjs-rs-wasi.wasm example_js/http_demo.js
-```
+wasmedge_c/$ export LD_LIBRARY_PATH=.
 
-# Get static-lib & binding.rs
-If you want to build a custom libquickjs.a
-
-See [[quickjs-wasi]](https://github.com/L-jasmine/quickjs-wasi) (branch:rs-binding)
-```shell
-run quickjs-wasi/lib/build.sh
+wasmedge_c/$ ./demo_wasmedge ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm
+js say => hello js
+c say=> host_inc call : 3
+js say => host_inc(2)= 3
+OK
+wasmedge_c/$ 
 ```
