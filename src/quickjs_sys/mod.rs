@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod host_fun_demo_module;
 #[cfg(feature = "http")]
 mod http_module;
 #[cfg(feature = "img")]
@@ -93,6 +94,8 @@ impl Context {
             tensorflow_module::init_module_tensorflow(ctx.ctx);
             #[cfg(feature = "tensorflow")]
             tensorflow_module::init_module_tensorflow_lite(ctx.ctx);
+
+            host_fun_demo_module::init_module(ctx.ctx);
             ctx
         }
     }
@@ -104,6 +107,22 @@ impl Context {
                 v: get_global(self.ctx),
                 tag: JS_TAG_OBJECT,
             }
+        }
+    }
+
+    pub fn put_args<T: AsRef<[String]>>(&mut self, args: T) {
+        unsafe {
+            let args_obj = JS_NewArray(self.ctx);
+            let args = args.as_ref();
+            let mut i = 0;
+            for arg in args {
+                let arg_js_string = JS_NewStringLen(self.ctx, arg.as_ptr().cast(), arg.len());
+                JS_SetPropertyUint32(self.ctx, args_obj, i, arg_js_string);
+                i += 1;
+            }
+            let global = get_global(self.ctx);
+            JS_SetPropertyStr(self.ctx, global, "args\0".as_ptr().cast(), args_obj);
+            JS_FreeValue_real(self.ctx, global);
         }
     }
 
@@ -352,6 +371,10 @@ unsafe fn to_i64(ctx: *mut JSContext, v: JSValue) -> Result<i64, String> {
 
 unsafe fn js_throw_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> JSValue {
     JS_ThrowInternalError(ctx, make_c_string(message).as_ptr().cast())
+}
+
+unsafe fn js_throw_type_error<T: Into<Vec<u8>>>(ctx: *mut JSContext, message: T) -> JSValue {
+    JS_ThrowTypeError(ctx, make_c_string(message).as_ptr().cast())
 }
 
 fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
