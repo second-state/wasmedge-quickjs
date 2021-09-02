@@ -256,12 +256,12 @@ pub mod tensorflow {
         magic: ::std::os::raw::c_int,
     ) -> JSValue {
         if argv.is_null() || argc < 3 {
-            return js_throw_error(ctx, "add_input() missing 3 required argument");
+            return js_throw_type_error(ctx, "too few arguments to function ‘add_input’");
         }
         // check name
         let name = match to_string(ctx, *argv.offset(0)) {
             Ok(name) => name,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         // check tensor_buf
         let mut tensor_buf_len = 0;
@@ -272,7 +272,7 @@ pub mod tensorflow {
         // check shape
         let shape = match deserialize_array(ctx, *argv.offset(2)) {
             Ok(s) => s,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         let mut shape_arr = vec![0i64; shape.len()];
         for i in 0..shape.len() {
@@ -306,12 +306,12 @@ pub mod tensorflow {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc < 1 {
-            return js_throw_error(ctx, "add_output() missing 1 required argument");
+            return js_throw_type_error(ctx, "too few arguments to function ‘add_output’");
         }
         // check name
         let name = match to_string(ctx, *argv.offset(0)) {
             Ok(name) => name,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
 
         let session_ptr = JS_GetOpaque(this_val, JS_CLASS_ID) as *mut TensorflowSession;
@@ -346,12 +346,12 @@ pub mod tensorflow {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc < 1 {
-            return js_throw_error(ctx, "add_output() missing 1 required argument");
+            return js_throw_type_error(ctx, "too few arguments to function ‘get_output’");
         }
         // check name
         let name = match to_string(ctx, *argv.offset(0)) {
             Ok(name) => name,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
 
         let session_ptr = JS_GetOpaque(this_val, JS_CLASS_ID) as *mut TensorflowSession;
@@ -418,22 +418,22 @@ pub mod tensorflow {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc == 0 {
-            return js_throw_error(ctx, "argv is empty");
+            return js_throw_type_error(ctx, "too few arguments");
         }
         let param = *argv;
         let session = if JS_IsString_real(param) > 0 {
             let path = match to_string(ctx, param) {
                 Ok(path) => path,
-                Err(e) => return js_throw_error(ctx, e),
+                Err(e) => return js_throw_type_error(ctx, e),
             };
             let session = match TensorflowSession::new_from_path(path) {
                 Ok(s) => s,
-                Err(e) => return js_throw_error(ctx, e),
+                Err(e) => return js_throw_type_error(ctx, e),
             };
 
             Box::new(session)
         } else {
-            return js_throw_error(ctx, "param error");
+            return js_exception();
         };
 
         return Session_to_JSValue(ctx, session);
@@ -591,12 +591,12 @@ pub mod tensorflow_lite {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc < 2 {
-            return js_throw_error(ctx, "add_input() missing 2 required argument");
+            return js_throw_type_error(ctx, "too few arguments to function ‘add_input’");
         }
         // check name
         let name = match to_string(ctx, *argv.offset(0)) {
             Ok(name) => name,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
         // check tensor_buf
         let mut tensor_buf_len = 0;
@@ -637,12 +637,12 @@ pub mod tensorflow_lite {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc < 1 {
-            return js_throw_error(ctx, "add_output() missing 1 required argument");
+            return js_throw_type_error(ctx, "too few arguments to function ‘get_output’");
         }
         // check name
         let name = match to_string(ctx, *argv.offset(0)) {
             Ok(name) => name,
-            Err(e) => return js_throw_error(ctx, e),
+            Err(e) => return js_throw_type_error(ctx, e),
         };
 
         let session_ptr = JS_GetOpaque(this_val, JS_CLASS_ID) as *mut TensorflowLiteSession;
@@ -682,22 +682,22 @@ pub mod tensorflow_lite {
         argv: *mut JSValue,
     ) -> JSValue {
         if argv.is_null() || argc == 0 {
-            return js_throw_error(ctx, "argv is empty");
+            return js_throw_type_error(ctx, "too few arguments");
         }
         let param = *argv;
         let session = if JS_IsString_real(param) > 0 {
             let path = match to_string(ctx, param) {
                 Ok(path) => path,
-                Err(e) => return js_throw_error(ctx, e),
+                Err(e) => return js_throw_type_error(ctx, e),
             };
             let session = match TensorflowLiteSession::new_from_path(path) {
                 Ok(s) => s,
-                Err(e) => return js_throw_error(ctx, e),
+                Err(e) => return js_throw_type_error(ctx, e),
             };
 
             Box::new(session)
         } else {
-            return js_throw_error(ctx, "param error");
+            return js_exception();
         };
 
         return Session_to_JSValue(ctx, session);
