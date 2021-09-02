@@ -1,5 +1,6 @@
 import {TensorflowLiteSession} from 'tensorflow_lite'
 import {Image} from 'image'
+import * as std from 'std'
 
 let img = new Image('./example_js/tensorflow_lite_demo/food.jpg')
 let img_rgb = img.to_rgb().resize(192,192)
@@ -19,4 +20,14 @@ for (var i in output_view){
         max_idx = i;
     }
 }
-print(max,max_idx)
+let label_file = std.open('./example_js/tensorflow_lite_demo/aiy_food_V1_labelmap.txt','r')
+let label = ''
+for(var i = 0; i <= max_idx; i++){
+    label = label_file.getline()
+}
+label_file.close()
+
+print('label:')
+print(label)
+print('confidence:')
+print(max/255)

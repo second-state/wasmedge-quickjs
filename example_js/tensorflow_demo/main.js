@@ -1,5 +1,6 @@
 import {TensorflowSession} from 'tensorflow'
 import {Image} from 'image'
+import * as std from 'std'
 
 let img = new Image('./example_js/tensorflow_demo/bird.png')
 let img_rgb = img.to_rgb().resize(224,224)
@@ -20,4 +21,14 @@ for (var i in output_view){
         max_idx = i;
     }
 }
-print(max,max_idx)
+let label_file = std.open('./example_js/tensorflow_demo/imagenet_slim_labels.txt','r')
+let label = ''
+for(var i = 0; i <= max_idx; i++){
+    label = label_file.getline()
+}
+label_file.close()
+
+print('label:')
+print(label)
+print('confidence:')
+print(max)
