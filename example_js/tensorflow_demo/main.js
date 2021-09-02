@@ -20,4 +20,4 @@ for (var i in output_view){
         max_idx = i;
     }
 }
-print(max,max_idx)
+print('label index:',max_idx,'\nconfidence:',max)
