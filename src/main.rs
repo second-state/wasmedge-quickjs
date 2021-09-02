@@ -15,9 +15,12 @@ fn args_parse() -> Vec<String> {
 fn main() {
     use quickjs_sys as q;
     let mut ctx = q::Context::new();
+    // include js code
     let code = include_str!("../demo.js");
+    // get args and set into quickjs
     let mut res_args = args_parse();
     res_args.insert(0, "<process_name>".to_string());
     ctx.put_args(res_args);
+    // run js code
     ctx.eval_str(code, "<input>");
 }
