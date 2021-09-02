@@ -3,12 +3,13 @@ and support wasmedge socket!
 
 # Build
 ```shell
-cargo wasi build --release
+rustup target add wasm32-wasi
+cargo build --target wasm32-wasi --release --features=http
 ```
 
 # Run
 ```shell
-wasmedge --dir .:. target/wasm32-wasi/debug/quickjs-rs-wasi.wasm example_js/http_demo.js
+wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm example_js/http_demo.js
 ```
 
 # Get static-lib & binding.rs
