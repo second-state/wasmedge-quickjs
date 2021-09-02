@@ -26,7 +26,7 @@ wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm example_js/ht
 
 ## TensorFlow
 
-### install WasmEdge-TensorFlow
+### Install WasmEdge-TensorFlow
 
 ```shell
 wget https://github.com/second-state/WasmEdge-tensorflow-tools/releases/download/0.8.1/WasmEdge-tensorflow-tools-0.8.1-manylinux2014_x86_64.tar.gz
