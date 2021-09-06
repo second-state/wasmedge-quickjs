@@ -18,11 +18,18 @@ fn args_parse() -> (String, Vec<String>) {
 
 fn main() {
     use quickjs_sys as q;
-    let code = r#"
-    import {host_inc} from 'host_function_demo'
-    print('js say => hello js')
-    print('js say => host_inc(2)=',host_inc(2))
-    "#;
     let mut ctx = q::Context::new();
-    ctx.eval_str(code, "<input>");
+
+    let (file_path, mut rest_arg) = args_parse();
+    let code = std::fs::read_to_string(&file_path);
+    match code {
+        Ok(code) => {
+            rest_arg.insert(0, file_path.clone());
+            ctx.put_args(rest_arg);
+            ctx.eval_str(code.as_str(), &file_path);
+        }
+        Err(e) => {
+            eprintln!("{}", e.to_string());
+        }
+    }
 }
