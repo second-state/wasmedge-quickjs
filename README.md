@@ -17,10 +17,11 @@ wasmedge_c/$ gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
 ```shell
 wasmedge_c/$ export LD_LIBRARY_PATH=.
 
-wasmedge_c/$ ./demo_wasmedge ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm
-js say => hello js
-c say=> host_inc call : 3
-js say => host_inc(2)= 3
-OK
+wasmedge_c/$ ./demo_wasmedge ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm example_js/hello.js WasmEdge Runtime
+js=> Hello WasmEdge Runtime
+Runtime(c)=> host_inc call : 3
+js=> host_inc(2)= 3
+
+Runtime(c)=> OK
 wasmedge_c/$ 
 ```

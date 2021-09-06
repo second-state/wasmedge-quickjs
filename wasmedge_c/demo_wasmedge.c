@@ -4,10 +4,13 @@
 WasmEdge_Result HostInc(void *Data, WasmEdge_MemoryInstanceContext *MemCxt,
                     const WasmEdge_Value *In, WasmEdge_Value *Out) {
   int32_t Val1 = WasmEdge_ValueGetI32(In[0]);
-  printf("c say=> host_inc call : %d\n",Val1 + 1);
+  printf("Runtime(c)=> host_inc call : %d\n",Val1 + 1);
   Out[0] = WasmEdge_ValueGenI32(Val1 + 1);
   return WasmEdge_Result_Success;
 }
+
+// mapping dirs
+char* dirs = ".:..\0";
 
 int main(int Argc, const char* Argv[]) {
 	/* Create the configure context and add the WASI support. */
@@ -17,7 +20,7 @@ int main(int Argc, const char* Argv[]) {
 	/* The configure and store context to the VM creation can be NULL. */
 	WasmEdge_VMContext *VMCxt = WasmEdge_VMCreate(ConfCxt, NULL);
 	WasmEdge_ImportObjectContext *WasiObject = WasmEdge_VMGetImportModuleContext(VMCxt, WasmEdge_HostRegistration_Wasi);
-    WasmEdge_ImportObjectInitWASI(WasiObject,Argv+2,Argc-2,NULL,0,NULL,0,NULL,0);
+    WasmEdge_ImportObjectInitWASI(WasiObject,Argv+1,Argc-1,NULL,0,&dirs,1,NULL,0);
 
 
     /* Create the import object. */
@@ -44,9 +47,9 @@ int main(int Argc, const char* Argv[]) {
 	WasmEdge_Result Res = WasmEdge_VMRunWasmFromFile(VMCxt, Argv[1], FuncName, Params, 0, Returns, 0);
 
 	if (WasmEdge_ResultOK(Res)) {
-		printf("OK\n");
+		printf("\nRuntime(c)=> OK\n");
 	} else {
-		printf("Error message: %s\n", WasmEdge_ResultGetMessage(Res));
+		printf("\nRuntime(c)=> Error message: %s\n", WasmEdge_ResultGetMessage(Res));
 	}
 
 	/* Resources deallocations. */
