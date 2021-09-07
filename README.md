@@ -46,7 +46,7 @@ cargo build --target wasm32-wasi --release --features=tensorflow
 ## Run
 
 ```shell
-wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm
+wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm
 ```
 
 # Get static-lib & binding.rs
