@@ -28,7 +28,7 @@ wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm example_js/he
 ### Build
 
 ```shell
-cargo build --target wasm32-wasi --release --features=http
+cargo build --target wasm32-wasi --release
 ```
 
 ### Run
@@ -42,8 +42,8 @@ wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm example_js/ht
 ### Install WasmEdge-TensorFlow
 
 ```shell
-wget https://github.com/second-state/WasmEdge-tensorflow-tools/releases/download/0.8.1/WasmEdge-tensorflow-tools-0.8.1-manylinux2014_x86_64.tar.gz
-tar -xzf WasmEdge-tensorflow-tools-0.8.1-manylinux2014_x86_64.tar.gz
+wget https://github.com/second-state/WasmEdge-tensorflow-tools/releases/download/0.8.2/WasmEdge-tensorflow-tools-0.8.2-manylinux2014_x86_64.tar.gz
+tar -xzf WasmEdge-tensorflow-tools-0.8.2-manylinux2014_x86_64.tar.gz
 ./download_dependencies_all.sh
 export LD_LIBRARY_PATH=$(pwd)
 ```
