@@ -2,9 +2,10 @@
 this branch show how to import a custom host function into quickjs.
 
 # Build
+
 ```shell
 #build wasm
-$ cargo wasi build --release
+$ cargo build --target wasm32-wasi --release
 
 #build custom webassembly Runtime
 $ cd wasmedge_c
@@ -14,6 +15,7 @@ wasmedge_c/$ gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
 ```
 
 # Run
+
 ```shell
 wasmedge_c/$ export LD_LIBRARY_PATH=.
 
