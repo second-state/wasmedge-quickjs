@@ -1,11 +1,12 @@
 # A wasi quickjs binding for rust
 embed js
 
-See `src/main.rs` and `demo.js`
+See `src/main.rs` and `example_js/demo.js`
 
 # Build
+
 ```shell
-cargo wasi build --release
+cargo build --target wasm32-wasi --release
 ```
 
 # Run

@@ -16,11 +16,11 @@ fn main() {
     use quickjs_sys as q;
     let mut ctx = q::Context::new();
     // include js code
-    let code = include_str!("../demo.js");
+    let code = include_str!("../example_js/demo.js");
     // get args and set into quickjs
     let mut res_args = args_parse();
-    res_args.insert(0, "<process_name>".to_string());
+    res_args.insert(0, "<embedded_no_filename>".to_string());
     ctx.put_args(res_args);
     // run js code
-    ctx.eval_str(code, "<input>");
+    ctx.eval_str(code, "");
 }
