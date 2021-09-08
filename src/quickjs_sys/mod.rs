@@ -10,7 +10,6 @@ mod require_module;
 mod tensorflow_module;
 
 use std::collections::HashMap;
-use std::str::from_utf8;
 
 #[allow(warnings)]
 mod qjs {
