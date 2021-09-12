@@ -1,11 +1,11 @@
 import {TensorflowSession} from 'tensorflow'
 import {Image} from 'image'
 
-let img = new Image('./example_js/tensorflow_demo/bird.png')
+let img = new Image('bird.png')
 let img_rgb = img.to_rgb().resize(224,224)
 let rgb_pix = img_rgb.pixels_32f()
 
-let session = new TensorflowSession('./example_js/tensorflow_demo/mobilenet_v2_1.4_224_frozen.pb')
+let session = new TensorflowSession('mobilenet_v2_1.4_224_frozen.pb')
 session.add_input_32f('input',rgb_pix,[1,224,224,3])
 session.add_output('MobilenetV2/Predictions/Softmax')
 session.run()

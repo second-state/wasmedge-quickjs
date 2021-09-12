@@ -3,14 +3,14 @@ import * as std from 'std'
 
 // load image from file_path
 print('start load image')
-let img = new Image("./example_js/bird.png")
+let img = new Image("bird.png")
 
 // image to ArrayBuffer
 let buf = img.save_to_buf('png')
 print('buf:',buf)
 
 // save buf to file
-let f = std.open('./example_js/bird_new_1.png','w')
+let f = std.open('bird_new_1.png','w')
 let x = f.write(buf,0,buf.byteLength)
 print(x)
 f.flush()
@@ -29,7 +29,7 @@ resize_img.draw_filled_rect(50,50,50,50,0x0000ff)
 resize_img.draw_hollow_rect(0,50,50,50,0x00ff00)
 
 // save image with native function
-resize_img.save_to_file("./example_js/bird_new_2.jpg");
+resize_img.save_to_file("bird_new_2.jpg");
 
 // get pixels and to rgb bgr luma
 {
@@ -45,5 +45,5 @@ resize_img.save_to_file("./example_js/bird_new_2.jpg");
     print('luma pixels len',luma_pix.byteLength)
 
     luma_img.draw_hollow_rect(0,0,50,50,0xff0000)
-    luma_img.save_to_file("./example_js/bird_luma.png")
+    luma_img.save_to_file("bird_luma.png")
 }
