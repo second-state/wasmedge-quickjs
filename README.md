@@ -29,8 +29,11 @@ $ cargo build --target wasm32-wasi --release
 
 ## Run
 
+Note: You need to run this from the `example_js` directory since the embedded `http_demo.js` imports an `add.js` from its local directory.
+
 ```shell
-$ wasmedge --dir .:. target/wasm32-wasi/release/quickjs-rs-wasi.wasm
+$ cd example_js
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm
 ```
 
 # Tensorflow demo
