@@ -24,7 +24,7 @@ Change the include statement in `src/main.rs` to embed `example_js/http_demo.js`
 ## Build
 
 ```shell
-$ cargo build --target wasm32-wasi --release
+$ cargo build --target wasm32-wasi --release --features=http
 ```
 
 ## Run
