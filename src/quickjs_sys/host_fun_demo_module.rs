@@ -9,7 +9,7 @@ mod host_extern {
 
 unsafe extern "C" fn bind_host_inc(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
