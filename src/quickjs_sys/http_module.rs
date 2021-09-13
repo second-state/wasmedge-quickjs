@@ -37,7 +37,7 @@ pub(super) fn init_module_http(ctx: &mut Context) {
             new_function(ctx, "http_delete", Some(delete)),
         );
 
-        let mut val = JS_Eval(
+        let val = JS_Eval(
             ctx,
             make_c_string(init_js).as_ptr(),
             init_js.len(),
@@ -128,7 +128,7 @@ unsafe fn parse_body(ctx: *mut JSContext, body: JSValue) -> Vec<u8> {
 
 pub extern "C" fn get(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
@@ -159,7 +159,7 @@ pub extern "C" fn get(
 
 pub extern "C" fn post(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
@@ -202,7 +202,7 @@ pub extern "C" fn post(
 
 pub extern "C" fn put(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
@@ -245,7 +245,7 @@ pub extern "C" fn put(
 
 pub extern "C" fn patch(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
@@ -290,7 +290,7 @@ pub extern "C" fn patch(
 
 pub extern "C" fn delete(
     ctx: *mut JSContext,
-    this_val: JSValue,
+    _this_val: JSValue,
     argc: ::std::os::raw::c_int,
     argv: *mut JSValue,
 ) -> JSValue {
