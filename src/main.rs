@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports, unused_must_use)]
 pub mod quickjs_sys;
 
 fn args_parse() -> Vec<String> {
