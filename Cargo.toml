@@ -14,7 +14,7 @@ image = { version = "0.23.0", default-features = false, features = ["jpeg", "png
 imageproc = "0.22.0"
 
 [features]
-default = []
+default = ["http"]
 http = []
 img = []
 tensorflow = ["img"]
