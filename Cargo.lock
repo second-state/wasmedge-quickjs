@@ -380,7 +380,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "quickjs-rs-wasi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argparse",
  "http_req",
