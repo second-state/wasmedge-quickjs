@@ -59,7 +59,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
     const CLASS_NAME: &'static str = "Image\0";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Option<JsImage> {
+    fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<JsImage> {
         let param = argv.get(0)?;
         match param {
             JsValue::String(path) => {
@@ -146,7 +146,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
             const NAME: &'static str = "pixels\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
                 let pixels = this_val.pixels();
                 ctx.new_array_buffer(pixels).into()
             }
@@ -157,7 +157,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
             const NAME: &'static str = "pixels_32f\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
                 let pixels = this_val.pixels();
                 let mut pixels_32f = vec![0f32; pixels.len()];
                 for (i, p) in pixels.iter().enumerate() {
@@ -173,7 +173,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
             const NAME: &'static str = "to_rgb\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
                 let new_img = this_val.to_rgb();
                 ImageClassDef::gen_js_obj(ctx, new_img)
             }
@@ -184,7 +184,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
             const NAME: &'static str = "to_bgr\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
                 let new_img = this_val.to_bgr();
                 ImageClassDef::gen_js_obj(ctx, new_img)
             }
@@ -195,7 +195,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
             const NAME: &'static str = "to_luma\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
                 let new_img = this_val.to_luma();
                 ImageClassDef::gen_js_obj(ctx, new_img)
             }

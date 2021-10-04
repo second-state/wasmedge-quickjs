@@ -255,7 +255,7 @@ mod tensorflow {
         const CLASS_NAME: &'static str = "TensorflowSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowSession> {
+        fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowSession> {
             match argv.get(0)? {
                 JsValue::String(path) => {
                     let path = path.to_string();
@@ -409,9 +409,9 @@ mod tensorflow {
                 const LEN: u8 = 0;
 
                 fn call(
-                    ctx: &mut Context,
+                    _ctx: &mut Context,
                     this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
+                    _argv: &[JsValue],
                 ) -> JsValue {
                     unsafe { this_val.run() }
                     JsValue::UnDefined
@@ -447,9 +447,9 @@ mod tensorflow {
                 const LEN: u8 = 0;
 
                 fn call(
-                    ctx: &mut Context,
+                    _ctx: &mut Context,
                     this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
+                    _argv: &[JsValue],
                 ) -> JsValue {
                     unsafe { this_val.clear_output() }
                     JsValue::UnDefined
@@ -463,9 +463,9 @@ mod tensorflow {
                 const LEN: u8 = 0;
 
                 fn call(
-                    ctx: &mut Context,
+                    _ctx: &mut Context,
                     this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
+                    _argv: &[JsValue],
                 ) -> JsValue {
                     unsafe { this_val.clear_input() }
                     JsValue::UnDefined
@@ -562,7 +562,7 @@ mod tensorflow_lite {
         const CLASS_NAME: &'static str = "TensorflowLiteSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowLiteSession> {
+        fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowLiteSession> {
             match argv.get(0)? {
                 JsValue::String(path) => {
                     let path = path.to_string();
@@ -614,9 +614,9 @@ mod tensorflow_lite {
                 const LEN: u8 = 0;
 
                 fn call(
-                    ctx: &mut Context,
+                    _ctx: &mut Context,
                     this_val: &mut TensorflowLiteSession,
-                    argv: &[JsValue],
+                    _argv: &[JsValue],
                 ) -> JsValue {
                     unsafe { this_val.run() }
                     JsValue::UnDefined
