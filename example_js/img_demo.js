@@ -3,7 +3,8 @@ import * as std from 'std'
 
 // load image from file_path
 print('start load image')
-let img = new Image("bird.png")
+let img = new Image("example_js/bird.png")
+print("load img:",img)
 
 // image to ArrayBuffer
 let buf = img.save_to_buf('png')
@@ -20,10 +21,12 @@ f.close()
 print('new image from memory')
 let new_img = new Image(buf);
 
+print("image resize")
 // image resize
 let resize_img = img.resize(100,100)
 
 // draw rect
+print("image draw")
 resize_img.draw_hollow_rect(0,0,50,50,0xff0000)
 resize_img.draw_filled_rect(50,50,50,50,0x0000ff)
 resize_img.draw_hollow_rect(0,50,50,50,0x00ff00)

@@ -1,7 +1,4 @@
 import {GET,POST,PUT,PATCH,DELETE} from 'http'
-import {require} from 'require'
-const add = require('add.js')
-print("add:",add(1,2))
 
 if(true){
     print('get-test')

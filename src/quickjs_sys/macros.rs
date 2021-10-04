@@ -1,5 +1,3 @@
-use super::*;
-
 #[macro_export]
 macro_rules! CFUNC_DEF {
     ($name:expr,$func:ident,$len:expr) => {

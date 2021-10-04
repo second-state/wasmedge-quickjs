@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_must_use)]
-pub mod quickjs_sys;
+use quickjs_rs_wasi::*;
 
 fn args_parse() -> (String, Vec<String>) {
     use argparse::ArgumentParser;
@@ -18,7 +18,7 @@ fn args_parse() -> (String, Vec<String>) {
 }
 
 fn main() {
-    use quickjs_sys as q;
+    use quickjs_rs_wasi as q;
     let mut ctx = q::Context::new();
 
     let (file_path, mut rest_arg) = args_parse();
@@ -27,7 +27,7 @@ fn main() {
         Ok(code) => {
             rest_arg.insert(0, file_path.clone());
             ctx.put_args(rest_arg);
-            ctx.eval_str(code.as_str(), &file_path);
+            ctx.eval_module_str(code.as_str(), &file_path);
         }
         Err(e) => {
             eprintln!("{}", e.to_string());
