@@ -159,6 +159,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "host_function"
+version = "0.1.0"
+dependencies = [
+ "quickjs-rs-wasi",
+]
+
+[[package]]
 name = "http_req"
 version = "0.8.1"
 source = "git+https://github.com/L-jasmine/http_req?branch=master#be62b2f2d15f4380e31026672f97e2cb30015245"

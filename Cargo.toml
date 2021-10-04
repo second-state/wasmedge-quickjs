@@ -18,3 +18,8 @@ default = ["http"]
 http = []
 img = []
 tensorflow = ["img"]
+
+[workspace]
+members = [
+"examples/host_function"
+]
