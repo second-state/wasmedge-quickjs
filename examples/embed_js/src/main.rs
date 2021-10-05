@@ -16,7 +16,7 @@ fn js_hello(ctx: &mut Context) {
     println!("\n<----run_simple_js---->");
     let code = r#"print('hello quickjs')"#;
     let r = ctx.eval_global_str(code);
-    println!("{:?}", r);
+    println!("return value:{:?}", r);
 }
 
 fn run_js_code(ctx: &mut Context) {
@@ -27,7 +27,7 @@ fn run_js_code(ctx: &mut Context) {
     'hello'; // eval_return
     "#;
     let r = ctx.eval_global_str(code);
-    println!("{:?}", r);
+    println!("return value:{:?}", r);
 }
 
 fn run_js_function(ctx: &mut Context) {
@@ -38,12 +38,12 @@ fn run_js_function(ctx: &mut Context) {
     }
     "#;
     let r = ctx.eval_global_str(code);
-    println!("{:?}", r);
+    println!("return value:{:?}", r);
     if let JsValue::Function(f) = r {
         let hello_str = ctx.new_string("hello");
         let mut argv = vec![hello_str.into()];
         let r = f.call(&mut argv);
-        println!("return:{:?}", r);
+        println!("return value:{:?}", r);
     }
 
     let code = r#"
@@ -62,9 +62,9 @@ fn run_js_function(ctx: &mut Context) {
         x.set(2, 2.into());
 
         let mut argv = vec![x.into()];
-        let r = f.call(&mut argv);
-        println!("return:{:?}", r);
         println!("argv = {:?}", argv);
+        let r = f.call(&mut argv);
+        println!("return value:{:?}", r);
     }
 }
 
@@ -83,7 +83,7 @@ fn run_rust_function(ctx: &mut Context) {
     ctx.get_global().set("hi", f.into());
     let code = r#"hi(1,2,3)"#;
     let r = ctx.eval_global_str(code);
-    println!("{:?}", r);
+    println!("return value:{:?}", r);
 }
 
 fn rust_new_object_and_js_call(ctx: &mut Context) {

@@ -1,17 +1,14 @@
 use quickjs_rs_wasi::*;
+
 fn main() {
     let mut ctx = Context::new();
 
     let code = r#"
-    let point = import('example_js/hello.js')
-    point.then((mod_h)=>{
-        return mod_h.kk()
+    import('async_demo.js').then((demo)=>{
+        return demo.wait_simple_val()
     })
     "#;
 
-    let mut args = ctx.new_array();
-    args.set(0, ctx.new_string("hello").into());
-    ctx.get_global().set("args", args.into());
     let p = ctx.eval_global_str(code);
     println!("before poll:{:?}", p);
     ctx.promise_loop_poll();

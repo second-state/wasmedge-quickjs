@@ -1,0 +1,13 @@
+[package]
+name = "embed_js_module"
+version = "0.1.0"
+authors = ["ubuntu"]
+edition = "2018"
+
+[[bin]]
+name = "embed_js_module"
+path = "src/main.rs"
+
+[dependencies]
+quickjs-rs-wasi = { path = "../.." }
+

@@ -21,5 +21,8 @@ tensorflow = ["img"]
 
 [workspace]
 members = [
+"examples/embed_js",
+"examples/embed_js_module",
+"examples/embed_rust_module",
 "examples/host_function"
 ]
