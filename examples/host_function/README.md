@@ -19,7 +19,7 @@ wasmedge_c/$ gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
 ```shell
 wasmedge_c/$ export LD_LIBRARY_PATH=.
 
-wasmedge_c/$ ./demo_wasmedge ../../../target/wasm32-wasi/release/host_function.wasm
+wasmedge_c/$ ./demo_wasmedge ../target/wasm32-wasi/release/host_function.wasm
 Runtime(c)=> host_inc call : 3
 js=> host_inc(2)= 3
 
