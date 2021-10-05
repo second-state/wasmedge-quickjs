@@ -92,21 +92,22 @@ fn main() {
     point::init_point_module(&mut ctx);
 
     let code = r#"
-    let point = import('point')
-    point.then((mod_p)=>{
+    import('point').then((point)=>{
+        let p0 = new point.Point(1,2)
+        print("js->",p0.x,p0.y)
+        p0.pprint()
+
         try{
-            let p = new mod_p.Point()
+            let p = new point.Point()
             print("js-> p:",p)
             print("js->",p.x,p.y)
             p.x=2
             p.pprint()
-        }catch(e){
+        } catch(e) {
+            print("An error has been caught");
             print(e)
         }
         
-        let p0 = new mod_p.Point(1,2)
-        print("js->",p0.x,p0.y)
-        p0.pprint()
     })
     "#;
 
