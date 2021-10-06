@@ -1,5 +1,4 @@
-use quickjs_rs_wasi::JsValue;
-use quickjs_rs_wasi::*;
+use wasmedge_quickjs::*;
 
 fn main() {
     let mut ctx = Context::new();

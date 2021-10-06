@@ -1,5 +1,5 @@
 mod point {
-    use quickjs_rs_wasi::*;
+    use wasmedge_quickjs::*;
 
     #[derive(Debug)]
     struct Point(i32, i32);
@@ -86,7 +86,7 @@ mod point {
     }
 }
 
-use quickjs_rs_wasi::*;
+use wasmedge_quickjs::*;
 fn main() {
     let mut ctx = Context::new();
     point::init_point_module(&mut ctx);
