@@ -1,15 +1,22 @@
 [package]
-name = "quickjs-rs-wasi"
+name = "wasmedge_quickjs"
 version = "0.2.0"
-authors = ["csh"]
+authors = ["csh <458761603@qq.com>", "Michael Yuan <michael@secondstate.io>"]
+description = "Create your own JavaScript runtime and extension APIs for WasmEdge."
+repository = "https://github.com/second-state/wasmedge-quickjs"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://www.secondstate.io/articles/run-javascript-in-webassembly-with-wasmedge/"
+homepage = "https://www.secondstate.io/"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+exclude = [
+    "example_js/*",
+    "examples/*",
+]
 
 [dependencies]
 http_req = { git = "https://github.com/L-jasmine/http_req", branch = "master" }
 argparse = "0.2.2"
-
 image = { version = "0.23.0", default-features = false, features = ["jpeg", "png"] }
 imageproc = "0.22.0"
 
