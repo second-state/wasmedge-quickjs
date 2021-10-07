@@ -23,7 +23,7 @@ $ cargo build --target wasm32-wasi --release
 
 ```shell
 $ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm hello.js WasmEdge Runtime
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
 ```
 
 ## HTTP Request
@@ -40,7 +40,7 @@ Bonus: This example also shows how to import another JavaScript file into the cu
 
 ```shell
 $ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/quickjs-rs-wasi.wasm http_demo.js
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedg_quickjs.wasm http_demo.js
 ```
 
 ## TensorFlow
@@ -57,7 +57,7 @@ $ cargo build --target wasm32-wasi --release --features=tensorflow
 
 ```shell
 $ cd example_js/tensorflow_lite_demo
-$ wasmedge-tensorflow --dir .:. ../../target/wasm32-wasi/release/quickjs-rs-wasi.wasm main.js
+$ wasmedge-tensorflow --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
 ```
 
 ## Optional: Get static-lib & binding.rs
