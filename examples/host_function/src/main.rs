@@ -1,5 +1,5 @@
 mod host_extern {
-    use quickjs_rs_wasi::{Context, JsValue};
+    use wasmedge_quickjs::{Context, JsFn, JsValue};
 
     #[link(wasm_import_module = "extern")]
     extern "C" {
@@ -7,7 +7,7 @@ mod host_extern {
     }
 
     pub struct HostIncFn;
-    impl quickjs_rs_wasi::JsFn for HostIncFn {
+    impl JsFn for HostIncFn {
         fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
             if let Some(JsValue::Int(i)) = argv.get(0) {
                 unsafe {
@@ -21,7 +21,7 @@ mod host_extern {
     }
 }
 
-use quickjs_rs_wasi::*;
+use wasmedge_quickjs::*;
 
 fn main() {
     let mut ctx = Context::new();

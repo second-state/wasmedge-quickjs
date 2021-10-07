@@ -1,11 +1,12 @@
 use crate::*;
-use http_req::request::Method;
-use http_req::response::Response;
 use std::convert::TryFrom;
+use wasmedge_http_req::request::{Method, Request};
+use wasmedge_http_req::response::Response;
+use wasmedge_http_req::uri::Uri;
 
 struct HttpModule;
 
-fn parse_headers(ctx: &mut Context, req: &mut http_req::request::Request, header: &JsObject) {
+fn parse_headers(ctx: &mut Context, req: &mut Request, header: &JsObject) {
     if let Ok(header_map) = header.to_map() {
         for (k, v) in header_map {
             if let JsValue::String(v) = ctx.value_to_string(&v) {
@@ -32,7 +33,7 @@ fn parse_body(ctx: &mut Context, body: JsValue) -> Vec<u8> {
 
 fn parse_response(
     ctx: &mut Context,
-    resp: Result<Response, http_req::error::Error>,
+    resp: Result<Response, wasmedge_http_req::error::Error>,
     body: &[u8],
 ) -> JsValue {
     match resp {
@@ -68,13 +69,13 @@ impl JsFn for GET {
             return ctx.throw_type_error("url not string\0").into();
         };
 
-        let addr = http_req::uri::Uri::try_from(url.as_str());
+        let addr = Uri::try_from(url.as_str());
         if let Err(e) = addr {
             let e = ctx.new_string(e.to_string().as_str());
             return ctx.throw_error(e.into()).into();
         }
         let addr = addr.unwrap();
-        let mut req = http_req::request::Request::new(&addr);
+        let mut req = Request::new(&addr);
         req.header("Connection", "Close");
 
         if let Some(JsValue::Object(ref headers)) = argv.get(1) {
@@ -97,13 +98,13 @@ impl JsFn for POST {
             return ctx.throw_type_error("url not string\0").into();
         };
 
-        let addr = http_req::uri::Uri::try_from(url.as_str());
+        let addr = Uri::try_from(url.as_str());
         if let Err(e) = addr {
             let e = ctx.new_string(e.to_string().as_str());
             return ctx.throw_error(e.into()).into();
         }
         let addr = addr.unwrap();
-        let mut req = http_req::request::Request::new(&addr);
+        let mut req = Request::new(&addr);
         req.header("Connection", "Close");
 
         let body = if let Some(body) = argv.get(1) {
@@ -139,13 +140,13 @@ impl JsFn for PUT {
             return ctx.throw_type_error("url not string\0").into();
         };
 
-        let addr = http_req::uri::Uri::try_from(url.as_str());
+        let addr = Uri::try_from(url.as_str());
         if let Err(e) = addr {
             let e = ctx.new_string(e.to_string().as_str());
             return ctx.throw_error(e.into()).into();
         }
         let addr = addr.unwrap();
-        let mut req = http_req::request::Request::new(&addr);
+        let mut req = Request::new(&addr);
         req.header("Connection", "Close");
 
         let body = if let Some(body) = argv.get(1) {
@@ -181,13 +182,13 @@ impl JsFn for PATCH {
             return ctx.throw_type_error("url not string\0").into();
         };
 
-        let addr = http_req::uri::Uri::try_from(url.as_str());
+        let addr = Uri::try_from(url.as_str());
         if let Err(e) = addr {
             let e = ctx.new_string(e.to_string().as_str());
             return ctx.throw_error(e.into()).into();
         }
         let addr = addr.unwrap();
-        let mut req = http_req::request::Request::new(&addr);
+        let mut req = Request::new(&addr);
         req.header("Connection", "Close");
 
         let body = if let Some(body) = argv.get(1) {
@@ -223,13 +224,13 @@ impl JsFn for DELETE {
             return ctx.throw_type_error("url not string\0").into();
         };
 
-        let addr = http_req::uri::Uri::try_from(url.as_str());
+        let addr = Uri::try_from(url.as_str());
         if let Err(e) = addr {
             let e = ctx.new_string(e.to_string().as_str());
             return ctx.throw_error(e.into()).into();
         }
         let addr = addr.unwrap();
-        let mut req = http_req::request::Request::new(&addr);
+        let mut req = Request::new(&addr);
         req.header("Connection", "Close");
 
         let body = if let Some(body) = argv.get(1) {

@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_must_use)]
-use quickjs_rs_wasi::*;
+use wasmedge_quickjs::*;
 
 fn args_parse() -> (String, Vec<String>) {
     use argparse::ArgumentParser;
@@ -18,7 +18,7 @@ fn args_parse() -> (String, Vec<String>) {
 }
 
 fn main() {
-    use quickjs_rs_wasi as q;
+    use wasmedge_quickjs as q;
     let mut ctx = q::Context::new();
 
     let (file_path, mut rest_arg) = args_parse();

@@ -9,5 +9,5 @@ name = "embed_js"
 path = "src/main.rs"
 
 [dependencies]
-quickjs-rs-wasi = { path = "../.." }
+wasmedge_quickjs = { path = "../.." }
 
