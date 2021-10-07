@@ -9,5 +9,5 @@ name = "embed_js_module"
 path = "src/main.rs"
 
 [dependencies]
-wasmedge_quickjs = { path = "../.." }
+wasmedge_quickjs = "0.2.0"
 

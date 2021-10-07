@@ -40,7 +40,7 @@ Bonus: This example also shows how to import another JavaScript file into the cu
 
 ```shell
 $ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedg_quickjs.wasm http_demo.js
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_demo.js
 ```
 
 ## TensorFlow
