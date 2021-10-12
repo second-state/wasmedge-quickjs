@@ -16,6 +16,10 @@ exclude = [
 
 [dependencies]
 wasmedge_http_req  = "0.8.1"
+wasmedge_wasi_socket = "0.1.0"
+httpcodec = "0.2.3"
+bytecodec = "0.4.15"
+
 argparse = "0.2.2"
 image = { version = "0.23.0", default-features = false, features = ["jpeg", "png"] }
 imageproc = "0.22.0"
