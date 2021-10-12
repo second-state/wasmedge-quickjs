@@ -36,12 +36,26 @@ $ cargo build --target wasm32-wasi --release
 
 ### Run
 
-Bonus: This example also shows how to import another JavaScript file into the current program.
+HTTP client applications.
 
 ```shell
 $ cd example_js
 $ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_demo.js
 ```
+
+Run and POST to a HTTP server.
+
+```
+# Start the server
+$ cd example_js
+$ nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_server_demo.js &
+
+# Access the server
+$ curl -d "WasmEdge" -X POST http://localhost:8000
+echo:WasmEdge
+```
+
+> These examples also show how to import another JavaScript file into the current program.
 
 ## TensorFlow
 
