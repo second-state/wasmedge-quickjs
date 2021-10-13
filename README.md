@@ -4,14 +4,22 @@ Now supporting wasmedge socket for HTTP requests and Tensorflow in JavaScript pr
 
 ## Prerequisites
 
-Install [Rust](https://www.rust-lang.org/tools/install) and [wasmedge CLI tool](https://github.com/WasmEdge/WasmEdge/blob/master/docs/install.md).
-Make sure that you use the `-e all` option to install the WasmEdge Tensorflow extensions if you want to try the Tensorflow examples below.
+Make sure that you will have GCC installed on Ubuntu 20.04.
 
 ```shell
-rustup target add wasm32-wasi
+$ sudo apt update
+$ sudo apt install build-essential
 ```
 
-## Hello js
+Install [Rust](https://www.rust-lang.org/tools/install) and use the following command to install the `wasm32-wasi` target.
+
+```shell
+$ rustup target add wasm32-wasi
+```
+
+Install [wasmedge CLI tool](https://github.com/WasmEdge/WasmEdge/blob/master/docs/install.md). Make sure that you use the `-e all` option to install the WasmEdge Tensorflow extensions if you want to try the Tensorflow examples.
+
+## Hello world
 
 ### Build
 
