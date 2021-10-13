@@ -1,5 +1,5 @@
 function hello(){
-    console.log('hello module_def.js')
+    console.log('hello from module_def.js')
 }
 
 export {hello}

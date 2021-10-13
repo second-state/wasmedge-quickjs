@@ -34,6 +34,21 @@ $ cd example_js
 $ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
 ```
 
+## ES6 module support
+
+### Build
+
+```shell
+$ cargo build --target wasm32-wasi --release
+```
+
+### Run
+
+```shell
+$ cd example_js/es6_module_demo
+$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+```
+
 ## HTTP Request
 
 ### Build
