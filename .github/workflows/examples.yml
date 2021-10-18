@@ -34,10 +34,6 @@ jobs:
       run: |
         wget -qO- https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all -p /usr/local
 
-    - name: Install rustwasmc
-      run: |
-        curl https://raw.githubusercontent.com/second-state/rustwasmc/master/installer/init.sh -sSf | sh
-
     - name: Regular examples
       run: |
         cargo build --target wasm32-wasi --release
