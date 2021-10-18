@@ -1,0 +1,86 @@
+name: examples
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'info'
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: Install apt-get packages
+      run: |
+        sudo ACCEPT_EULA=Y apt-get update
+        sudo ACCEPT_EULA=Y apt-get upgrade
+        sudo apt-get install wget git curl software-properties-common build-essential
+
+    - name: Install Rust target
+      run: |
+        rustup target add wasm32-wasi
+
+    - name: Install WasmEdge
+      run: |
+        wget -qO- https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all -p /usr/local
+
+    - name: Install rustwasmc
+      run: |
+        curl https://raw.githubusercontent.com/second-state/rustwasmc/master/installer/init.sh -sSf | sh
+
+    - name: Regular examples
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js
+        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_demo.js
+        cd es6_module_demo
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+        cd ../../
+        cargo clean
+
+    - name: Tensorflow example
+      run: |
+        cargo build --target wasm32-wasi --release --features=tensorflow
+        cd example_js/tensorflow_lite_demo
+        wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
+        cd ../../
+        cargo clean
+
+    - name: Embed JS in Rust
+      run: |
+        cd examples/embed_js
+        cargo build --target wasm32-wasi --release
+        wasmedge --dir .:. target/wasm32-wasi/release/embed_js.wasm
+
+    - name: Embed JS module in Rust
+      run: |
+        cd examples/embed_js_module
+        cargo build --target wasm32-wasi --release
+        wasmedge --dir .:. target/wasm32-wasi/release/embed_js_module.wasm
+
+    - name: Use Rust to implement JS APIs
+      run: |
+        cd examples/embed_rust_module
+        cargo build --target wasm32-wasi --release
+        wasmedge --dir .:. target/wasm32-wasi/release/embed_rust_module.wasm
+
+    - name: Host functions
+      run: |
+        cd examples/host_function
+        cargo build --target wasm32-wasi --release
+        cd wasmedge_c
+        gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
+        export LD_LIBRARY_PATH=.
+        ./demo_wasmedge ../target/wasm32-wasi/release/host_function.wasm
+
