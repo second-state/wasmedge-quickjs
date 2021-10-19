@@ -253,6 +253,16 @@ impl Context {
         }
     }
 
+    pub fn new_error(&mut self, msg: &str) -> JsValue {
+        let msg = self.new_string(msg);
+        let error = unsafe { JS_NewError(self.ctx) };
+        let mut error_obj = JsValue::from_qjs_value(self.ctx, error);
+        if let JsValue::Object(o) = &mut error_obj {
+            o.set("message", msg.into());
+        };
+        error_obj
+    }
+
     pub fn throw_type_error(&mut self, msg: &str) -> JsException {
         unsafe {
             let v = JS_ThrowTypeError(self.ctx, make_c_string(msg).as_ptr());
@@ -285,6 +295,20 @@ impl Context {
         unsafe {
             let v = JS_ThrowRangeError(self.ctx, make_c_string(msg).as_ptr());
             JsException(JsRef { ctx: self.ctx, v })
+        }
+    }
+
+    pub fn new_promise(&mut self) -> (JsValue, JsValue, JsValue) {
+        unsafe {
+            let ctx = self.ctx;
+            let mut resolving_funcs = [0, 0];
+
+            let p = JS_NewPromiseCapability(ctx, resolving_funcs.as_mut_ptr());
+            (
+                JsValue::from_qjs_value(ctx, p),
+                JsValue::from_qjs_value(ctx, resolving_funcs[0]),
+                JsValue::from_qjs_value(ctx, resolving_funcs[1]),
+            )
         }
     }
 
@@ -573,9 +597,7 @@ pub struct JsArrayBuffer(JsRef);
 impl JsArrayBuffer {
     pub fn to_vec(&self) -> Vec<u8> {
         unsafe {
-            let r = &self.0;
-            let mut len = 0;
-            let p = JS_GetArrayBuffer(r.ctx, &mut len, r.v);
+            let (p, len) = self.get_mut_ptr();
             if len == 0 {
                 Vec::new()
             } else {
@@ -583,6 +605,14 @@ impl JsArrayBuffer {
                 p.copy_to(r.as_mut_ptr(), len);
                 r
             }
+        }
+    }
+    pub fn get_mut_ptr(&self) -> (*mut u8, usize) {
+        unsafe {
+            let r = &self.0;
+            let mut len = 0;
+            let p = JS_GetArrayBuffer(r.ctx, &mut len, r.v);
+            (p, len)
         }
     }
 }

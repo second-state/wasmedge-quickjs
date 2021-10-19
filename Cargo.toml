@@ -29,3 +29,9 @@ default = ["http"]
 http = []
 img = []
 tensorflow = ["img"]
+
+[workspace]
+members = [
+    "async_wasmedge_quickjs",
+    "async_runtime"
+]
