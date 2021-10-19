@@ -94,7 +94,7 @@ $ cargo build --target wasm32-wasi --release --features=tensorflow
 
 ```shell
 $ cd example_js/tensorflow_lite_demo
-$ wasmedge-tensorflow --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
+$ wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
 ```
 
 ## Optional: Get static-lib & binding.rs
