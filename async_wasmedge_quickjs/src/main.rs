@@ -127,6 +127,10 @@ mod example {
     }
 }
 
+///# build a echo_server
+/// FEATURE=echo cargo build --target wasm32-wasi --release
+///# build a chat_server
+/// FEATURE=chat cargo build --target wasm32-wasi --release
 #[no_mangle]
 extern "C" fn async_main() {
     println!("Hello, world!");
