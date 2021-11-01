@@ -100,6 +100,99 @@ pub struct Context {
     ctx: *mut JSContext,
 }
 
+fn get_file_name(ctx: &mut Context, n_stack_levels: usize) -> JsValue {
+    unsafe {
+        let basename = JS_GetScriptOrModuleName(ctx.ctx, n_stack_levels as i32);
+        if basename == JS_ATOM_NULL {
+            JsValue::Null
+        } else {
+            let basename_val = JS_AtomToValue(ctx.ctx, basename);
+            JsValue::from_qjs_value(ctx.ctx, basename_val)
+        }
+    }
+}
+
+fn js_init_cjs(ctx: &mut Context) {
+    struct JsRequire;
+    impl JsFn for JsRequire {
+        fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+            unsafe {
+                if let Some(JsValue::String(specifier)) = argv.get(0) {
+                    let mut specifier = specifier.to_string();
+                    if specifier.starts_with('.') {
+                        if let JsValue::String(file_name) = get_file_name(ctx, 1) {
+                            let file_name = file_name.to_string();
+                            let mut p = std::path::PathBuf::from(file_name);
+                            p.pop();
+                            p.push(specifier);
+                            specifier = format!("{}", p.display())
+                        }
+                    }
+
+                    let m = JsValue::from_qjs_value(
+                        ctx.ctx,
+                        js_require(ctx.ctx, ctx.new_string(specifier.as_str()).0.v),
+                    );
+                    let global = ctx.get_global();
+                    if let JsValue::Object(mut module) = global.get("module") {
+                        let exports = module.get("exports");
+                        match exports {
+                            JsValue::Null | JsValue::UnDefined => m,
+                            exports => {
+                                module.delete("exports");
+                                exports
+                            }
+                        }
+                    } else {
+                        m
+                    }
+                } else {
+                    JsValue::UnDefined
+                }
+            }
+        }
+    }
+    struct JsDirName;
+    impl JsFn for JsDirName {
+        fn call(ctx: &mut Context, _this_val: JsValue, _argv: &[JsValue]) -> JsValue {
+            if let JsValue::String(file_name) = get_file_name(ctx, 1) {
+                let file_name = file_name.to_string();
+                let p = std::path::Path::new(file_name.as_str());
+                if let Some(parent) = p.parent() {
+                    ctx.new_string(format!("{}", parent.display()).as_str())
+                        .into()
+                } else {
+                    JsValue::Null
+                }
+            } else {
+                JsValue::Null
+            }
+        }
+    }
+
+    let mut global = ctx.get_global();
+    global.set("module", ctx.new_object().into());
+    global.set("require", ctx.new_function::<JsRequire>("require").into());
+    let get_dirname: JsValue = ctx.new_function::<JsDirName>("get_dirname").into();
+    unsafe {
+        let ctx = ctx.ctx;
+        JS_DefineProperty(
+            ctx,
+            global.0.v,
+            JS_NewAtom(ctx, "__dirname\0".as_ptr().cast()),
+            js_undefined(),
+            get_dirname.get_qjs_value(),
+            js_null(),
+            (JS_PROP_THROW
+                | JS_PROP_HAS_ENUMERABLE
+                | JS_PROP_ENUMERABLE
+                | JS_PROP_HAS_CONFIGURABLE
+                | JS_PROP_CONFIGURABLE
+                | JS_PROP_HAS_GET) as i32,
+        )
+    };
+}
+
 impl Context {
     pub fn new() -> Context {
         unsafe {
@@ -125,6 +218,11 @@ impl Context {
             {
                 super::internal_module::tensorflow_module::init_module_tensorflow(&mut ctx);
                 super::internal_module::tensorflow_module::init_module_tensorflow_lite(&mut ctx);
+            }
+
+            #[cfg(feature = "cjs")]
+            {
+                js_init_cjs(&mut ctx);
             }
             ctx
         }

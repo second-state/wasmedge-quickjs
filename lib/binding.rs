@@ -2405,6 +2405,9 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_void;
 }
 extern "C" {
+    pub fn js_require(ctx: *mut JSContext, specifier: JSValue) -> JSValue;
+}
+extern "C" {
     pub fn js_undefined() -> JSValue;
 }
 extern "C" {
