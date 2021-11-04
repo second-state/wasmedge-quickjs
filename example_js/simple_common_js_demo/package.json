@@ -2,5 +2,11 @@
   "dependencies": {
     "mathjs": "^9.5.1",
     "md5": "^2.3.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.28.6"
+  },
+  "scripts": {
+    "ncc_build": "ncc build npm_main.js"
   }
 }
