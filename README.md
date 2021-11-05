@@ -49,6 +49,30 @@ $ cd example_js/es6_module_demo
 $ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
 ```
 
+## CommonJS support
+
+### Build
+
+```shell
+$ cargo build --target wasm32-wasi --release --features=cjs
+```
+
+### A simple CJS module example
+
+```shell
+$ cd example_js/simple_common_js_demo
+$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm file_module.js
+```
+
+### Use NPM packages via NCC
+
+```shell
+$ cd example_js/simple_common_js_demo
+$ npm install
+$ npm run ncc_build
+$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
+```
+
 ## HTTP Request
 
 ### Build
