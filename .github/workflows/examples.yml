@@ -34,6 +34,25 @@ jobs:
       run: |
         wget -qO- https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all -p /usr/local
 
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: CommonJs with ncc
+      run: |
+        cargo build --target wasm32-wasi --release --features=cjs
+        cd example_js/simple_common_js_demo
+        npm install
+        npm run ncc_build
+        echo '> start wasmedge'
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
+
+    - name: CommonJs file_module
+      run: |
+        cargo build --target wasm32-wasi --release --features=cjs
+        cd example_js/simple_common_js_demo
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm file_module.js
+
     - name: Regular examples
       run: |
         cargo build --target wasm32-wasi --release
@@ -79,4 +98,3 @@ jobs:
         gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
         export LD_LIBRARY_PATH=.
         ./demo_wasmedge ../target/wasm32-wasi/release/host_function.wasm
-
