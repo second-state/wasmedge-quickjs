@@ -47,6 +47,15 @@ jobs:
         echo '> start wasmedge'
         wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
 
+    - name: React SSR
+      run: |
+        cargo build --target wasm32-wasi --release --features=cjs
+        cd example_js/react_ssr
+        npm install
+        npm run build
+        echo '> start wasmedge'
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+
     - name: CommonJs file_module
       run: |
         cargo build --target wasm32-wasi --release --features=cjs
