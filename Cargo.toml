@@ -16,7 +16,7 @@ exclude = [
 
 [dependencies]
 wasmedge_http_req  = "0.8.1"
-wasmedge_wasi_socket = "0.1.0"
+wasmedge_wasi_socket = "0.2.0"
 httpcodec = "0.2.3"
 bytecodec = "0.4.15"
 
