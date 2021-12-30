@@ -224,6 +224,11 @@ impl Context {
             {
                 js_init_cjs(&mut ctx);
             }
+
+            super::internal_module::event_loop_module::init_event_loop(&mut ctx);
+            super::internal_module::event_loop_module::init_module(&mut ctx);
+            super::internal_module::wasi_net_module::init_module(&mut ctx);
+
             ctx
         }
     }
@@ -439,6 +444,7 @@ pub(crate) fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
     std::ffi::CString::new(s).unwrap_or(Default::default())
 }
 
+unsafe impl Sync for JsRef {}
 pub struct JsRef {
     ctx: *mut JSContext,
     v: JSValue,
@@ -592,6 +598,10 @@ impl JsObject {
             }
             Ok(map)
         }
+    }
+
+    pub fn to_string(&self) -> String {
+        format!("{:?}", self.0)
     }
 }
 
