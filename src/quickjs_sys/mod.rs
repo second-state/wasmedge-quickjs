@@ -704,16 +704,8 @@ pub struct JsArrayBuffer(JsRef);
 
 impl JsArrayBuffer {
     pub fn to_vec(&self) -> Vec<u8> {
-        unsafe {
-            let (p, len) = self.get_mut_ptr();
-            if len == 0 {
-                Vec::new()
-            } else {
-                let mut r = vec![0u8; len];
-                p.copy_to(r.as_mut_ptr(), len);
-                r
-            }
-        }
+        let buf = self.as_ref();
+        buf.to_vec()
     }
     pub fn get_mut_ptr(&self) -> (*mut u8, usize) {
         unsafe {
@@ -721,6 +713,24 @@ impl JsArrayBuffer {
             let mut len = 0;
             let p = JS_GetArrayBuffer(r.ctx, &mut len, r.v);
             (p, len)
+        }
+    }
+}
+
+impl AsRef<[u8]> for JsArrayBuffer {
+    fn as_ref(&self) -> &[u8] {
+        unsafe {
+            let (ptr, len) = self.get_mut_ptr();
+            std::slice::from_raw_parts(ptr, len)
+        }
+    }
+}
+
+impl AsMut<[u8]> for JsArrayBuffer {
+    fn as_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            let (ptr, len) = self.get_mut_ptr();
+            std::slice::from_raw_parts_mut(ptr, len)
         }
     }
 }
