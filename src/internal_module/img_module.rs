@@ -68,8 +68,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
                 Some(JsImage(img))
             }
             JsValue::ArrayBuffer(data) => {
-                let buf = data.to_vec();
-                let img = image::load_from_memory(buf.as_slice()).ok()?;
+                let img = image::load_from_memory(data.as_ref()).ok()?;
                 Some(JsImage(img))
             }
             _ => None,
