@@ -6,8 +6,9 @@ impl JsFn for TcpListenFn {
     fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let port = argv.get(0);
         let callback_obj = argv.get(1);
-        if let (Some(JsValue::Int(port)), Some(JsValue::Object(callback))) = (port, callback_obj) {
-            let event_loop = EventLoop::inst();
+        if let (Some(JsValue::Int(port)), Some(JsValue::Object(callback)), Some(event_loop)) =
+            (port, callback_obj, ctx.event_loop())
+        {
             if let Err(e) = event_loop.tcp_listen(*port as u16, callback.clone()) {
                 ctx.throw_internal_type_error(e.to_string().as_str());
             };
@@ -51,13 +52,16 @@ impl JsClassDef<WasiSock> for WasiSock {
             fn call(ctx: &mut Context, this_val: &mut WasiSock, argv: &[JsValue]) -> JsValue {
                 let data = argv.get(0);
                 let fd = this_val.0;
-                let event_loop = EventLoop::inst();
-                match data {
-                    Some(JsValue::String(s)) => event_loop.write(fd, s.to_string().as_bytes()),
-                    Some(JsValue::ArrayBuffer(buff)) => {
-                        event_loop.write(fd, buff.to_vec().as_slice())
+                match (data, ctx.event_loop()) {
+                    (Some(JsValue::String(s)), Some(event_loop)) => {
+                        event_loop.write(fd, s.to_string().as_bytes())
                     }
-                    Some(JsValue::Object(o)) => event_loop.write(fd, o.to_string().as_bytes()),
+                    (Some(JsValue::ArrayBuffer(buff)), Some(event_loop)) => {
+                        event_loop.write(fd, buff.as_ref())
+                    }
+                    (Some(JsValue::Object(o)), Some(event_loop)) => {
+                        event_loop.write(fd, o.to_string().as_bytes())
+                    }
                     _ => None,
                 };
                 JsValue::Bool(true)
@@ -70,17 +74,26 @@ impl JsClassDef<WasiSock> for WasiSock {
             const NAME: &'static str = "end\0";
             const LEN: u8 = 1;
 
-            fn call(_ctx: &mut Context, this_val: &mut WasiSock, argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut WasiSock, argv: &[JsValue]) -> JsValue {
                 let data = argv.get(0);
                 let fd = this_val.0;
-                let event_loop = EventLoop::inst();
-                match data {
-                    Some(JsValue::String(s)) => event_loop.write(fd, s.to_string().as_bytes()),
-                    Some(JsValue::ArrayBuffer(buff)) => {
-                        event_loop.write(fd, buff.to_vec().as_slice())
+                match (data, ctx.event_loop()) {
+                    (Some(JsValue::String(s)), Some(event_loop)) => {
+                        event_loop.write(fd, s.to_string().as_bytes());
+                        event_loop.close(fd);
                     }
-                    Some(JsValue::Object(o)) => event_loop.write(fd, o.to_string().as_bytes()),
-                    _ => None,
+                    (Some(JsValue::ArrayBuffer(buff)), Some(event_loop)) => {
+                        event_loop.write(fd, buff.as_ref());
+                        event_loop.close(fd);
+                    }
+                    (Some(JsValue::Object(o)), Some(event_loop)) => {
+                        event_loop.write(fd, o.to_string().as_bytes());
+                        event_loop.close(fd);
+                    }
+                    (_, Some(event_loop)) => {
+                        event_loop.close(fd);
+                    }
+                    _ => {}
                 };
                 JsValue::UnDefined
             }

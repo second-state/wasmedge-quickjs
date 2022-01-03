@@ -384,17 +384,6 @@ pub struct EventLoop {
 }
 
 impl EventLoop {
-    pub fn inst() -> &'static mut EventLoop {
-        loop {
-            unsafe {
-                if let Some(ref mut p) = EVENT_INST {
-                    return p;
-                }
-                EVENT_INST.insert(EventLoop::default());
-            }
-        }
-    }
-
     pub fn run_once(&mut self, ctx: &mut qjs::Context) -> io::Result<usize> {
         while let Some(f) = self.next_tick_queue.pop_front() {
             f.call(&mut []);
@@ -428,7 +417,7 @@ impl EventLoop {
     pub fn tcp_listen(&mut self, port: u16, callback: qjs::JsObject) -> io::Result<()> {
         let addr = format!("0.0.0.0:{}", port)
             .parse()
-            .map_err(|e| io::Error::from(io::ErrorKind::InvalidInput))?;
+            .map_err(|_e| io::Error::from(io::ErrorKind::InvalidInput))?;
 
         use wasi_sock::socket_types as st;
         let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
@@ -449,6 +438,8 @@ impl EventLoop {
             None
         }
     }
-}
 
-static mut EVENT_INST: Option<EventLoop> = None;
+    pub fn close(&mut self, fd: i32) {
+        self.io_selector.fds.remove(&fd);
+    }
+}

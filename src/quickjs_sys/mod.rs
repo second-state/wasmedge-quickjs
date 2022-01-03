@@ -194,11 +194,22 @@ fn js_init_cjs(ctx: &mut Context) {
 }
 
 impl Context {
+    fn init_event_loop(&mut self) {
+        unsafe {
+            let event_loop = Box::new(super::EventLoop::default());
+            let event_loop_ptr: &'static mut super::EventLoop = Box::leak(event_loop);
+            JS_SetRuntimeOpaque(self.rt, (event_loop_ptr as *mut super::EventLoop).cast());
+        }
+    }
+
+    pub fn event_loop(&mut self) -> Option<&mut super::EventLoop> {
+        unsafe { (JS_GetRuntimeOpaque(self.rt) as *mut super::EventLoop).as_mut() }
+    }
+
     pub fn new() -> Context {
         unsafe {
             let rt = JS_NewRuntime();
             JS_SetModuleLoaderFunc(rt, None, Some(js_module_loader), 0 as *mut std::ffi::c_void);
-            js_std_init_handlers(rt);
             let ctx = JS_NewContext(rt);
             JS_AddIntrinsicBigFloat(ctx);
             JS_AddIntrinsicBigDecimal(ctx);
@@ -208,6 +219,7 @@ impl Context {
             js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
             js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
             let mut ctx = Context { rt, ctx };
+            ctx.init_event_loop();
             #[cfg(feature = "http")]
             super::internal_module::http_module::init_module(&mut ctx);
 
@@ -418,13 +430,48 @@ impl Context {
     pub fn promise_loop_poll(&mut self) {
         unsafe { js_std_loop(self.ctx) }
     }
+
+    pub fn js_loop(&mut self) -> std::io::Result<()> {
+        unsafe {
+            let mut clone_ctx = std::mem::ManuallyDrop::new(Context {
+                rt: self.rt,
+                ctx: self.ctx,
+            });
+
+            let mut pctx: *mut JSContext = 0 as *mut JSContext;
+            loop {
+                'pending: loop {
+                    let err = JS_ExecutePendingJob(self.rt, (&mut pctx) as *mut *mut JSContext);
+                    if err <= 0 {
+                        if err < 0 {
+                            js_std_dump_error(pctx);
+                            return Err(std::io::Error::from(std::io::ErrorKind::Other));
+                        }
+                        break 'pending;
+                    }
+                }
+                if let Some(event_loop) = self.event_loop() {
+                    let n = event_loop.run_once(&mut clone_ctx)?;
+                    if n == 0 {
+                        return Ok(());
+                    }
+                } else {
+                    return Ok(());
+                }
+            }
+        }
+    }
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
         unsafe {
-            js_std_free_handlers(self.rt);
             JS_FreeContext(self.ctx);
+            let event_loop = JS_GetRuntimeOpaque(self.rt) as *mut super::EventLoop;
+            if !event_loop.is_null() {
+                let event_loop = Box::from_raw(event_loop);
+                drop(event_loop);
+            }
             JS_FreeRuntime(self.rt);
         }
     }

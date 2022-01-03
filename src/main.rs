@@ -35,13 +35,5 @@ fn main() {
             eprintln!("{}", e.to_string());
         }
     }
-    let event_loop = q::EventLoop::inst();
-    loop {
-        if let Ok(n) = event_loop.run_once(&mut ctx) {
-            if n == 0 {
-                break;
-            }
-        };
-        ctx.promise_loop_poll();
-    }
+    ctx.js_loop().unwrap();
 }

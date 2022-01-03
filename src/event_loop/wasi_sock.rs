@@ -191,8 +191,8 @@ impl Socket {
         unsafe {
             let fd = self.as_raw_fd();
             let mut vaddr: [u8; 16] = [0; 16];
-            let mut port: u16 = 0;
-            let mut size = 0;
+            let port;
+            let size;
             match addrs {
                 SocketAddr::V4(addr) => {
                     let ip = addr.ip().octets();

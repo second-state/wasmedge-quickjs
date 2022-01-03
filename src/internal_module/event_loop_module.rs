@@ -3,13 +3,12 @@ use crate::EventLoop;
 
 struct SetTimeout;
 impl JsFn for SetTimeout {
-    fn call(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let callback = argv.get(0);
         let timeout = argv.get(1);
-        if let (Some(JsValue::Function(callback)), Some(JsValue::Int(timeout))) =
-            (callback, timeout)
+        if let (Some(JsValue::Function(callback)), Some(JsValue::Int(timeout)), Some(event_loop)) =
+            (callback, timeout, ctx.event_loop())
         {
-            let event_loop = EventLoop::inst();
             let n = event_loop.set_timeout(
                 callback.clone(),
                 std::time::Duration::from_millis((*timeout) as u64),
@@ -23,10 +22,10 @@ impl JsFn for SetTimeout {
 
 struct SetImmediate;
 impl JsFn for SetImmediate {
-    fn call(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let callback = argv.get(0);
-        if let Some(JsValue::Function(callback)) = callback {
-            let event_loop = EventLoop::inst();
+        if let (Some(JsValue::Function(callback)), Some(event_loop)) = (callback, ctx.event_loop())
+        {
             event_loop.set_next_tick(callback.clone());
         }
         JsValue::UnDefined
@@ -35,10 +34,9 @@ impl JsFn for SetImmediate {
 
 struct ClearTimeout;
 impl JsFn for ClearTimeout {
-    fn call(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let timeout_id = argv.get(0);
-        if let Some(JsValue::Int(timeout_id)) = timeout_id {
-            let event_loop = EventLoop::inst();
+        if let (Some(JsValue::Int(timeout_id)), Some(event_loop)) = (timeout_id, ctx.event_loop()) {
             event_loop.clear_timeout((*timeout_id) as usize);
         }
         JsValue::UnDefined
@@ -64,9 +62,10 @@ pub fn init_event_loop(ctx: &mut Context) {
 struct NextTick;
 
 impl JsFn for NextTick {
-    fn call(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        if let Some(JsValue::Function(callback)) = argv.get(0) {
-            let event_loop = EventLoop::inst();
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+        if let (Some(JsValue::Function(callback)), Some(event_loop)) =
+            (argv.get(0), ctx.event_loop())
+        {
             event_loop.set_next_tick(callback.clone());
         }
         JsValue::UnDefined
