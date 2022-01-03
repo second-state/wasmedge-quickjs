@@ -426,21 +426,19 @@ impl EventLoop {
     }
 
     pub fn tcp_listen(&mut self, port: u16, callback: qjs::JsObject) -> io::Result<()> {
-        unsafe {
-            let addr = format!("0.0.0.0:{}", port)
-                .parse()
-                .map_err(|e| io::Error::from(io::ErrorKind::InvalidInput))?;
+        let addr = format!("0.0.0.0:{}", port)
+            .parse()
+            .map_err(|e| io::Error::from(io::ErrorKind::InvalidInput))?;
 
-            use wasi_sock::socket_types as st;
-            let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
-            s.set_nonblocking(true)?;
-            s.bind(&addr)?;
-            s.listen(1024)?;
+        use wasi_sock::socket_types as st;
+        let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
+        s.set_nonblocking(true)?;
+        s.bind(&addr)?;
+        s.listen(1024)?;
 
-            let s = EnumFd::TcpListener(TcpListener(s, callback));
-            self.io_selector.register(s);
-            Ok(())
-        }
+        let s = EnumFd::TcpListener(TcpListener(s, callback));
+        self.io_selector.register(s);
+        Ok(())
     }
 
     pub fn write(&mut self, fd: i32, data: &[u8]) -> Option<usize> {
