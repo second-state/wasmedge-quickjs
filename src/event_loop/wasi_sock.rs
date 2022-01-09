@@ -254,7 +254,7 @@ impl Socket {
             };
             let mut addr_type = 0;
             let mut port = 0;
-            let res = sock_get_local(fd as u32, &mut addr, &mut addr_type, &mut port);
+            let res = sock_getlocaladdr(fd as u32, &mut addr, &mut addr_type, &mut port);
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
@@ -286,7 +286,7 @@ impl Socket {
             };
             let mut addr_type = 0;
             let mut port = 0;
-            let res = sock_get_peer(fd as u32, &mut addr, &mut addr_type, &mut port);
+            let res = sock_getpeeraddr(fd as u32, &mut addr, &mut addr_type, &mut port);
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
@@ -390,13 +390,13 @@ extern "C" {
     ) -> u32;
     pub fn sock_setsockopt(fd: u32, level: i32, name: i32, flag: *const i32, flag_size: u32)
         -> u32;
-    pub fn sock_get_local(
+    pub fn sock_getlocaladdr(
         fd: u32,
         addr: *mut WasiAddress,
         addr_type: *mut u32,
         port: *mut u32,
     ) -> u32;
-    pub fn sock_get_peer(
+    pub fn sock_getpeeraddr(
         fd: u32,
         addr: *mut WasiAddress,
         addr_type: *mut u32,
