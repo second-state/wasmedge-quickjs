@@ -46,16 +46,16 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                             }
                             NetPollResult::Error(e) => {
                                 let err_msg = e.to_string();
-                                let e = ctx.throw_internal_type_error(err_msg.as_str());
+                                let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [JsValue::Exception(e)]);
+                                    error.call(&mut [e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                                let e = ctx.throw_internal_type_error(e.to_string().as_str());
+                                let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [JsValue::Exception(e)]);
+                                    error.call(&mut [e]);
                                 }
                             }
                         }),
@@ -118,6 +118,59 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
     }
 }
 
+struct TcpConnect;
+
+impl JsFn for TcpConnect {
+    fn call(ctx: &mut Context, this_val: JsValue, argv: &[JsValue]) -> JsValue {
+        let addr = argv.get(0);
+        let (p, ok, error) = ctx.new_promise();
+        let event_loop = ctx.event_loop();
+        if let (Some(JsValue::String(addr)), Some(event_loop)) = (addr, event_loop) {
+            let addr = addr.to_string().parse();
+            match addr {
+                Ok(addr) => {
+                    if let Err(e) = event_loop.tcp_connect(
+                        &addr,
+                        Box::new(move |ctx, event| match event {
+                            NetPollResult::Connect(cs) => {
+                                if let JsValue::Function(ok) = ok {
+                                    let cs = WasiTcpConn::gen_js_obj(ctx, cs);
+                                    ok.call(&mut [cs]);
+                                }
+                            }
+                            NetPollResult::Error(e) => {
+                                let err_msg = e.to_string();
+                                let e = ctx.new_error(err_msg.as_str());
+                                if let JsValue::Function(error) = error {
+                                    error.call(&mut [e]);
+                                }
+                            }
+                            _ => {
+                                let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
+                                let e = ctx.new_error(e.to_string().as_str());
+                                if let JsValue::Function(error) = error {
+                                    error.call(&mut [e]);
+                                }
+                            }
+                        }),
+                    ) {
+                        println!("{:?}", e);
+                        let e = ctx.throw_internal_type_error(e.to_string().as_str());
+                        return e.into();
+                    };
+                }
+                Err(e) => {
+                    let e = ctx.throw_internal_type_error(e.to_string().as_str());
+                    return e.into();
+                }
+            }
+            p
+        } else {
+            JsValue::UnDefined
+        }
+    }
+}
+
 struct WasiTcpServer;
 impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
     const CLASS_NAME: &'static str = "WasiTcpServer\0";
@@ -162,16 +215,16 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
                             }
                             NetPollResult::Error(e) => {
                                 let err_msg = e.to_string();
-                                let e = ctx.throw_internal_type_error(err_msg.as_str());
+                                let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [JsValue::Exception(e)]);
+                                    error.call(&mut [e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                                let e = ctx.throw_internal_type_error(e.to_string().as_str());
+                                let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [JsValue::Exception(e)]);
+                                    error.call(&mut [e]);
                                 }
                             }
                         }),
@@ -189,6 +242,9 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
 struct WasiNet;
 impl ModuleInit for WasiNet {
     fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
+        let conn = ctx.new_function::<TcpConnect>("connect");
+        m.add_export("connect\0", conn.into());
+
         let class_ctor = ctx.register_class(WasiTcpServer);
         m.add_export(WasiTcpServer::CLASS_NAME, class_ctor);
 
@@ -201,6 +257,10 @@ pub fn init_module(ctx: &mut Context) {
     ctx.register_module(
         "wasi_net\0",
         WasiNet,
-        &[WasiTcpServer::CLASS_NAME, WasiTcpConn::CLASS_NAME],
+        &[
+            WasiTcpServer::CLASS_NAME,
+            WasiTcpConn::CLASS_NAME,
+            "connect\0",
+        ],
     )
 }
