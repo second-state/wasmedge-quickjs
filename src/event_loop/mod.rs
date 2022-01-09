@@ -6,11 +6,12 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::{HashMap, LinkedList};
 use std::io;
+use std::mem::ManuallyDrop;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::ops::Add;
 
 trait AsPollFd {
-    fn as_subscription(&self) -> poll::Subscription;
+    fn as_subscription(&self) -> Option<poll::Subscription>;
 }
 
 #[derive(Clone)]
@@ -36,91 +37,88 @@ impl Timeout {
     }
 }
 
-struct TcpListener(wasi_sock::Socket, qjs::JsObject);
-
-impl AsPollFd for TcpListener {
-    fn as_subscription(&self) -> Subscription {
-        poll::Subscription {
-            userdata: self.0 .0 as u64,
-            u: poll::SubscriptionU {
-                tag: poll::EVENTTYPE_FD_READ,
-                u: poll::SubscriptionUU {
-                    fd_read: poll::SubscriptionFdReadwrite {
-                        file_descriptor: self.0 .0 as u32,
-                    },
-                },
-            },
-        }
-    }
+pub(crate) enum NetPollEvent {
+    Accept,
+    Read,
+    Connect,
 }
 
-struct TcpConn(wasi_sock::Socket, qjs::JsObject);
-
-impl AsPollFd for TcpConn {
-    fn as_subscription(&self) -> Subscription {
-        poll::Subscription {
-            userdata: self.0 .0 as u64,
-            u: poll::SubscriptionU {
-                tag: poll::EVENTTYPE_FD_READ,
-                u: poll::SubscriptionUU {
-                    fd_read: poll::SubscriptionFdReadwrite {
-                        file_descriptor: self.0 .0 as u32,
-                    },
-                },
-            },
-        }
-    }
+pub enum NetPollResult {
+    Accept(AsyncTcpConn),
+    Read(Vec<u8>),
+    Connect,
+    Error(io::Error),
 }
 
-impl TcpConn {
-    pub fn on_connect(&mut self, ctx: &mut qjs::Context) -> io::Result<()> {
-        if let qjs::JsValue::Function(on_connect) = self.1.get("on_connect") {
-            let mut obj = ctx.new_object();
-            obj.set("fd", JsValue::Int(self.0 .0));
-            let peer = self.0.get_peer()?;
-            obj.set("peer", ctx.new_string(peer.to_string().as_str()).into());
-            on_connect.call(&mut [obj.into()]);
-        }
-        Ok(())
+pub struct AsyncTcpServer(wasi_sock::Socket);
+pub struct AsyncTcpConn(wasi_sock::Socket);
+
+impl AsyncTcpConn {
+    pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.send(buf)
     }
-    pub fn on_read(&mut self, ctx: &mut qjs::Context) -> io::Result<usize> {
+
+    pub fn read(&mut self) -> io::Result<Vec<u8>> {
         let mut buff = [0u8; 1024];
         let mut data = vec![];
         loop {
             let n = self.0.recv(&mut buff)?;
             data.extend_from_slice(&buff[0..n]);
-            if n == 0 && data.is_empty() {
-                if let qjs::JsValue::Function(on_close) = self.1.get("on_close") {
-                    on_close.call(&mut []);
-                }
-                break Ok(0);
-            } else if n < 1024 {
-                if let qjs::JsValue::Function(on_read) = self.1.get("on_read") {
-                    let array_buf = ctx.new_array_buffer(data.as_slice());
-                    on_read.call(&mut [JsValue::Int(self.0 .0), array_buf.into()]);
-                }
-                break Ok(data.len());
+            if n < 1024 {
+                break Ok(data);
             }
         }
     }
-    pub fn on_error(&mut self, ctx: &mut qjs::Context, e: &str) {
-        if let qjs::JsValue::Function(on_error) = self.1.get("on_error") {
-            let e = ctx.new_error(e);
-            on_error.call(&mut [e]);
-        }
+
+    pub fn async_read(
+        &mut self,
+        event_loop: &mut EventLoop,
+        callback: Box<dyn FnOnce(&mut qjs::Context, NetPollResult)>,
+    ) {
+        let fd = PollFd {
+            s: self.0 .0,
+            event: NetPollEvent::Read,
+            callback,
+        };
+        event_loop.io_selector.register(fd);
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
-enum EnumFd {
-    TcpListener(TcpListener),
-    TcpConn(TcpConn),
+struct PollFd {
+    s: wasi_sock::RawSocket,
+    event: NetPollEvent,
+    callback: Box<dyn FnOnce(&mut qjs::Context, NetPollResult)>,
 }
 
-impl AsPollFd for EnumFd {
-    fn as_subscription(&self) -> poll::Subscription {
-        match self {
-            EnumFd::TcpListener(s) => s.as_subscription(),
-            EnumFd::TcpConn(s) => s.as_subscription(),
+impl AsPollFd for PollFd {
+    fn as_subscription(&self) -> Option<poll::Subscription> {
+        match self.event {
+            NetPollEvent::Accept | NetPollEvent::Read => Some(poll::Subscription {
+                userdata: self.s as u64,
+                u: poll::SubscriptionU {
+                    tag: poll::EVENTTYPE_FD_READ,
+                    u: poll::SubscriptionUU {
+                        fd_read: poll::SubscriptionFdReadwrite {
+                            file_descriptor: self.s as u32,
+                        },
+                    },
+                },
+            }),
+            NetPollEvent::Connect => Some(poll::Subscription {
+                userdata: self.s as u64,
+                u: poll::SubscriptionU {
+                    tag: poll::EVENTTYPE_FD_WRITE,
+                    u: poll::SubscriptionUU {
+                        fd_read: poll::SubscriptionFdReadwrite {
+                            file_descriptor: self.s as u32,
+                        },
+                    },
+                },
+            }),
         }
     }
 }
@@ -237,16 +235,13 @@ mod poll {
 
 #[derive(Default)]
 struct IoSelector {
-    fds: HashMap<i32, EnumFd>,
+    fds: HashMap<i32, PollFd>,
     timeouts: Vec<Option<Timeout>>,
 }
 
 impl IoSelector {
-    pub fn register(&mut self, s: EnumFd) -> i32 {
-        let fd = match &s {
-            EnumFd::TcpListener(s) => s.0 .0,
-            EnumFd::TcpConn(s) => s.0 .0,
-        };
+    pub fn register(&mut self, s: PollFd) -> i32 {
+        let fd = s.s;
         self.fds.insert(fd, s);
         fd
     }
@@ -280,7 +275,9 @@ impl IoSelector {
             }
         }
         for (_, v) in &self.fds {
-            subscription_vec.push(v.as_subscription());
+            if let Some(fd) = v.as_subscription() {
+                subscription_vec.push(fd);
+            }
         }
         if subscription_vec.is_empty() {
             return Ok(0);
@@ -315,60 +312,50 @@ impl IoSelector {
                         timeout.1.call(&mut []);
                     };
                 }
-                poll::EVENTTYPE_FD_READ => {
+                poll::EVENTTYPE_FD_READ | poll::EVENTTYPE_FD_WRITE => {
                     let fd = event.userdata as u32 as i32;
-                    let mut need_remove = false;
-                    let mut e = None;
-                    let cs = match self.fds.get_mut(&fd) {
-                        None => None,
-                        Some(EnumFd::TcpConn(s)) => {
+                    match self.fds.remove(&fd) {
+                        None => {}
+                        Some(PollFd {
+                            s,
+                            event: net_event,
+                            callback,
+                        }) => {
                             if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP > 0
                             {
-                                s.on_error(ctx, "pipe hang up");
-                                need_remove = true;
+                                let e = io::Error::from_raw_os_error(1);
+                                callback(ctx, NetPollResult::Error(e));
+                                continue;
                             }
                             if event.error > 0 {
                                 let e = io::Error::from_raw_os_error(event.error as i32);
-                                s.on_error(ctx, e.to_string().as_str());
-                                need_remove = true;
+                                callback(ctx, NetPollResult::Error(e));
+                                continue;
                             }
-                            if !need_remove {
-                                if let Ok(n) = s.on_read(ctx) {
-                                    if n == 0 {
-                                        need_remove = true;
+
+                            match net_event {
+                                NetPollEvent::Accept => {
+                                    let s = std::mem::ManuallyDrop::new(wasi_sock::Socket(s));
+                                    match s.accept() {
+                                        Ok(cs) => {
+                                            callback(ctx, NetPollResult::Accept(AsyncTcpConn(cs)))
+                                        }
+                                        Err(e) => callback(ctx, NetPollResult::Error(e)),
                                     }
-                                };
-                            }
-                            None
-                        }
-                        Some(EnumFd::TcpListener(s)) => {
-                            if event.error > 0 {
-                                e = Some(io::Error::from_raw_os_error(event.error as i32));
-                                need_remove = true;
-                            }
-                            if !need_remove {
-                                let cs = s.0.accept();
-                                let cs = cs?;
-                                cs.set_nonblocking(true);
-                                Some((cs, s.1.clone()))
-                            } else {
-                                None
-                            }
+                                }
+                                NetPollEvent::Read => {
+                                    let mut s = std::mem::ManuallyDrop::new(AsyncTcpConn(
+                                        wasi_sock::Socket(s),
+                                    ));
+                                    match s.read() {
+                                        Ok(data) => callback(ctx, NetPollResult::Read(data)),
+                                        Err(e) => callback(ctx, NetPollResult::Error(e)),
+                                    }
+                                }
+                                NetPollEvent::Connect => callback(ctx, NetPollResult::Connect),
+                            };
                         }
                     };
-                    if let Some((cs, callback)) = cs {
-                        let mut conn = TcpConn(cs, callback);
-                        let fd = self.register(EnumFd::TcpConn(conn));
-                        if let Some(EnumFd::TcpConn(ref mut conn)) = self.fds.get_mut(&fd) {
-                            conn.on_connect(ctx);
-                        };
-                    }
-                    if need_remove {
-                        let _ = self.fds.remove(&fd);
-                    }
-                    if let Some(e) = e {
-                        return Err(e);
-                    }
                 }
                 _ => {}
             };
@@ -414,7 +401,7 @@ impl EventLoop {
         self.next_tick_queue.push_back(callback);
     }
 
-    pub fn tcp_listen(&mut self, port: u16, callback: qjs::JsObject) -> io::Result<()> {
+    pub fn tcp_listen(&mut self, port: u16) -> io::Result<AsyncTcpServer> {
         let addr = format!("0.0.0.0:{}", port)
             .parse()
             .map_err(|_e| io::Error::from(io::ErrorKind::InvalidInput))?;
@@ -424,19 +411,32 @@ impl EventLoop {
         s.set_nonblocking(true)?;
         s.bind(&addr)?;
         s.listen(1024)?;
-
-        let s = EnumFd::TcpListener(TcpListener(s, callback));
-        self.io_selector.register(s);
-        Ok(())
+        Ok(AsyncTcpServer(s))
     }
-
-    pub fn write(&mut self, fd: i32, data: &[u8]) -> Option<usize> {
-        let s = self.io_selector.fds.get_mut(&fd)?;
-        if let EnumFd::TcpConn(conn) = s {
-            conn.0.send(data).ok()
-        } else {
-            None
-        }
+    pub fn tcp_accept(
+        &mut self,
+        tcp_server: &mut AsyncTcpServer,
+        callback: Box<dyn FnOnce(&mut qjs::Context, NetPollResult)>,
+    ) {
+        let s = tcp_server.0 .0;
+        let poll_fd = PollFd {
+            s,
+            event: NetPollEvent::Accept,
+            callback,
+        };
+        self.io_selector.register(poll_fd);
+    }
+    pub fn tcp_connect(
+        &mut self,
+        addr: &SocketAddr,
+        _callback: impl FnOnce(&mut qjs::Context, NetPollResult),
+    ) -> io::Result<()> {
+        use wasi_sock::socket_types as st;
+        let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
+        s.set_nonblocking(true)?;
+        s.connect(addr)?;
+        //todo
+        Ok(())
     }
 
     pub fn close(&mut self, fd: i32) {

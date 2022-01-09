@@ -165,7 +165,7 @@ impl Socket {
     }
 
     pub fn connect(&self, addrs: &SocketAddr) -> io::Result<()> {
-        let mut fd = self.as_raw_fd();
+        let fd = self.as_raw_fd();
         let mut vaddr: [u8; 4] = [0; 4];
         let mut port: u16 = 0;
         if let SocketAddr::V4(addrs) = addrs {

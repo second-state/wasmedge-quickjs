@@ -237,8 +237,9 @@ impl Context {
                 js_init_cjs(&mut ctx);
             }
 
-            super::internal_module::event_loop_module::init_event_loop(&mut ctx);
-            super::internal_module::event_loop_module::init_module(&mut ctx);
+            super::internal_module::core::init_ext_function(&mut ctx);
+            super::internal_module::core::init_event_loop(&mut ctx);
+            super::internal_module::core::init_process_module(&mut ctx);
             super::internal_module::wasi_net_module::init_module(&mut ctx);
 
             ctx

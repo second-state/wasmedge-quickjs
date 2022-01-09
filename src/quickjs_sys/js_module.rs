@@ -1,7 +1,7 @@
 use super::qjs as q;
 use super::Context;
 use crate::quickjs_sys::qjs::{JSContext, JSModuleDef, JS_NewCFunction2};
-use crate::{JsFn, JsValue};
+use crate::{EventLoop, JsFn, JsValue};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -190,6 +190,8 @@ where
 
     fn proto_init(p: &mut JsClassProto<C, S>);
 
+    fn finalizer(_data: &mut C, _event_loop: &mut EventLoop) {}
+
     fn class_value(ctx: &mut Context) -> JsValue {
         unsafe {
             let ctor = JsClassStore::<S, C>::class_ctor(None);
@@ -245,12 +247,16 @@ impl<C: Sized, Def: 'static + JsClassDef<C>> JsClassDefTrampoline<C, Def> {
         }
     }
 
-    unsafe extern "C" fn finalizer(_rt: *mut q::JSRuntime, val: q::JSValue) {
+    unsafe extern "C" fn finalizer(rt: *mut q::JSRuntime, val: q::JSValue) {
         let class_id = JsClassStore::<Def, C>::class_id(None);
 
         let s = q::JS_GetOpaque(val, class_id) as *mut C;
         if !s.is_null() {
-            Box::from_raw(s);
+            let mut s = Box::from_raw(s);
+            let event_loop_ptr = q::JS_GetRuntimeOpaque(rt) as *mut crate::EventLoop;
+            if let Some(event_loop) = event_loop_ptr.as_mut() {
+                Def::finalizer(s.as_mut(), event_loop);
+            }
         }
     }
 }

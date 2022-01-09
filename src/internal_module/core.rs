@@ -1,5 +1,6 @@
 use crate::quickjs_sys::*;
 use crate::EventLoop;
+use std::string::FromUtf8Error;
 
 struct SetTimeout;
 impl JsFn for SetTimeout {
@@ -43,6 +44,33 @@ impl JsFn for ClearTimeout {
     }
 }
 
+struct NewStringFromUTF8;
+impl JsFn for NewStringFromUTF8 {
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+        let obj = argv.get(0);
+        match obj {
+            Some(JsValue::ArrayBuffer(data)) => {
+                let s = String::from_utf8(data.to_vec());
+                match s {
+                    Ok(s) => ctx.new_string(&s).into(),
+                    Err(e) => ctx.throw_type_error(e.to_string().as_str()).into(),
+                }
+            }
+            Some(obj) => ctx.value_to_string(obj),
+            None => JsValue::UnDefined,
+        }
+    }
+}
+
+pub fn init_ext_function(ctx: &mut Context) {
+    let mut global = ctx.get_global();
+    global.set(
+        "newStringFromUTF8",
+        ctx.new_function::<NewStringFromUTF8>("newStringFromUTF8")
+            .into(),
+    );
+}
+
 pub fn init_event_loop(ctx: &mut Context) {
     let mut global = ctx.get_global();
     global.set(
@@ -82,6 +110,6 @@ impl ModuleInit for Process {
     }
 }
 
-pub fn init_module(ctx: &mut Context) {
+pub fn init_process_module(ctx: &mut Context) {
     ctx.register_module("process\0", Process, &["nextTick\0", "default\0"])
 }

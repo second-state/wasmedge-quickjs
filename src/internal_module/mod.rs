@@ -1,4 +1,4 @@
-pub mod event_loop_module;
+pub mod core;
 #[cfg(feature = "http")]
 pub mod http_module;
 #[cfg(feature = "img")]

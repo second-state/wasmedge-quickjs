@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react'
-// import LazyPage from './LazyPage.jsx'
 
 async function sleep(ms) {
     return new Promise((r, _) => {
@@ -8,7 +7,6 @@ async function sleep(ms) {
 }
 
 async function loadLazyPage() {
-    console.log('loadLazyPage')
     await sleep(2000)
     return await import('./LazyPage.jsx')
 }
