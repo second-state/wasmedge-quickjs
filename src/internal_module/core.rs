@@ -71,7 +71,7 @@ pub fn init_ext_function(ctx: &mut Context) {
     );
 }
 
-pub fn init_event_loop(ctx: &mut Context) {
+pub fn init_event_function(ctx: &mut Context) {
     let mut global = ctx.get_global();
     global.set(
         "clearTimeout",
