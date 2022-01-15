@@ -16,6 +16,8 @@ mod qjs {
 use qjs::*;
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
+use std::mem;
+use std::mem::ManuallyDrop;
 use std::ops::DerefMut;
 
 struct DroppableValue<T, F>
@@ -68,6 +70,54 @@ pub trait JsFn {
     fn call(ctx: &mut Context, this_val: JsValue, argv: &[JsValue]) -> JsValue;
 }
 
+pub struct Runtime(*mut JSRuntime);
+
+impl Runtime {
+    pub fn new() -> Self {
+        unsafe {
+            let mut rt = Runtime(JS_NewRuntime());
+            JS_SetModuleLoaderFunc(
+                rt.0,
+                None,
+                Some(js_module_loader),
+                0 as *mut std::ffi::c_void,
+            );
+            rt.init_event_loop();
+            rt
+        }
+    }
+
+    fn init_event_loop(&mut self) {
+        unsafe {
+            let event_loop = Box::new(super::EventLoop::default());
+            let event_loop_ptr: &'static mut super::EventLoop = Box::leak(event_loop);
+            JS_SetRuntimeOpaque(self.0, (event_loop_ptr as *mut super::EventLoop).cast());
+        }
+    }
+    fn drop_event_loop(&mut self) {
+        unsafe {
+            let event_loop = JS_GetRuntimeOpaque(self.0) as *mut super::EventLoop;
+            if !event_loop.is_null() {
+                Box::from_raw(event_loop); // drop
+            }
+        }
+    }
+
+    pub fn run_with_context<F: FnMut(&mut Context) -> R, R>(&mut self, mut f: F) -> R {
+        unsafe {
+            let mut ctx = Context::new_with_rt(self.0);
+            f(&mut ctx)
+        }
+    }
+}
+
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        self.drop_event_loop();
+        unsafe { JS_FreeRuntime(self.0) };
+    }
+}
+
 struct JsFunctionTrampoline;
 impl JsFunctionTrampoline {
     // How i figured it out!
@@ -77,10 +127,7 @@ impl JsFunctionTrampoline {
         len: ::std::os::raw::c_int,
         argv: *mut JSValue,
     ) -> JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let n_ctx = n_ctx.deref_mut();
         let this_obj = JsValue::from_qjs_value(ctx, JS_DupValue_real(ctx, this_obj));
         let mut arg_vec = vec![];
@@ -96,7 +143,6 @@ impl JsFunctionTrampoline {
 }
 
 pub struct Context {
-    rt: *mut JSRuntime,
     ctx: *mut JSContext,
 }
 
@@ -194,56 +240,52 @@ fn js_init_cjs(ctx: &mut Context) {
 }
 
 impl Context {
-    fn init_event_loop(&mut self) {
-        unsafe {
-            let event_loop = Box::new(super::EventLoop::default());
-            let event_loop_ptr: &'static mut super::EventLoop = Box::leak(event_loop);
-            JS_SetRuntimeOpaque(self.rt, (event_loop_ptr as *mut super::EventLoop).cast());
-        }
-    }
-
     pub fn event_loop(&mut self) -> Option<&mut super::EventLoop> {
-        unsafe { (JS_GetRuntimeOpaque(self.rt) as *mut super::EventLoop).as_mut() }
+        unsafe { (JS_GetRuntimeOpaque(self.rt()) as *mut super::EventLoop).as_mut() }
     }
 
-    pub fn new() -> Context {
-        unsafe {
-            let rt = JS_NewRuntime();
-            JS_SetModuleLoaderFunc(rt, None, Some(js_module_loader), 0 as *mut std::ffi::c_void);
-            let ctx = JS_NewContext(rt);
-            JS_AddIntrinsicBigFloat(ctx);
-            JS_AddIntrinsicBigDecimal(ctx);
-            JS_AddIntrinsicOperators(ctx);
-            JS_EnableBignumExt(ctx, 1);
-            js_std_add_console(ctx);
-            js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
-            js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
-            let mut ctx = Context { rt, ctx };
-            ctx.init_event_loop();
-            #[cfg(feature = "http")]
-            super::internal_module::http_module::init_module(&mut ctx);
+    #[inline]
+    unsafe fn rt(&mut self) -> *mut JSRuntime {
+        JS_GetRuntime(self.ctx)
+    }
 
-            #[cfg(feature = "img")]
-            super::internal_module::img_module::init_module(&mut ctx);
+    fn clone_(&mut self) -> std::mem::ManuallyDrop<Self> {
+        std::mem::ManuallyDrop::new(Context { ctx: self.ctx })
+    }
 
-            #[cfg(feature = "tensorflow")]
-            {
-                super::internal_module::tensorflow_module::init_module_tensorflow(&mut ctx);
-                super::internal_module::tensorflow_module::init_module_tensorflow_lite(&mut ctx);
-            }
+    unsafe fn new_with_rt(rt: *mut JSRuntime) -> Context {
+        let ctx = JS_NewContext(rt);
+        JS_AddIntrinsicBigFloat(ctx);
+        JS_AddIntrinsicBigDecimal(ctx);
+        JS_AddIntrinsicOperators(ctx);
+        JS_EnableBignumExt(ctx, 1);
+        js_std_add_console(ctx);
+        js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
+        js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
+        let mut ctx = Context { ctx };
+        #[cfg(feature = "http")]
+        super::internal_module::http_module::init_module(&mut ctx);
 
-            #[cfg(feature = "cjs")]
-            {
-                js_init_cjs(&mut ctx);
-            }
+        #[cfg(feature = "img")]
+        super::internal_module::img_module::init_module(&mut ctx);
 
-            super::internal_module::core::init_ext_function(&mut ctx);
-            super::internal_module::core::init_event_loop(&mut ctx);
-            super::internal_module::core::init_process_module(&mut ctx);
-            super::internal_module::wasi_net_module::init_module(&mut ctx);
-
-            ctx
+        #[cfg(feature = "tensorflow")]
+        {
+            super::internal_module::tensorflow_module::init_module_tensorflow(&mut ctx);
+            super::internal_module::tensorflow_module::init_module_tensorflow_lite(&mut ctx);
         }
+
+        #[cfg(feature = "cjs")]
+        {
+            js_init_cjs(&mut ctx);
+        }
+
+        super::internal_module::core::init_ext_function(&mut ctx);
+        super::internal_module::core::init_event_loop(&mut ctx);
+        super::internal_module::core::init_process_module(&mut ctx);
+        super::internal_module::wasi_net_module::init_module(&mut ctx);
+
+        ctx
     }
 
     pub fn get_global(&mut self) -> JsObject {
@@ -434,15 +476,13 @@ impl Context {
 
     pub fn js_loop(&mut self) -> std::io::Result<()> {
         unsafe {
-            let mut clone_ctx = std::mem::ManuallyDrop::new(Context {
-                rt: self.rt,
-                ctx: self.ctx,
-            });
+            let rt = self.rt();
+            let mut clone_ctx = self.clone_();
 
             let mut pctx: *mut JSContext = 0 as *mut JSContext;
             loop {
                 'pending: loop {
-                    let err = JS_ExecutePendingJob(self.rt, (&mut pctx) as *mut *mut JSContext);
+                    let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
                     if err <= 0 {
                         if err < 0 {
                             js_std_dump_error(pctx);
@@ -468,12 +508,6 @@ impl Drop for Context {
     fn drop(&mut self) {
         unsafe {
             JS_FreeContext(self.ctx);
-            let event_loop = JS_GetRuntimeOpaque(self.rt) as *mut super::EventLoop;
-            if !event_loop.is_null() {
-                let event_loop = Box::from_raw(event_loop);
-                drop(event_loop);
-            }
-            JS_FreeRuntime(self.rt);
         }
     }
 }

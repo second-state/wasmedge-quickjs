@@ -121,7 +121,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
 struct TcpConnect;
 
 impl JsFn for TcpConnect {
-    fn call(ctx: &mut Context, this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let addr = argv.get(0);
         let (p, ok, error) = ctx.new_promise();
         let event_loop = ctx.event_loop();

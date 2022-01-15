@@ -27,10 +27,7 @@ impl<D: Sized, GS: JsClassGetterSetter<D>, Def: 'static + JsClassDef<D>>
     JsClassGetterSetterTrampoline<D, GS, Def>
 {
     unsafe extern "C" fn getter(ctx: *mut JSContext, this_val: q::JSValue) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
 
         let class_id = JsClassStore::<Def, D>::class_id(None);
@@ -48,10 +45,7 @@ impl<D: Sized, GS: JsClassGetterSetter<D>, Def: 'static + JsClassDef<D>>
         this_val: q::JSValue,
         val: q::JSValue,
     ) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
         let class_id = JsClassStore::<Def, D>::class_id(None);
         let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
@@ -85,10 +79,7 @@ impl<D: Sized, T: JsMethod<D>, Def: 'static + JsClassDef<D>> JsMethodTrampoline<
     ) -> q::JSValue {
         let class_id = JsClassStore::<Def, D>::class_id(None);
 
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let n_ctx = n_ctx.deref_mut();
 
         let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
@@ -227,10 +218,7 @@ impl<C: Sized, Def: 'static + JsClassDef<C>> JsClassDefTrampoline<C, Def> {
         len: ::std::os::raw::c_int,
         argv: *mut q::JSValue,
     ) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let n_ctx = n_ctx.deref_mut();
         let mut arg_vec = vec![];
         for i in 0..len {
@@ -336,10 +324,7 @@ impl<F: ModuleInit> ModuleInitFnTrampoline<F> {
         m: *mut JSModuleDef,
     ) -> ::std::os::raw::c_int {
         let mut m = JsModuleDef { ctx, m };
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
         F::init_module(nctx, &mut m);
         0
