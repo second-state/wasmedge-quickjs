@@ -87,6 +87,14 @@ impl AsyncTcpConn {
     pub fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    pub fn local(&self) -> io::Result<SocketAddr> {
+        self.0.get_local()
+    }
+
+    pub fn peer(&self) -> io::Result<SocketAddr> {
+        self.0.get_peer()
+    }
 }
 
 struct PollFd {

@@ -115,6 +115,34 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
             }
         }
         p.add_function(End);
+
+        struct Local;
+        impl JsMethod<AsyncTcpConn> for Local {
+            const NAME: &'static str = "local\0";
+            const LEN: u8 = 1;
+
+            fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, _argv: &[JsValue]) -> JsValue {
+                match this_val.local() {
+                    Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
+                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()),
+                }
+            }
+        }
+        p.add_function(Local);
+
+        struct Peer;
+        impl JsMethod<AsyncTcpConn> for Peer {
+            const NAME: &'static str = "peer\0";
+            const LEN: u8 = 1;
+
+            fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, _argv: &[JsValue]) -> JsValue {
+                match this_val.peer() {
+                    Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
+                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()),
+                }
+            }
+        }
+        p.add_function(Peer);
     }
 }
 

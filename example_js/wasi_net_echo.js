@@ -1,6 +1,7 @@
 import * as net from 'wasi_net'
 
 async function handle_client(cs){
+    print(cs.peer())
     while(true){
         try{
             let d = await cs.read()
