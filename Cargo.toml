@@ -15,14 +15,9 @@ exclude = [
 ]
 
 [dependencies]
-httpcodec = "0.2.3"
-bytecodec = "0.4.15"
-
 argparse = "0.2.2"
 image = { version = "0.23.0", default-features = false, features = ["jpeg", "png"] }
 imageproc = "0.22.0"
-wasmedge_http_req = { version = "0.8.1", optional = true }
-wasmedge_wasi_socket = { version = "0.1.0", optional = true }
 libc = "0.2"
 
 lazy_static = "1.4"
@@ -30,7 +25,6 @@ lazy_static = "1.4"
 
 [features]
 default = []
-http = ["wasmedge_http_req", "wasmedge_wasi_socket"]
 img = []
 tensorflow = ["img"]
 cjs = []

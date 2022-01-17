@@ -1,7 +1,7 @@
 use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, NetPollResult};
 use crate::*;
 
-struct WasiTcpConn;
+pub(crate) struct WasiTcpConn;
 
 impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
     const CLASS_NAME: &'static str = "WasiTcpConn\0";
@@ -124,7 +124,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
             fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, _argv: &[JsValue]) -> JsValue {
                 match this_val.local() {
                     Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
-                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()),
+                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()).into(),
                 }
             }
         }
@@ -138,7 +138,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
             fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, _argv: &[JsValue]) -> JsValue {
                 match this_val.peer() {
                     Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
-                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()),
+                    Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()).into(),
                 }
             }
         }
@@ -199,7 +199,7 @@ impl JsFn for TcpConnect {
     }
 }
 
-struct WasiTcpServer;
+pub(crate) struct WasiTcpServer;
 impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
     const CLASS_NAME: &'static str = "WasiTcpServer\0";
     const CONSTRUCTOR_ARGC: u8 = 1;

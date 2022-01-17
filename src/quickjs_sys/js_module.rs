@@ -1,7 +1,7 @@
 use super::qjs as q;
 use super::Context;
-use crate::quickjs_sys::qjs::{JSContext, JSModuleDef, JS_NewCFunction2};
-use crate::{EventLoop, JsFn, JsValue};
+use crate::quickjs_sys::qjs::{JSContext, JSModuleDef, JS_GetOpaque, JS_NewCFunction2};
+use crate::{EventLoop, JsFn, JsObject, JsValue};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -202,6 +202,22 @@ where
                 q::JS_SetOpaque(obj, (ptr_data as *mut C).cast());
                 JsValue::from_qjs_value(ctx.ctx, obj)
             }
+        }
+    }
+
+    fn opaque_mut(js_obj: &mut JsObject) -> Option<&mut C> {
+        unsafe {
+            let class_id = JsClassStore::<S, C>::class_id(None);
+            let ptr = JS_GetOpaque(js_obj.0.v, class_id) as *mut C;
+            ptr.as_mut()
+        }
+    }
+
+    fn opaque(js_obj: &JsObject) -> Option<&C> {
+        unsafe {
+            let class_id = JsClassStore::<S, C>::class_id(None);
+            let ptr = JS_GetOpaque(js_obj.0.v, class_id) as *mut C;
+            ptr.as_ref()
         }
     }
 }

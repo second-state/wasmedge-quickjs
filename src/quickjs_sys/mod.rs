@@ -263,8 +263,6 @@ impl Context {
         js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
         js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
         let mut ctx = Context { ctx };
-        #[cfg(feature = "http")]
-        super::internal_module::http_module::init_module(&mut ctx);
 
         #[cfg(feature = "img")]
         super::internal_module::img_module::init_module(&mut ctx);
@@ -284,6 +282,7 @@ impl Context {
         super::internal_module::core::init_event_function(&mut ctx);
         super::internal_module::core::init_process_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
+        super::internal_module::httpx::init_module(&mut ctx);
 
         ctx
     }
@@ -526,7 +525,7 @@ pub(crate) fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
     std::ffi::CString::new(s).unwrap_or(Default::default())
 }
 
-unsafe impl Sync for JsRef {}
+// unsafe impl Sync for JsRef {}
 pub struct JsRef {
     ctx: *mut JSContext,
     v: JSValue,

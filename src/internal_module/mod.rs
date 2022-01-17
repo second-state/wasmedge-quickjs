@@ -1,6 +1,5 @@
 pub mod core;
-#[cfg(feature = "http")]
-pub mod http_module;
+pub mod httpx;
 #[cfg(feature = "img")]
 pub mod img_module;
 #[cfg(feature = "tensorflow")]
