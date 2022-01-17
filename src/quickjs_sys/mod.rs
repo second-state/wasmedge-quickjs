@@ -612,7 +612,7 @@ impl JsObject {
         }
     }
 
-    pub fn invoke(&mut self, fn_name: &str, argv: &mut [JsValue]) -> JsValue {
+    pub fn invoke(&mut self, fn_name: &str, argv: &[JsValue]) -> JsValue {
         unsafe {
             let ctx = self.0.ctx;
             let this_obj = self.0.v;

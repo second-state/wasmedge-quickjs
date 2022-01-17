@@ -4,10 +4,11 @@ import LazyHome from './component/LazyHome.jsx'
 import {renderToPipeableStream} from 'react-dom/server'
 
 import * as net from 'wasi_net'
+import * as http from 'wasi_http'
 
 async function handle_client(s){
-    s.write('HTTP/1.1 200 OK\r\n\r\n')
-    renderToPipeableStream(<LazyHome />).pipe(s)
+    let resp = new http.WasiResponse()
+    renderToPipeableStream(<LazyHome />).pipe(resp.chunk(s))
 }
 
 async function server_start(){

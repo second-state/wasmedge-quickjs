@@ -2,6 +2,7 @@ use super::core::request::HttpRequest;
 use super::core::ParseError;
 use crate::event_loop::AsyncTcpConn;
 use crate::internal_module::httpx::core::response::{BodyLen, HttpResponse};
+use crate::internal_module::httpx::core::Version::V1_1;
 use crate::internal_module::wasi_net_module::WasiTcpConn;
 use crate::{
     Context, JsClassDef, JsClassGetterSetter, JsClassProto, JsFn, JsMethod, JsModuleDef, JsObject,
@@ -390,6 +391,167 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
             }
         }
         p.add_function(Encode);
+
+        struct Chunk;
+        impl JsMethod<WasiResponse> for Chunk {
+            const NAME: &'static str = "chunk\0";
+            const LEN: u8 = 0;
+
+            fn call(ctx: &mut Context, this_val: &mut WasiResponse, argv: &[JsValue]) -> JsValue {
+                if let Some(JsValue::Object(s)) = argv.get(0) {
+                    this_val.0.body_len = BodyLen::Chunked;
+                    this_val.0.version = V1_1;
+                    let resp_header = Encode::call(ctx, this_val, &[]);
+                    let mut s = s.clone();
+                    s.invoke("write", &[resp_header]);
+                    WasiChunkResponseDef::gen_js_obj(ctx, WasiChunkResponse(s))
+                } else {
+                    JsValue::UnDefined
+                }
+            }
+        }
+        p.add_function(Chunk);
+    }
+}
+
+struct WasiChunkResponse(JsObject);
+struct WasiChunkResponseDef;
+impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
+    const CLASS_NAME: &'static str = "ChunkResponse\0";
+    const CONSTRUCTOR_ARGC: u8 = 0;
+
+    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<WasiChunkResponse> {
+        None
+    }
+
+    fn proto_init(p: &mut JsClassProto<WasiChunkResponse, Self>) {
+        struct ON;
+        impl JsMethod<WasiChunkResponse> for ON {
+            const NAME: &'static str = "on\0";
+            const LEN: u8 = 0;
+
+            fn call(
+                _ctx: &mut Context,
+                this_val: &mut WasiChunkResponse,
+                argv: &[JsValue],
+            ) -> JsValue {
+                this_val.0.invoke("on", argv)
+            }
+        }
+        p.add_function(ON);
+
+        struct WR;
+        impl JsMethod<WasiChunkResponse> for WR {
+            const NAME: &'static str = "write\0";
+            const LEN: u8 = 1;
+
+            fn call(
+                ctx: &mut Context,
+                this_val: &mut WasiChunkResponse,
+                argv: &[JsValue],
+            ) -> JsValue {
+                let data = argv.get(0);
+                match data {
+                    Some(JsValue::String(s)) => {
+                        let data = s.to_string();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[s.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    Some(JsValue::ArrayBuffer(buff)) => {
+                        let data = buff.as_ref();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[buff.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    Some(JsValue::Object(o)) => {
+                        let data = o.to_string();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[o.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    _ => {}
+                };
+                JsValue::Bool(true)
+            }
+        }
+        p.add_function(WR);
+
+        struct End;
+        impl JsMethod<WasiChunkResponse> for End {
+            const NAME: &'static str = "end\0";
+            const LEN: u8 = 1;
+
+            fn call(
+                ctx: &mut Context,
+                this_val: &mut WasiChunkResponse,
+                argv: &[JsValue],
+            ) -> JsValue {
+                let data = argv.get(0);
+                match data {
+                    Some(JsValue::String(s)) => {
+                        let data = s.to_string();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[s.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    Some(JsValue::ArrayBuffer(buff)) => {
+                        let data = buff.as_ref();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[buff.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    Some(JsValue::Object(o)) => {
+                        let data = o.to_string();
+                        let data_len = data.len();
+                        this_val.0.invoke(
+                            "write",
+                            &[ctx
+                                .new_string(format!("{:x}\r\n", data_len).as_str())
+                                .into()],
+                        );
+                        this_val.0.invoke("write", &[o.clone().into()]);
+                        this_val.0.invoke("write", &[ctx.new_string("\r\n").into()]);
+                    }
+                    _ => {}
+                };
+                this_val
+                    .0
+                    .invoke("end", &[ctx.new_string("0\r\n\r\n").into()]);
+                JsValue::Bool(true)
+            }
+        }
+        p.add_function(End);
     }
 }
 
@@ -405,6 +567,9 @@ impl ModuleInit for HttpX {
 
         let class_ctor = ctx.register_class(WasiResponseDef);
         m.add_export(WasiResponseDef::CLASS_NAME, class_ctor);
+
+        let class_ctor = ctx.register_class(WasiChunkResponseDef);
+        m.add_export(WasiChunkResponseDef::CLASS_NAME, class_ctor);
     }
 }
 
@@ -416,6 +581,7 @@ pub fn init_module(ctx: &mut Context) {
             Buffer::CLASS_NAME,
             WasiRequest::CLASS_NAME,
             WasiResponseDef::CLASS_NAME,
+            WasiChunkResponseDef::CLASS_NAME,
         ],
     )
 }
