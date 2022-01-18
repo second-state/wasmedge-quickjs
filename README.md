@@ -87,7 +87,7 @@ HTTP client applications.
 
 ```shell
 $ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_demo.js
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_net_client.js
 ```
 
 Run and POST to a HTTP server.
