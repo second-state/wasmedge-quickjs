@@ -1,4 +1,6 @@
 #![allow(dead_code, unused_imports, unused_must_use)]
+
+use std::borrow::{Borrow, BorrowMut};
 use wasmedge_quickjs::*;
 
 fn args_parse() -> (String, Vec<String>) {
@@ -19,18 +21,20 @@ fn args_parse() -> (String, Vec<String>) {
 
 fn main() {
     use wasmedge_quickjs as q;
-    let mut ctx = q::Context::new();
-
-    let (file_path, mut rest_arg) = args_parse();
-    let code = std::fs::read_to_string(&file_path);
-    match code {
-        Ok(code) => {
-            rest_arg.insert(0, file_path.clone());
-            ctx.put_args(rest_arg);
-            ctx.eval_module_str(code.as_str(), &file_path);
+    let mut rt = q::Runtime::new();
+    rt.run_with_context(|ctx| {
+        let (file_path, mut rest_arg) = args_parse();
+        let code = std::fs::read_to_string(&file_path);
+        match code {
+            Ok(code) => {
+                rest_arg.insert(0, file_path.clone());
+                ctx.put_args(rest_arg);
+                ctx.eval_module_str(code.as_str(), &file_path);
+            }
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+            }
         }
-        Err(e) => {
-            eprintln!("{}", e.to_string());
-        }
-    }
+        ctx.js_loop().unwrap();
+    });
 }

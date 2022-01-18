@@ -284,7 +284,7 @@ mod tensorflow {
                     };
 
                     let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.to_vec()
+                        buf.as_ref()
                     } else {
                         return ctx.throw_type_error("'tensor_buf' is not buffer").into();
                     };
@@ -340,7 +340,7 @@ mod tensorflow {
                     };
 
                     let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.to_vec()
+                        buf.as_ref()
                     } else {
                         return ctx.throw_type_error("'tensor_buf' is not buffer").into();
                     };
@@ -591,7 +591,7 @@ mod tensorflow_lite {
                     };
 
                     let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.to_vec()
+                        buf.as_ref()
                     } else {
                         return ctx.throw_type_error("'tensor_buf' is not buffer").into();
                     };

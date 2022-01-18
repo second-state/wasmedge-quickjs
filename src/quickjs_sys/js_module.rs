@@ -1,7 +1,7 @@
 use super::qjs as q;
 use super::Context;
-use crate::quickjs_sys::qjs::{JSContext, JSModuleDef, JS_NewCFunction2};
-use crate::{JsFn, JsValue};
+use crate::quickjs_sys::qjs::{JSContext, JSModuleDef, JS_GetOpaque, JS_NewCFunction2};
+use crate::{EventLoop, JsFn, JsObject, JsValue};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,10 +27,7 @@ impl<D: Sized, GS: JsClassGetterSetter<D>, Def: 'static + JsClassDef<D>>
     JsClassGetterSetterTrampoline<D, GS, Def>
 {
     unsafe extern "C" fn getter(ctx: *mut JSContext, this_val: q::JSValue) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
 
         let class_id = JsClassStore::<Def, D>::class_id(None);
@@ -48,10 +45,7 @@ impl<D: Sized, GS: JsClassGetterSetter<D>, Def: 'static + JsClassDef<D>>
         this_val: q::JSValue,
         val: q::JSValue,
     ) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
         let class_id = JsClassStore::<Def, D>::class_id(None);
         let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
@@ -85,10 +79,7 @@ impl<D: Sized, T: JsMethod<D>, Def: 'static + JsClassDef<D>> JsMethodTrampoline<
     ) -> q::JSValue {
         let class_id = JsClassStore::<Def, D>::class_id(None);
 
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let n_ctx = n_ctx.deref_mut();
 
         let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
@@ -190,6 +181,8 @@ where
 
     fn proto_init(p: &mut JsClassProto<C, S>);
 
+    fn finalizer(_data: &mut C, _event_loop: &mut EventLoop) {}
+
     fn class_value(ctx: &mut Context) -> JsValue {
         unsafe {
             let ctor = JsClassStore::<S, C>::class_ctor(None);
@@ -211,6 +204,22 @@ where
             }
         }
     }
+
+    fn opaque_mut(js_obj: &mut JsObject) -> Option<&mut C> {
+        unsafe {
+            let class_id = JsClassStore::<S, C>::class_id(None);
+            let ptr = JS_GetOpaque(js_obj.0.v, class_id) as *mut C;
+            ptr.as_mut()
+        }
+    }
+
+    fn opaque(js_obj: &JsObject) -> Option<&C> {
+        unsafe {
+            let class_id = JsClassStore::<S, C>::class_id(None);
+            let ptr = JS_GetOpaque(js_obj.0.v, class_id) as *mut C;
+            ptr.as_ref()
+        }
+    }
 }
 
 struct JsClassDefTrampoline<D: Sized, Def: 'static + JsClassDef<D>> {
@@ -225,10 +234,7 @@ impl<C: Sized, Def: 'static + JsClassDef<C>> JsClassDefTrampoline<C, Def> {
         len: ::std::os::raw::c_int,
         argv: *mut q::JSValue,
     ) -> q::JSValue {
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let n_ctx = n_ctx.deref_mut();
         let mut arg_vec = vec![];
         for i in 0..len {
@@ -245,12 +251,16 @@ impl<C: Sized, Def: 'static + JsClassDef<C>> JsClassDefTrampoline<C, Def> {
         }
     }
 
-    unsafe extern "C" fn finalizer(_rt: *mut q::JSRuntime, val: q::JSValue) {
+    unsafe extern "C" fn finalizer(rt: *mut q::JSRuntime, val: q::JSValue) {
         let class_id = JsClassStore::<Def, C>::class_id(None);
 
         let s = q::JS_GetOpaque(val, class_id) as *mut C;
         if !s.is_null() {
-            Box::from_raw(s);
+            let mut s = Box::from_raw(s);
+            let event_loop_ptr = q::JS_GetRuntimeOpaque(rt) as *mut crate::EventLoop;
+            if let Some(event_loop) = event_loop_ptr.as_mut() {
+                Def::finalizer(s.as_mut(), event_loop);
+            }
         }
     }
 }
@@ -330,10 +340,7 @@ impl<F: ModuleInit> ModuleInitFnTrampoline<F> {
         m: *mut JSModuleDef,
     ) -> ::std::os::raw::c_int {
         let mut m = JsModuleDef { ctx, m };
-        let mut n_ctx = std::mem::ManuallyDrop::new(Context {
-            rt: q::JS_GetRuntime(ctx),
-            ctx,
-        });
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
         let nctx = n_ctx.deref_mut();
         F::init_module(nctx, &mut m);
         0
