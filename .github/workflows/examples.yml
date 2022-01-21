@@ -93,7 +93,8 @@ jobs:
         echo '> start wasmedge'
         nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
-        curl http://localhost:8001 2>&1
+        resp=$(curl http://localhost:8001)
+        echo "Server response is $resp"
 
     - name: CommonJs file_module
       run: |
