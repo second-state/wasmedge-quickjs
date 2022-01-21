@@ -33,11 +33,37 @@ jobs:
     - name: Install WasmEdge
       run: |
         VERSION=0.9.1-alpha.1
-        wget -qO- https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION --image-deps-version=$VERSION  -p /usr/local
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION --image-deps-version=$VERSION  -p /usr/local
 
     - uses: actions/setup-node@v2
       with:
         node-version: '14'
+
+    - name: Regular examples
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js
+        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+        
+    - name: Network client example
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js
+        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+        
+    - name: Network server example
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js
+        nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+        sleep 15
+        curl -d "WasmEdge" -X POST http://localhost:8000
+        
+    - name: ES6 module
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js/es6_module_demo
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
 
     - name: CommonJs with ncc
       run: |
@@ -56,6 +82,15 @@ jobs:
         npm run build
         echo '> start wasmedge'
         wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+        
+    - name: React Stream SSR
+      run: |
+        cargo build --target wasm32-wasi --release --features=cjs
+        cd example_js/react_ssr_stream
+        npm install
+        npm run build
+        echo '> start wasmedge'
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
 
     - name: CommonJs file_module
       run: |
@@ -69,6 +104,8 @@ jobs:
         cd example_js
         wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
         wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+        nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+        curl -d "WasmEdge" -X POST http://localhost:8000
         cd es6_module_demo
         wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
         cd ../../
