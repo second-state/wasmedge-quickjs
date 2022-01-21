@@ -17,7 +17,7 @@ Install [Rust](https://www.rust-lang.org/tools/install) and use the following co
 $ rustup target add wasm32-wasi
 ```
 
-Install [wasmedge CLI tool](https://github.com/WasmEdge/WasmEdge/blob/master/docs/install.md). Make sure that you use the `-e all` option to install the WasmEdge Tensorflow extensions if you want to try the Tensorflow examples.
+Install [wasmedge CLI tool](https://wasmedge.org/book/en/start/install.html). Make sure that you use the `-e all` option to install the WasmEdge Tensorflow extensions if you want to try the Tensorflow examples.
 
 ## Hello world
 
@@ -32,6 +32,126 @@ $ cargo build --target wasm32-wasi --release
 ```shell
 $ cd example_js
 $ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+```
+
+## Async HTTP Request
+
+### Build
+
+```shell
+$ cargo build --target wasm32-wasi --release
+```
+
+### Run
+
+HTTP client applications.
+
+```shell
+$ cd example_js
+$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+```
+
+Start an HTTP server.
+
+```
+$ cd example_js
+$ nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+```
+
+Access the server.
+
+```shell
+$ curl -d "WasmEdge" -X POST http://localhost:8000
+echo:WasmEdge
+```
+
+> These examples also show how to import another JavaScript file into the current program.
+
+## React SSR
+
+### Build
+
+```shell
+$ cargo build --target wasm32-wasi --release --features=cjs
+```
+
+Then build the CommonJS modules into a single JS file.
+
+```shell
+$ cd example_js/react_ssr
+$ npm install
+$ npm run build
+```
+
+### Run
+
+```shell
+$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+
+<div data-reactroot=""><div>This is home</div><div><div>This is page</div></div></div>
+```
+
+## React Stream SSR
+
+### Build
+
+```shell
+$ cargo build --target wasm32-wasi --release --features=cjs
+```
+
+Then build the CommonJS modules into a single JS file.
+
+```shell
+$ cd example_js/react_ssr_stream
+$ npm install
+$ npm run build
+```
+
+### Run
+
+Start the server.
+
+```shell
+$ nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
+```
+
+Access the server.
+
+```shell
+$ curl http://localhost:8001
+```
+
+The results show the response comes in chuncks and the client closes the connection once all chuncks are received.
+
+```shell
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   211    0   211    0     0   1029      0 --:--:-- --:--:-- --:--:--  1024
+100   275    0   275    0     0    221      0 --:--:--  0:00:01 --:--:--   220
+100   547    0   547    0     0    245      0 --:--:--  0:00:02 --:--:--   245
+100  1020    0  1020    0     0    413      0 --:--:--  0:00:02 --:--:--   413
+
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><title>Title</title></head><body><div><div> This is LazyHome </div><!--$?--><template id="B:0"></template><div> loading... </div><!--/$--></div></body></html><div hidden id="S:0"><template id="P:1"></template></div><div hidden id="S:1"><div><div>This is lazy page</div></div></div><script>function $RS(a,b){a=document.getElementById(a);b=document.getElementById(b);for(a.parentNode.removeChild(a);a.firstChild;)b.parentNode.insertBefore(a.firstChild,b);b.parentNode.removeChild(b)};$RS("S:1","P:1")</script><script>function $RC(a,b){a=document.getElementById(a);b=document.getElementById(b);b.parentNode.removeChild(b);if(a){a=a.previousSibling;var f=a.parentNode,c=a.nextSibling,e=0;do{if(c&&8===c.nodeType){var d=c.data;if("/$"===d)if(0===e)break;else e--;else"$"!==d&&"$?"!==d&&"$!"!==d||e++}d=c.nextSibling;f.removeChild(c);c=d}while(c);for(;b.firstChild;)f.insertBefore(b.firstChild,c);a.data="$";a._reactRetry&&a._reactRetry()}};$RC("B:0","S:0")</script>
+```
+
+
+## TensorFlow
+
+### Build
+
+Note: Build the QuickJS interpreter with the WasmEdge Tensorflow extension.
+
+```shell
+$ cargo build --target wasm32-wasi --release --features=tensorflow
+```
+
+### Run
+
+```shell
+$ cd example_js/tensorflow_lite_demo
+$ wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
 ```
 
 ## ES6 module support
@@ -71,54 +191,6 @@ $ cd example_js/simple_common_js_demo
 $ npm install
 $ npm run ncc_build
 $ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
-```
-
-## HTTP Request
-
-### Build
-
-```shell
-$ cargo build --target wasm32-wasi --release
-```
-
-### Run
-
-HTTP client applications.
-
-```shell
-$ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_net_client.js
-```
-
-Run and POST to a HTTP server.
-
-```
-# Start the server
-$ cd example_js
-$ nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm http_server_demo.js &
-
-# Access the server
-$ curl -d "WasmEdge" -X POST http://localhost:8000
-echo:WasmEdge
-```
-
-> These examples also show how to import another JavaScript file into the current program.
-
-## TensorFlow
-
-### Build
-
-Note: Build the QuickJS interpreter with the WasmEdge Tensorflow extension.
-
-```shell
-$ cargo build --target wasm32-wasi --release --features=tensorflow
-```
-
-### Run
-
-```shell
-$ cd example_js/tensorflow_lite_demo
-$ wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
 ```
 
 ## Optional: Get static-lib & binding.rs
