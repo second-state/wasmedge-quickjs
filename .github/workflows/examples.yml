@@ -90,7 +90,7 @@ jobs:
         npm install
         npm run build
         echo '> start wasmedge'
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs
 
     - name: CommonJs file_module
       run: |
@@ -98,26 +98,11 @@ jobs:
         cd example_js/simple_common_js_demo
         wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm file_module.js
 
-    - name: Regular examples
-      run: |
-        cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
-        nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
-        curl -d "WasmEdge" -X POST http://localhost:8000
-        cd es6_module_demo
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
-        cd ../../
-        cargo clean
-
     - name: Tensorflow example
       run: |
         cargo build --target wasm32-wasi --release --features=tensorflow
         cd example_js/tensorflow_lite_demo
         wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
-        cd ../../
-        cargo clean
 
     - name: Embed JS in Rust
       run: |
