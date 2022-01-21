@@ -90,9 +90,9 @@ jobs:
         npm install
         npm run build
         echo '> start wasmedge'
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
-        curl http://localhost:8000
+        curl http://localhost:8001
 
     - name: CommonJs file_module
       run: |
