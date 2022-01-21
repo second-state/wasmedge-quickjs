@@ -12,8 +12,8 @@ async function handle_client(s){
 }
 
 async function server_start(){
-    print('listen 8000...')
-    let s = new net.WasiTcpServer(8000)
+    print('listen 8001...')
+    let s = new net.WasiTcpServer(8001)
     for(var i=0;i<100;i++){
         let cs = await s.accept();
         handle_client(cs)
