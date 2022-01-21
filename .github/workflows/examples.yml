@@ -57,7 +57,7 @@ jobs:
         cd example_js
         nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
         sleep 15
-        curl -d "WasmEdge" -X POST http://localhost:8000 2>&1
+        curl -s -d "WasmEdge" -X POST http://localhost:8000 2>&1
         
     - name: ES6 module
       run: |
@@ -92,7 +92,7 @@ jobs:
         echo '> start wasmedge'
         nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
-        curl http://localhost:8001 2>&1
+        curl -s http://localhost:8001 2>&1
 
     - name: CommonJs file_module
       run: |
