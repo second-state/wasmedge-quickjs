@@ -75,7 +75,7 @@ echo:WasmEdge
 $ cargo build --target wasm32-wasi --release --features=cjs
 ```
 
-Then build the CommonJS modules into a single JS file.
+Then use [rollup.js](https://rollupjs.org/) to bundle the React application into a combined JS file. It turns the CommonJS modules in the application into ES6 modules, which [we support](#es6-module-support).
 
 ```shell
 $ cd example_js/react_ssr
@@ -99,7 +99,7 @@ $ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist
 $ cargo build --target wasm32-wasi --release --features=cjs
 ```
 
-Then build the CommonJS modules into a single JS file.
+Then use [rollup.js](https://rollupjs.org/) to bundle the React application into a combined JS file. It turns the CommonJS modules in the application into ES6 modules, which [we support](#es6-module-support).
 
 ```shell
 $ cd example_js/react_ssr_stream
@@ -167,30 +167,6 @@ $ cargo build --target wasm32-wasi --release
 ```shell
 $ cd example_js/es6_module_demo
 $ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
-```
-
-## CommonJS support
-
-### Build
-
-```shell
-$ cargo build --target wasm32-wasi --release --features=cjs
-```
-
-### A simple CJS module example
-
-```shell
-$ cd example_js/simple_common_js_demo
-$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm file_module.js
-```
-
-### Use NPM packages via NCC
-
-```shell
-$ cd example_js/simple_common_js_demo
-$ npm install
-$ npm run ncc_build
-$ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
 ```
 
 ## Optional: Get static-lib & binding.rs
