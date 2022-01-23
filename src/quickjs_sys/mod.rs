@@ -696,7 +696,7 @@ impl JsObject {
 pub struct JsFunction(JsRef);
 
 impl JsFunction {
-    pub fn call(&self, argv: &mut [JsValue]) -> JsValue {
+    pub fn call(&self, argv: &[JsValue]) -> JsValue {
         unsafe {
             let ctx = self.0.ctx;
             let mut argv: Vec<JSValue> = argv.iter().map(|v| v.get_qjs_value()).collect();

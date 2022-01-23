@@ -208,7 +208,7 @@ impl IoSelector {
                 poll::EVENTTYPE_CLOCK => {
                     let i = event.userdata as usize;
                     if let Some(timeout) = self.clear_timeout(i) {
-                        timeout.1.call(&mut []);
+                        timeout.1.call(&[]);
                     };
                 }
                 poll::EVENTTYPE_FD_READ | poll::EVENTTYPE_FD_WRITE => {
@@ -275,7 +275,7 @@ pub struct EventLoop {
 impl EventLoop {
     pub fn run_once(&mut self, ctx: &mut qjs::Context) -> io::Result<usize> {
         while let Some(f) = self.next_tick_queue.pop_front() {
-            f.call(&mut []);
+            f.call(&[]);
         }
         self.io_selector.poll(ctx)
     }

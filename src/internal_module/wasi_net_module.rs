@@ -41,21 +41,21 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                             NetPollResult::Read(data) => {
                                 let buff = ctx.new_array_buffer(data.as_slice());
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&mut [JsValue::ArrayBuffer(buff)]);
+                                    ok.call(&[JsValue::ArrayBuffer(buff)]);
                                 }
                             }
                             NetPollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
                                 let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                         }),
@@ -163,21 +163,21 @@ impl JsFn for TcpConnect {
                             NetPollResult::Connect(cs) => {
                                 if let JsValue::Function(ok) = ok {
                                     let cs = WasiTcpConn::gen_js_obj(ctx, cs);
-                                    ok.call(&mut [cs]);
+                                    ok.call(&[cs]);
                                 }
                             }
                             NetPollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
                                 let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                         }),
@@ -238,21 +238,21 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
                             NetPollResult::Accept(cs) => {
                                 let cs = WasiTcpConn::gen_js_obj(ctx, cs);
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&mut [cs]);
+                                    ok.call(&[cs]);
                                 }
                             }
                             NetPollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
                                 let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                         }),
