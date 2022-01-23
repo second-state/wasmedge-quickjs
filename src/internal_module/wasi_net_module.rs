@@ -1,4 +1,4 @@
-use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, NetPollResult};
+use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, PollResult};
 use crate::*;
 
 pub(crate) struct WasiTcpConn;
@@ -25,40 +25,53 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::UnDefined
             }
         }
-        p.add_function(ON);
+        p.add_function::<ON>();
 
         struct RD;
         impl JsMethod<AsyncTcpConn> for RD {
             const NAME: &'static str = "read\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, _argv: &[JsValue]) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut AsyncTcpConn, argv: &[JsValue]) -> JsValue {
                 let (p, ok, error) = ctx.new_promise();
                 if let Some(event_poll) = ctx.event_loop() {
+                    let timeout = if let Some(JsValue::Int(timeout)) = argv.get(0) {
+                        Some(std::time::Duration::from_millis((*timeout) as u64))
+                    } else {
+                        None
+                    };
                     this_val.async_read(
                         event_poll,
                         Box::new(move |ctx, event| match event {
-                            NetPollResult::Read(data) => {
+                            PollResult::Read(data) => {
                                 let buff = ctx.new_array_buffer(data.as_slice());
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&mut [JsValue::ArrayBuffer(buff)]);
+                                    ok.call(&[JsValue::ArrayBuffer(buff)]);
                                 }
                             }
-                            NetPollResult::Error(e) => {
+                            PollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
+                                }
+                            }
+                            PollResult::Timeout => {
+                                let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
+                                let e = ctx.new_error(e.to_string().as_str());
+                                if let JsValue::Function(error) = error {
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
                                 let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                         }),
+                        timeout,
                     );
                     p
                 } else {
@@ -66,7 +79,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(RD);
+        p.add_function::<RD>();
 
         struct WR;
         impl JsMethod<AsyncTcpConn> for WR {
@@ -90,7 +103,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(WR);
+        p.add_function::<WR>();
 
         struct End;
         impl JsMethod<AsyncTcpConn> for End {
@@ -114,7 +127,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(End);
+        p.add_function::<End>();
 
         struct Local;
         impl JsMethod<AsyncTcpConn> for Local {
@@ -128,7 +141,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(Local);
+        p.add_function::<Local>();
 
         struct Peer;
         impl JsMethod<AsyncTcpConn> for Peer {
@@ -142,7 +155,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(Peer);
+        p.add_function::<Peer>();
     }
 }
 
@@ -157,30 +170,44 @@ impl JsFn for TcpConnect {
             let addr = addr.to_string().parse();
             match addr {
                 Ok(addr) => {
+                    let timeout = if let Some(JsValue::Int(timeout)) = argv.get(1) {
+                        Some(std::time::Duration::from_millis((*timeout) as u64))
+                    } else {
+                        None
+                    };
+
                     if let Err(e) = event_loop.tcp_connect(
                         &addr,
                         Box::new(move |ctx, event| match event {
-                            NetPollResult::Connect(cs) => {
+                            PollResult::Connect(cs) => {
                                 if let JsValue::Function(ok) = ok {
                                     let cs = WasiTcpConn::gen_js_obj(ctx, cs);
-                                    ok.call(&mut [cs]);
+                                    ok.call(&[cs]);
                                 }
                             }
-                            NetPollResult::Error(e) => {
+                            PollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
+                                }
+                            }
+                            PollResult::Timeout => {
+                                let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
+                                let e = ctx.new_error(e.to_string().as_str());
+                                if let JsValue::Function(error) = error {
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
                                 let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
                                 let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
                                 }
                             }
                         }),
+                        timeout,
                     ) {
                         println!("{:?}", e);
                         let e = ctx.throw_internal_type_error(e.to_string().as_str());
@@ -225,37 +252,46 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
             const NAME: &'static str = "accept\0";
             const LEN: u8 = 0;
 
-            fn call(
-                ctx: &mut Context,
-                this_val: &mut AsyncTcpServer,
-                _argv: &[JsValue],
-            ) -> JsValue {
+            fn call(ctx: &mut Context, this_val: &mut AsyncTcpServer, argv: &[JsValue]) -> JsValue {
+                let timeout = if let Some(JsValue::Int(timeout)) = argv.get(0) {
+                    Some(std::time::Duration::from_millis((*timeout) as u64))
+                } else {
+                    None
+                };
                 let (p, ok, error) = ctx.new_promise();
                 if let Some(event_loop) = ctx.event_loop() {
-                    event_loop.tcp_accept(
-                        this_val,
+                    this_val.async_accept(
+                        event_loop,
                         Box::new(move |ctx, r| match r {
-                            NetPollResult::Accept(cs) => {
+                            PollResult::Accept(cs) => {
                                 let cs = WasiTcpConn::gen_js_obj(ctx, cs);
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&mut [cs]);
+                                    ok.call(&[cs]);
                                 }
                             }
-                            NetPollResult::Error(e) => {
+                            PollResult::Error(e) => {
                                 let err_msg = e.to_string();
                                 let e = ctx.new_error(err_msg.as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    error.call(&[e]);
+                                }
+                            }
+                            PollResult::Timeout => {
+                                if let JsValue::Function(error) = error {
+                                    let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
+                                    let e = ctx.new_error(e.to_string().as_str());
+                                    error.call(&[e]);
                                 }
                             }
                             _ => {
-                                let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                                let e = ctx.new_error(e.to_string().as_str());
                                 if let JsValue::Function(error) = error {
-                                    error.call(&mut [e]);
+                                    let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
+                                    let e = ctx.new_error(e.to_string().as_str());
+                                    error.call(&[e]);
                                 }
                             }
                         }),
+                        timeout,
                     );
                     p
                 } else {
@@ -263,7 +299,7 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
                 }
             }
         }
-        p.add_function(Accept);
+        p.add_function::<Accept>();
     }
 }
 

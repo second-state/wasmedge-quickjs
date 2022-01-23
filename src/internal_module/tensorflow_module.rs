@@ -321,7 +321,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(AddInput8U);
+            p.add_function::<AddInput8U>();
 
             struct AddInput32F;
             impl JsMethod<TensorflowSession> for AddInput32F {
@@ -377,7 +377,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(AddInput32F);
+            p.add_function::<AddInput32F>();
 
             struct AddOutput;
             impl JsMethod<TensorflowSession> for AddOutput {
@@ -401,7 +401,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(AddOutput);
+            p.add_function::<AddOutput>();
 
             struct Run;
             impl JsMethod<TensorflowSession> for Run {
@@ -417,7 +417,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(Run);
+            p.add_function::<Run>();
 
             struct GetOutput;
             impl JsMethod<TensorflowSession> for GetOutput {
@@ -439,7 +439,7 @@ mod tensorflow {
                     ctx.new_array_buffer(data.as_slice()).into()
                 }
             }
-            p.add_function(GetOutput);
+            p.add_function::<GetOutput>();
 
             struct ClearOutput;
             impl JsMethod<TensorflowSession> for ClearOutput {
@@ -455,7 +455,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(ClearOutput);
+            p.add_function::<ClearOutput>();
 
             struct ClearInput;
             impl JsMethod<TensorflowSession> for ClearInput {
@@ -471,7 +471,7 @@ mod tensorflow {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(ClearInput);
+            p.add_function::<ClearInput>();
         }
     }
 
@@ -606,7 +606,7 @@ mod tensorflow_lite {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(AddInput);
+            p.add_function::<AddInput>();
 
             struct Run;
             impl JsMethod<TensorflowLiteSession> for Run {
@@ -622,7 +622,7 @@ mod tensorflow_lite {
                     JsValue::UnDefined
                 }
             }
-            p.add_function(Run);
+            p.add_function::<Run>();
 
             struct GetOutput;
             impl JsMethod<TensorflowLiteSession> for GetOutput {
@@ -644,7 +644,7 @@ mod tensorflow_lite {
                     ctx.new_array_buffer(data.as_slice()).into()
                 }
             }
-            p.add_function(GetOutput);
+            p.add_function::<GetOutput>();
         }
     }
 

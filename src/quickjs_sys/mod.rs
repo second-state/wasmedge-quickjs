@@ -244,12 +244,24 @@ impl Context {
         unsafe { (JS_GetRuntimeOpaque(self.rt()) as *mut super::EventLoop).as_mut() }
     }
 
+    fn event_loop_run_once(&mut self) -> std::io::Result<usize> {
+        unsafe {
+            if let Some(event_loop) =
+                (JS_GetRuntimeOpaque(self.rt()) as *mut super::EventLoop).as_mut()
+            {
+                event_loop.run_once(self)
+            } else {
+                Ok(0)
+            }
+        }
+    }
+
     #[inline]
     unsafe fn rt(&mut self) -> *mut JSRuntime {
         JS_GetRuntime(self.ctx)
     }
 
-    fn clone_(&mut self) -> std::mem::ManuallyDrop<Self> {
+    unsafe fn clone_(&mut self) -> std::mem::ManuallyDrop<Self> {
         std::mem::ManuallyDrop::new(Context { ctx: self.ctx })
     }
 
@@ -476,7 +488,6 @@ impl Context {
     pub fn js_loop(&mut self) -> std::io::Result<()> {
         unsafe {
             let rt = self.rt();
-            let mut clone_ctx = self.clone_();
 
             let mut pctx: *mut JSContext = 0 as *mut JSContext;
             loop {
@@ -490,12 +501,7 @@ impl Context {
                         break 'pending;
                     }
                 }
-                if let Some(event_loop) = self.event_loop() {
-                    let n = event_loop.run_once(&mut clone_ctx)?;
-                    if n == 0 {
-                        return Ok(());
-                    }
-                } else {
+                if self.event_loop_run_once()? == 0 {
                     return Ok(());
                 }
             }
@@ -690,7 +696,7 @@ impl JsObject {
 pub struct JsFunction(JsRef);
 
 impl JsFunction {
-    pub fn call(&self, argv: &mut [JsValue]) -> JsValue {
+    pub fn call(&self, argv: &[JsValue]) -> JsValue {
         unsafe {
             let ctx = self.0.ctx;
             let mut argv: Vec<JSValue> = argv.iter().map(|v| v.get_qjs_value()).collect();
