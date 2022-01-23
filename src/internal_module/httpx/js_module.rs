@@ -40,7 +40,7 @@ impl JsClassDef<Vec<u8>> for Buffer {
                 }
             }
         }
-        p.add_function(Append);
+        p.add_function::<Append>();
 
         struct ParseRequest;
         impl JsMethod<Vec<u8>> for ParseRequest {
@@ -55,7 +55,7 @@ impl JsClassDef<Vec<u8>> for Buffer {
                 }
             }
         }
-        p.add_function(ParseRequest);
+        p.add_function::<ParseRequest>();
 
         struct ParseResponse;
         impl JsMethod<Vec<u8>> for ParseResponse {
@@ -73,7 +73,7 @@ impl JsClassDef<Vec<u8>> for Buffer {
                 }
             }
         }
-        p.add_function(ParseResponse);
+        p.add_function::<ParseResponse>();
     }
 }
 
@@ -120,7 +120,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 }
             }
         }
-        p.add_getter_setter(Body);
+        p.add_getter_setter::<Body>();
 
         struct Headers;
         impl JsClassGetterSetter<HttpRequest> for Headers {
@@ -148,7 +148,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 }
             }
         }
-        p.add_getter_setter(Headers);
+        p.add_getter_setter::<Headers>();
 
         struct Method;
         impl JsClassGetterSetter<HttpRequest> for Method {
@@ -167,7 +167,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 }
             }
         }
-        p.add_getter_setter(Method);
+        p.add_getter_setter::<Method>();
 
         struct Version;
         impl JsClassGetterSetter<HttpRequest> for Version {
@@ -186,7 +186,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 }
             }
         }
-        p.add_getter_setter(Version);
+        p.add_getter_setter::<Version>();
 
         struct URI;
         impl JsClassGetterSetter<HttpRequest> for URI {
@@ -205,7 +205,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 }
             }
         }
-        p.add_getter_setter(URI);
+        p.add_getter_setter::<URI>();
 
         struct Encode;
         impl JsMethod<HttpRequest> for Encode {
@@ -218,7 +218,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
                 ctx.new_array_buffer(buf.as_slice()).into()
             }
         }
-        p.add_function(Encode);
+        p.add_function::<Encode>();
     }
 }
 
@@ -283,7 +283,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_getter_setter(Body);
+        p.add_getter_setter::<Body>();
 
         struct Headers;
         impl JsClassGetterSetter<WasiResponse> for Headers {
@@ -311,7 +311,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_getter_setter(Headers);
+        p.add_getter_setter::<Headers>();
 
         struct Status;
         impl JsClassGetterSetter<WasiResponse> for Status {
@@ -335,7 +335,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_getter_setter(Status);
+        p.add_getter_setter::<Status>();
 
         struct Version;
         impl JsClassGetterSetter<WasiResponse> for Version {
@@ -354,7 +354,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_getter_setter(Version);
+        p.add_getter_setter::<Version>();
 
         struct Reason;
         impl JsClassGetterSetter<WasiResponse> for Reason {
@@ -371,7 +371,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_getter_setter(Reason);
+        p.add_getter_setter::<Reason>();
 
         struct Encode;
         impl JsMethod<WasiResponse> for Encode {
@@ -390,7 +390,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 ctx.new_array_buffer(buf.as_slice()).into()
             }
         }
-        p.add_function(Encode);
+        p.add_function::<Encode>();
 
         struct Chunk;
         impl JsMethod<WasiResponse> for Chunk {
@@ -410,7 +410,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 }
             }
         }
-        p.add_function(Chunk);
+        p.add_function::<Chunk>();
     }
 }
 
@@ -438,7 +438,7 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
                 this_val.0.invoke("on", argv)
             }
         }
-        p.add_function(ON);
+        p.add_function::<ON>();
 
         struct WR;
         impl JsMethod<WasiChunkResponse> for WR {
@@ -493,7 +493,7 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(WR);
+        p.add_function::<WR>();
 
         struct End;
         impl JsMethod<WasiChunkResponse> for End {
@@ -551,7 +551,7 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(End);
+        p.add_function::<End>();
     }
 }
 

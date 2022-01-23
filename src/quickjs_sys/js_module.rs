@@ -109,7 +109,7 @@ pub struct JsClassProto<D: Sized, Def: 'static + JsClassDef<D>> {
 }
 
 impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
-    pub fn add_getter_setter<T: JsClassGetterSetter<D>>(&mut self, _: T) {
+    pub fn add_getter_setter<T: JsClassGetterSetter<D>>(&mut self) {
         unsafe {
             use crate::quickjs_sys::*;
             let ctx = self.ctx;
@@ -122,7 +122,7 @@ impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
         }
     }
 
-    pub fn add_function<T: JsMethod<D>>(&mut self, _: T) {
+    pub fn add_function<T: JsMethod<D>>(&mut self) {
         unsafe {
             use crate::quickjs_sys::*;
             let ctx = self.ctx;

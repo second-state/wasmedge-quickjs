@@ -25,7 +25,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::UnDefined
             }
         }
-        p.add_function(ON);
+        p.add_function::<ON>();
 
         struct RD;
         impl JsMethod<AsyncTcpConn> for RD {
@@ -66,7 +66,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(RD);
+        p.add_function::<RD>();
 
         struct WR;
         impl JsMethod<AsyncTcpConn> for WR {
@@ -90,7 +90,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(WR);
+        p.add_function::<WR>();
 
         struct End;
         impl JsMethod<AsyncTcpConn> for End {
@@ -114,7 +114,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 JsValue::Bool(true)
             }
         }
-        p.add_function(End);
+        p.add_function::<End>();
 
         struct Local;
         impl JsMethod<AsyncTcpConn> for Local {
@@ -128,7 +128,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(Local);
+        p.add_function::<Local>();
 
         struct Peer;
         impl JsMethod<AsyncTcpConn> for Peer {
@@ -142,7 +142,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                 }
             }
         }
-        p.add_function(Peer);
+        p.add_function::<Peer>();
     }
 }
 
@@ -263,7 +263,7 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
                 }
             }
         }
-        p.add_function(Accept);
+        p.add_function::<Accept>();
     }
 }
 
