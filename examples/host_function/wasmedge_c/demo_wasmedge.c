@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "wasmedge.h"
+#include "wasmedge/wasmedge.h"
 
 WasmEdge_Result HostInc(void *Data, WasmEdge_MemoryInstanceContext *MemCxt,
                     const WasmEdge_Value *In, WasmEdge_Value *Out) {
@@ -10,7 +10,7 @@ WasmEdge_Result HostInc(void *Data, WasmEdge_MemoryInstanceContext *MemCxt,
 }
 
 // mapping dirs
-char* dirs = ".:..\0";
+const char* dirs = ".:..\0";
 
 int main(int Argc, const char* Argv[]) {
 	/* Create the configure context and add the WASI support. */
@@ -20,19 +20,19 @@ int main(int Argc, const char* Argv[]) {
 	/* The configure and store context to the VM creation can be NULL. */
 	WasmEdge_VMContext *VMCxt = WasmEdge_VMCreate(ConfCxt, NULL);
 	WasmEdge_ImportObjectContext *WasiObject = WasmEdge_VMGetImportModuleContext(VMCxt, WasmEdge_HostRegistration_Wasi);
-    WasmEdge_ImportObjectInitWASI(WasiObject,Argv+1,Argc-1,NULL,0,&dirs,1,NULL,0);
+    WasmEdge_ImportObjectInitWASI(WasiObject,Argv+1,Argc-1,NULL,0, &dirs,1);
 
 
     /* Create the import object. */
     WasmEdge_String ExportName = WasmEdge_StringCreateByCString("extern");
-    WasmEdge_ImportObjectContext *ImpObj = WasmEdge_ImportObjectCreate(ExportName, NULL);
+    WasmEdge_ImportObjectContext *ImpObj = WasmEdge_ImportObjectCreate(ExportName);
     enum WasmEdge_ValType ParamList[1] = { WasmEdge_ValType_I32 };
     enum WasmEdge_ValType ReturnList[1] = { WasmEdge_ValType_I32 };
-    WasmEdge_FunctionTypeContext *HostFType = WasmEdge_FunctionTypeCreate(ParamList, 1, ReturnList, 1);
-    WasmEdge_HostFunctionContext *HostFunc = WasmEdge_HostFunctionCreate(HostFType, HostInc, 0);
-    WasmEdge_FunctionTypeDelete(HostFType);
+    WasmEdge_FunctionTypeContext *FuncType = WasmEdge_FunctionTypeCreate(ParamList, 1, ReturnList, 1);
+    WasmEdge_FunctionInstanceContext *HostFunc = WasmEdge_FunctionInstanceCreate(FuncType, HostInc, NULL, 0);
+    WasmEdge_FunctionTypeDelete(FuncType);
     WasmEdge_String HostFuncName = WasmEdge_StringCreateByCString("host_inc");
-    WasmEdge_ImportObjectAddHostFunction(ImpObj, HostFuncName, HostFunc);
+    WasmEdge_ImportObjectAddFunction(ImpObj, HostFuncName, HostFunc);
     WasmEdge_StringDelete(HostFuncName);
 
     WasmEdge_VMRegisterModuleFromImport(VMCxt, ImpObj);

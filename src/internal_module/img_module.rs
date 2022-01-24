@@ -288,16 +288,16 @@ impl JsClassDef<JsImage> for ImageClassDef {
             }
         }
 
-        p.add_function(SaveToFile);
-        p.add_function(SaveToBuf);
-        p.add_function(ResizeFn);
-        p.add_function(Pixels);
-        p.add_function(Pixels32f);
-        p.add_function(RGB);
-        p.add_function(BGR);
-        p.add_function(LUMA);
-        p.add_function(DrawFilledRect);
-        p.add_function(DrawHollowRect);
+        p.add_function::<SaveToFile>();
+        p.add_function::<SaveToBuf>();
+        p.add_function::<ResizeFn>();
+        p.add_function::<Pixels>();
+        p.add_function::<Pixels32f>();
+        p.add_function::<RGB>();
+        p.add_function::<BGR>();
+        p.add_function::<LUMA>();
+        p.add_function::<DrawFilledRect>();
+        p.add_function::<DrawHollowRect>();
     }
 }
 
