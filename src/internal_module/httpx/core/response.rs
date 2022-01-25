@@ -32,7 +32,6 @@ impl Default for HttpResponse {
 }
 
 impl HttpResponse {
-    /// Deprecated. Use `HttpResponse::ok(...)`, `HttpResponse::bad_request(...)`, etc instead.
     #[deprecated]
     pub fn new(status_code: u16, headers: Option<HashMap<String, String>>) -> HttpResponse {
         let mut response = HttpResponse::default();

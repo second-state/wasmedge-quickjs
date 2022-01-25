@@ -64,16 +64,40 @@ impl JsClassDef<Vec<u8>> for Buffer {
 
             fn call(ctx: &mut Context, this_val: &mut Vec<u8>, _argv: &[JsValue]) -> JsValue {
                 match HttpResponse::parse(this_val.as_slice()) {
-                    Ok((resp, n)) => WasiResponseDef::gen_js_obj(
-                        ctx,
-                        WasiResponse(resp, Some(this_val[n..].to_vec())),
-                    ),
+                    Ok((resp, n)) => {
+                        *this_val = this_val[n..].to_vec();
+                        WasiResponseDef::gen_js_obj(ctx, WasiResponse(resp))
+                    }
                     Err(ParseError::Pending) => JsValue::UnDefined,
                     Err(e) => ctx.new_error(format!("{:?}", e).as_str()),
                 }
             }
         }
         p.add_function::<ParseResponse>();
+
+        struct Buffer;
+        impl JsClassGetterSetter<Vec<u8>> for Buffer {
+            const NAME: &'static str = "buffer\0";
+
+            fn getter(ctx: &mut Context, this_val: &mut Vec<u8>) -> JsValue {
+                ctx.new_array_buffer(this_val.as_slice()).into()
+            }
+
+            fn setter(_ctx: &mut Context, _this_val: &mut Vec<u8>, _val: JsValue) {}
+        }
+        p.add_getter_setter::<Buffer>();
+
+        struct Length;
+        impl JsClassGetterSetter<Vec<u8>> for Length {
+            const NAME: &'static str = "length\0";
+
+            fn getter(_ctx: &mut Context, this_val: &mut Vec<u8>) -> JsValue {
+                JsValue::Int(this_val.len() as i32)
+            }
+
+            fn setter(_ctx: &mut Context, _this_val: &mut Vec<u8>, _val: JsValue) {}
+        }
+        p.add_getter_setter::<Length>();
     }
 }
 
@@ -222,7 +246,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
     }
 }
 
-struct WasiResponse(HttpResponse, Option<Vec<u8>>);
+struct WasiResponse(HttpResponse);
 struct WasiResponseDef;
 impl JsClassDef<WasiResponse> for WasiResponseDef {
     const CLASS_NAME: &'static str = "WasiResponse\0";
@@ -231,28 +255,24 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
     fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<WasiResponse> {
         use super::core::request;
         use super::core::*;
-        Some(WasiResponse(
-            HttpResponse {
-                version: Version::V1_0,
-                status_code: 200,
-                status_text: "OK".to_string(),
-                headers: Default::default(),
-                body_len: BodyLen::Length(0),
-            },
-            None,
-        ))
+        Some(WasiResponse(HttpResponse {
+            version: Version::V1_0,
+            status_code: 200,
+            status_text: "OK".to_string(),
+            headers: Default::default(),
+            body_len: BodyLen::Length(0),
+        }))
     }
 
     fn proto_init(p: &mut JsClassProto<WasiResponse, Self>) {
-        struct Body;
-        impl JsClassGetterSetter<WasiResponse> for Body {
-            const NAME: &'static str = "body\0";
+        struct BodyLength;
+        impl JsClassGetterSetter<WasiResponse> for BodyLength {
+            const NAME: &'static str = "bodyLength\0";
 
             fn getter(ctx: &mut Context, this_val: &mut WasiResponse) -> JsValue {
-                if let Some(v) = &this_val.1 {
-                    ctx.new_array_buffer(v.as_slice()).into()
-                } else {
-                    JsValue::UnDefined
+                match this_val.0.body_len {
+                    BodyLen::Length(n) =>JsValue::Int(n as i32),
+                    BodyLen::Chunked => ctx.new_string("chunked").into(),
                 }
             }
 
@@ -260,30 +280,15 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
                 match val {
                     JsValue::UnDefined | JsValue::Null => {
                         this_val.0.body_len = BodyLen::Length(0);
-                        this_val.1 = None
                     }
-                    JsValue::Object(obj) => {
-                        if let Some(v) = Buffer::opaque(&obj) {
-                            let buf = v.to_vec();
-                            this_val.0.body_len = BodyLen::Length(buf.len());
-                            this_val.1.insert(buf);
-                        }
-                    }
-                    JsValue::String(s) => {
-                        let buf = Vec::from(s.to_string());
-                        this_val.0.body_len = BodyLen::Length(buf.len());
-                        this_val.1.insert(buf);
-                    }
-                    JsValue::ArrayBuffer(buf) => {
-                        let buf = buf.to_vec();
-                        this_val.0.body_len = BodyLen::Length(buf.len());
-                        this_val.1.insert(buf);
+                    JsValue::Int(n) => {
+                        this_val.0.body_len = BodyLen::Length(n as usize);
                     }
                     _ => {}
                 }
             }
         }
-        p.add_getter_setter::<Body>();
+        p.add_getter_setter::<BodyLength>();
 
         struct Headers;
         impl JsClassGetterSetter<WasiResponse> for Headers {
@@ -356,35 +361,53 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
         }
         p.add_getter_setter::<Version>();
 
-        struct Reason;
-        impl JsClassGetterSetter<WasiResponse> for Reason {
-            const NAME: &'static str = "reason\0";
+        struct StatusText;
+        impl JsClassGetterSetter<WasiResponse> for StatusText {
+            const NAME: &'static str = "statusText\0";
 
             fn getter(ctx: &mut Context, this_val: &mut WasiResponse) -> JsValue {
                 ctx.new_string(this_val.0.status_text.as_str()).into()
             }
 
             fn setter(_ctx: &mut Context, this_val: &mut WasiResponse, val: JsValue) {
-                if let JsValue::String(reason) = val {
-                    let reason = reason.to_string();
-                    this_val.0.status_text = reason;
+                if let JsValue::String(status_text) = val {
+                    let status_text = status_text.to_string();
+                    this_val.0.status_text = status_text;
                 }
             }
         }
-        p.add_getter_setter::<Reason>();
+        p.add_getter_setter::<StatusText>();
 
         struct Encode;
         impl JsMethod<WasiResponse> for Encode {
             const NAME: &'static str = "encode\0";
             const LEN: u8 = 0;
 
-            fn call(ctx: &mut Context, this_val: &mut WasiResponse, _argv: &[JsValue]) -> JsValue {
-                let mut buf = Vec::from(format!("{}", this_val.0));
-                if let BodyLen::Length(l) = this_val.0.body_len {
-                    if let Some(body) = &this_val.1 {
-                        if l > 0 && !body.is_empty() {
-                            buf.extend_from_slice(body.as_slice());
+            fn call(ctx: &mut Context, this_val: &mut WasiResponse, argv: &[JsValue]) -> JsValue {
+                let body = argv.get(0);
+                let body = match body {
+                    Some(JsValue::ArrayBuffer(buffer)) => {
+                        let body = buffer.as_ref().to_vec();
+                        this_val.0.body_len = BodyLen::Length(body.len());
+                        Some(body)
+                    }
+                    Some(JsValue::String(s)) => {
+                        let body = Vec::from(s.to_string());
+                        this_val.0.body_len = BodyLen::Length(body.len());
+                        Some(body)
+                    }
+                    _ => {
+                        if this_val.0.body_len != BodyLen::Chunked {
+                            this_val.0.body_len = BodyLen::Length(0);
                         }
+                        None
+                    }
+                };
+                let mut buf = Vec::from(format!("{}", this_val.0));
+
+                if let Some(body) = body {
+                    if !body.is_empty() {
+                        buf.extend_from_slice(body.as_slice());
                     }
                 }
                 ctx.new_array_buffer(buf.as_slice()).into()

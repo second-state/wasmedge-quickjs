@@ -8,6 +8,9 @@ import * as http from 'wasi_http'
 
 async function handle_client(s){
     let resp = new http.WasiResponse()
+    resp.headers = {
+        "Content-Type":"text/html; charset=utf-8"
+    }
     renderToPipeableStream(<LazyHome />).pipe(resp.chunk(s))
 }
 
