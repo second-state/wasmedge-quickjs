@@ -1,8 +1,8 @@
 // add.js
-function add (a, b) {
-	return a + b
+function add(a, b) {
+  return a + b;
 }
 
-print('haha')
+print('haha');
 
-module.exports = add
+module.exports = add;
