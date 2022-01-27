@@ -72,14 +72,16 @@ jobs:
         cd example_js/es6_module_demo
         wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
 
-    - name: CommonJs with ncc
+    - name: CommonJs with rollup.js
       run: |
-        cargo build --target wasm32-wasi --release --features=cjs
+        cargo build --target wasm32-wasi --release
         cd example_js/simple_common_js_demo
         npm install
-        npm run ncc_build
+        npm run build
+        echo '> wasmedge aot'
+        wasmedgec ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm  wasmedge_quickjs.so
         echo '> start wasmedge'
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/index.js
+        time wasmedge --dir .:. wasmedge_quickjs.so dist/npm_main.mjs
 
     - name: React SSR
       run: |
