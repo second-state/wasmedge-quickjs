@@ -19,7 +19,7 @@ argparse = "0.2.2"
 image = { version = "0.23.0", default-features = false, features = ["jpeg", "png"] }
 imageproc = "0.22.0"
 libc = "0.2"
-
+url = "2.2.2"
 lazy_static = "1.4"
 
 

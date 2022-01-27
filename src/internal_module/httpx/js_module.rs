@@ -577,6 +577,127 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
     }
 }
 
+mod js_url {
+    use crate::*;
+
+    pub(super) struct URLDef;
+    impl JsClassDef<url::Url> for URLDef {
+        const CLASS_NAME: &'static str = "URL\0";
+
+        const CONSTRUCTOR_ARGC: u8 = 1;
+
+        fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<url::Url, JsValue> {
+            let input = argv.get(0);
+            if let Some(JsValue::String(url_str)) = input {
+                url::Url::parse(url_str.as_str())
+                    .map_err(|e| ctx.throw_internal_type_error(e.to_string().as_str()).into())
+            } else {
+                Err(JsValue::UnDefined)
+            }
+        }
+
+        fn proto_init(p: &mut JsClassProto<url::Url, Self>) {
+            p.add_getter_setter::<Scheme>();
+            p.add_getter_setter::<Username>();
+            p.add_getter_setter::<Password>();
+            p.add_getter_setter::<Host>();
+            p.add_getter_setter::<Port>();
+            p.add_getter_setter::<Path>();
+            p.add_getter_setter::<Query>();
+        }
+    }
+
+    struct Scheme;
+    impl JsClassGetterSetter<url::Url> for Scheme {
+        const NAME: &'static str = "scheme\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            ctx.new_string(this_val.scheme()).into()
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Username;
+    impl JsClassGetterSetter<url::Url> for Username {
+        const NAME: &'static str = "username\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            ctx.new_string(this_val.username()).into()
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Password;
+    impl JsClassGetterSetter<url::Url> for Password {
+        const NAME: &'static str = "password\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            match this_val.password() {
+                Some(password) => ctx.new_string(password).into(),
+                None => JsValue::UnDefined,
+            }
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Host;
+    impl JsClassGetterSetter<url::Url> for Host {
+        const NAME: &'static str = "host\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            match this_val.host_str() {
+                Some(host) => ctx.new_string(host).into(),
+                None => JsValue::UnDefined,
+            }
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Port;
+    impl JsClassGetterSetter<url::Url> for Port {
+        const NAME: &'static str = "port\0";
+
+        fn getter(_ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            match this_val.port() {
+                Some(port) => JsValue::Int(port as i32),
+                None => JsValue::UnDefined,
+            }
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Path;
+    impl JsClassGetterSetter<url::Url> for Path {
+        const NAME: &'static str = "path\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            ctx.new_string(this_val.path()).into()
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+
+    struct Query;
+    impl JsClassGetterSetter<url::Url> for Query {
+        const NAME: &'static str = "query\0";
+
+        fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
+            match this_val.query() {
+                Some(query) => ctx.new_string(query).into(),
+                None => JsValue::UnDefined,
+            }
+        }
+
+        fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
+    }
+}
+use js_url::URLDef;
+
 struct HttpX;
 
 impl ModuleInit for HttpX {
@@ -592,6 +713,9 @@ impl ModuleInit for HttpX {
 
         let class_ctor = ctx.register_class(WasiChunkResponseDef);
         m.add_export(WasiChunkResponseDef::CLASS_NAME, class_ctor);
+
+        let class_ctor = ctx.register_class(URLDef);
+        m.add_export(URLDef::CLASS_NAME, class_ctor);
     }
 }
 
@@ -604,6 +728,7 @@ pub fn init_module(ctx: &mut Context) {
             WasiRequest::CLASS_NAME,
             WasiResponseDef::CLASS_NAME,
             WasiChunkResponseDef::CLASS_NAME,
+            URLDef::CLASS_NAME,
         ],
     )
 }
