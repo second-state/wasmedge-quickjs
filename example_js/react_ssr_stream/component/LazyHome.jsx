@@ -1,38 +1,36 @@
-import React, { Suspense } from 'react'
+import React, { Suspense } from 'react';
 
 async function sleep(ms) {
     return new Promise((r, _) => {
         setTimeout(() => r(), ms)
-    })
+    });
 }
 
 async function loadLazyPage() {
-    await sleep(2000)
-    return await import('./LazyPage.jsx')
+    await sleep(2000);
+    return await import('./LazyPage.jsx');
 }
-
-// const LazyPage1 = React.lazy(() => loadLazyPage())
 
 class LazyHome extends React.Component {
     render() {
-        let LazyPage1 = React.lazy(() => loadLazyPage())
+        let LazyPage1 = React.lazy(() => loadLazyPage());
         return (
             <html lang="en">
-            <head>
-                <meta charSet="utf-8" />
-                <title>Title</title>
-            </head>
-            <body>
-                <div>
-                    <div> This is LazyHome </div>
-                    <Suspense fallback={<div> loading... </div>}>
-                        <LazyPage1 />
-                    </Suspense>
-                </div>
-            </body>
+                <head>
+                    <meta charSet="utf-8" />
+                    <title>Title</title>
+                </head>
+                <body>
+                    <div>
+                        <div> This is LazyHome </div>
+                        <Suspense fallback={<div> loading... </div>}>
+                            <LazyPage1 />
+                        </Suspense>
+                    </div>
+                </body>
             </html>
-        )
+        );
     }
 }
 
-export default LazyHome
+export default LazyHome;
