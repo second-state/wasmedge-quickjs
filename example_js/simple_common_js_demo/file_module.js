@@ -1,3 +1,3 @@
-import * as one from './one_module/main.js'
+import * as one from './one_module/main.js';
 
-print('hello file_module')
+print('hello file_module');
