@@ -39,14 +39,18 @@ function handler_req(cs, req) {
 
 async function server_start() {
     print('listen 8000 ...')
-    let s = new net.WasiTcpServer(8000)
-    for (var i = 0; i < 100; i++) {
-        let cs = await s.accept();
-        try {
-            handle_client(cs, handler_req)
-        } catch (e) {
-            print(e)
+    try {
+        let s = new net.WasiTcpServer(8000)
+        for (var i = 0; i < 100; i++) {
+            let cs = await s.accept();
+            try {
+                handle_client(cs, handler_req)
+            } catch (e) {
+                print(e)
+            }
         }
+    } catch (e) {
+        print(e)
     }
 }
 

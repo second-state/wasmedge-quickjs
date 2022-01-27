@@ -578,6 +578,8 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
 }
 
 mod js_url {
+    use url::quirks::password;
+
     use crate::*;
 
     pub(super) struct URLDef;
@@ -604,6 +606,18 @@ mod js_url {
             p.add_getter_setter::<Port>();
             p.add_getter_setter::<Path>();
             p.add_getter_setter::<Query>();
+            p.add_function::<ToString>();
+        }
+    }
+
+    struct ToString;
+    impl JsMethod<url::Url> for ToString {
+        const NAME: &'static str = "toString\0";
+
+        const LEN: u8 = 0;
+
+        fn call(ctx: &mut Context, this_val: &mut url::Url, _argv: &[JsValue]) -> JsValue {
+            ctx.new_string(format!("{}", this_val).as_str()).into()
         }
     }
 
@@ -634,10 +648,8 @@ mod js_url {
         const NAME: &'static str = "password\0";
 
         fn getter(ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
-            match this_val.password() {
-                Some(password) => ctx.new_string(password).into(),
-                None => JsValue::UnDefined,
-            }
+            let password = this_val.password().unwrap_or_default();
+            ctx.new_string(password).into()
         }
 
         fn setter(_ctx: &mut Context, _this_val: &mut url::Url, _val: JsValue) {}
@@ -662,7 +674,7 @@ mod js_url {
         const NAME: &'static str = "port\0";
 
         fn getter(_ctx: &mut Context, this_val: &mut url::Url) -> JsValue {
-            match this_val.port() {
+            match this_val.port_or_known_default() {
                 Some(port) => JsValue::Int(port as i32),
                 None => JsValue::UnDefined,
             }

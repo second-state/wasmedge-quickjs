@@ -10,8 +10,8 @@ async function handle_response(s) {
             resp = buf.parseResponse()
         }
         if (resp instanceof http.WasiResponse) {
-            let buf_length = buf.length
-            if (typeof (buf_length) === "number") {
+            let resp_length = resp.bodyLength
+            if (typeof (resp_length) === "number") {
                 if (buf.length >= resp.bodyLength) {
                     print('resp.body')
                     print(newStringFromUTF8(buf.buffer))

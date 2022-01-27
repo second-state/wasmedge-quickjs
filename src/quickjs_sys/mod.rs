@@ -295,6 +295,7 @@ impl Context {
         super::internal_module::core::init_process_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
         super::internal_module::httpx::init_module(&mut ctx);
+        super::internal_module::http::init_module(&mut ctx);
 
         ctx
     }
@@ -837,6 +838,18 @@ impl JsString {
             let s = cstr.to_str().map(|s| s.to_string()).unwrap_or_default();
             JS_FreeCString(r.ctx, ptr);
             s
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        unsafe {
+            let r = &self.0;
+            let ptr = JS_ToCStringLen2(r.ctx, std::ptr::null_mut(), r.v, 0);
+            if ptr.is_null() {
+                return "";
+            }
+            let cstr = std::ffi::CStr::from_ptr(ptr);
+            cstr.to_str().unwrap_or_default()
         }
     }
 }

@@ -44,9 +44,14 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                         event_poll,
                         Box::new(move |ctx, event| match event {
                             PollResult::Read(data) => {
-                                let buff = ctx.new_array_buffer(data.as_slice());
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&[JsValue::ArrayBuffer(buff)]);
+                                    let ret = if data.len() > 0 {
+                                        let buff = ctx.new_array_buffer(data.as_slice());
+                                        JsValue::ArrayBuffer(buff)
+                                    } else {
+                                        JsValue::UnDefined
+                                    };
+                                    ok.call(&[ret]);
                                 }
                             }
                             PollResult::Error(e) => {
