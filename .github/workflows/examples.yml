@@ -104,12 +104,6 @@ jobs:
         resp=$(curl http://localhost:8001)
         echo "Server response is $resp"
 
-    - name: CommonJs file_module
-      run: |
-        cargo build --target wasm32-wasi --release --features=cjs
-        cd example_js/simple_common_js_demo
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm file_module.js
-
     - name: Tensorflow example
       run: |
         cargo build --target wasm32-wasi --release --features=tensorflow
