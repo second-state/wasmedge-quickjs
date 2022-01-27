@@ -5,9 +5,6 @@ import * as net from 'wasi_net';
 
 import LazyHome from './component/LazyHome.jsx';
 
-import * as net from 'wasi_net';
-import * as http from 'wasi_http';
-
 async function handle_client(s) {
   let resp = new http.WasiResponse();
   resp.headers = {
