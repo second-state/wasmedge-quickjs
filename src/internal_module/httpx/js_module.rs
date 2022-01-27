@@ -17,11 +17,11 @@ impl JsClassDef<Vec<u8>> for Buffer {
     const CLASS_NAME: &'static str = "Buffer\0";
     const CONSTRUCTOR_ARGC: u8 = 0;
 
-    fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<Vec<u8>> {
+    fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Result<Vec<u8>, JsValue> {
         if let Some(JsValue::ArrayBuffer(s)) = argv.get(0) {
-            Some(s.as_ref().to_vec())
+            Ok(s.as_ref().to_vec())
         } else {
-            Some(vec![])
+            Ok(vec![])
         }
     }
 
@@ -106,10 +106,10 @@ impl JsClassDef<HttpRequest> for WasiRequest {
     const CLASS_NAME: &'static str = "WasiRequest\0";
     const CONSTRUCTOR_ARGC: u8 = 0;
 
-    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<HttpRequest> {
+    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Result<HttpRequest, JsValue> {
         use super::core::request;
         use super::core::*;
-        Some(HttpRequest {
+        Ok(HttpRequest {
             method: Method::Get,
             version: Version::V1_0,
             resource: request::Resource::Path(Default::default()),
@@ -252,10 +252,10 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
     const CLASS_NAME: &'static str = "WasiResponse\0";
     const CONSTRUCTOR_ARGC: u8 = 0;
 
-    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<WasiResponse> {
+    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Result<WasiResponse, JsValue> {
         use super::core::request;
         use super::core::*;
-        Some(WasiResponse(HttpResponse {
+        Ok(WasiResponse(HttpResponse {
             version: Version::V1_0,
             status_code: 200,
             status_text: "OK".to_string(),
@@ -271,7 +271,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
 
             fn getter(ctx: &mut Context, this_val: &mut WasiResponse) -> JsValue {
                 match this_val.0.body_len {
-                    BodyLen::Length(n) =>JsValue::Int(n as i32),
+                    BodyLen::Length(n) => JsValue::Int(n as i32),
                     BodyLen::Chunked => ctx.new_string("chunked").into(),
                 }
             }
@@ -442,9 +442,8 @@ struct WasiChunkResponseDef;
 impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
     const CLASS_NAME: &'static str = "ChunkResponse\0";
     const CONSTRUCTOR_ARGC: u8 = 0;
-
-    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<WasiChunkResponse> {
-        None
+    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Result<WasiChunkResponse, JsValue> {
+        Err(JsValue::UnDefined)
     }
 
     fn proto_init(p: &mut JsClassProto<WasiChunkResponse, Self>) {

@@ -59,19 +59,21 @@ impl JsClassDef<JsImage> for ImageClassDef {
     const CLASS_NAME: &'static str = "Image\0";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<JsImage> {
-        let param = argv.get(0)?;
+    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<JsImage, JsValue> {
+        let param = argv.get(0).ok_or(JsValue::UnDefined)?;
         match param {
             JsValue::String(path) => {
                 let path = path.to_string();
-                let img = image::open(path).ok()?;
-                Some(JsImage(img))
+                let img = image::open(path)
+                    .map_err(|e| ctx.throw_internal_type_error(format!("{}", e).as_str()))?;
+                Ok(JsImage(img))
             }
             JsValue::ArrayBuffer(data) => {
-                let img = image::load_from_memory(data.as_ref()).ok()?;
-                Some(JsImage(img))
+                let img = image::load_from_memory(data.as_ref())
+                    .map_err(|e| ctx.throw_internal_type_error(format!("{}", e).as_str()))?;
+                Ok(JsImage(img))
             }
-            _ => None,
+            _ => Err(JsValue::UnDefined),
         }
     }
 

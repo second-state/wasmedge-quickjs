@@ -101,6 +101,52 @@ impl<D: Sized, T: JsMethod<D>, Def: 'static + JsClassDef<D>> JsMethodTrampoline<
     }
 }
 
+pub trait JsCloneMethod<D: Sized> {
+    const NAME: &'static str;
+    const LEN: u8;
+    fn call(ctx: &mut Context, this_val: (&mut D, JsValue), argv: &[JsValue]) -> JsValue;
+}
+
+struct JsCloneMethodTrampoline<D: Sized, T: JsCloneMethod<D>, Def: 'static + JsClassDef<D>> {
+    _d: PhantomData<D>,
+    _m: PhantomData<T>,
+    _def: PhantomData<Def>,
+}
+
+impl<D: Sized, T: JsCloneMethod<D>, Def: 'static + JsClassDef<D>>
+    JsCloneMethodTrampoline<D, T, Def>
+{
+    unsafe extern "C" fn call(
+        ctx: *mut JSContext,
+        this_val: q::JSValue,
+        len: ::std::os::raw::c_int,
+        argv: *mut q::JSValue,
+    ) -> q::JSValue {
+        let class_id = JsClassStore::<Def, D>::class_id(None);
+
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
+        let n_ctx = n_ctx.deref_mut();
+
+        let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
+        if this_obj.is_null() {
+            return q::js_undefined();
+        }
+
+        let this_obj = this_obj.as_mut().unwrap();
+        let this_js_obj = JsValue::from_qjs_value(ctx, q::JS_DupValue_real(ctx, this_val));
+
+        let mut arg_vec = vec![];
+        for i in 0..len {
+            let arg = argv.offset(i as isize);
+            let v = *arg;
+            let v = JsValue::from_qjs_value(ctx, q::JS_DupValue_real(ctx, v));
+            arg_vec.push(v);
+        }
+        let r = T::call(n_ctx, (this_obj, this_js_obj), arg_vec.as_slice());
+        r.into_qjs_value()
+    }
+}
+
 pub struct JsClassProto<D: Sized, Def: 'static + JsClassDef<D>> {
     ctx: *mut q::JSContext,
     proto_obj: q::JSValue,
@@ -129,6 +175,18 @@ impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
             let proto = self.proto_obj;
 
             let f = JsMethodTrampoline::<D, T, Def>::call;
+            let list = Vec::leak(vec![CFUNC_DEF!(T::NAME, f, T::LEN)]);
+            JS_SetPropertyFunctionList(ctx, proto, list.as_ptr(), 1);
+        }
+    }
+
+    pub fn add_clone_function<T: JsCloneMethod<D>>(&mut self) {
+        unsafe {
+            use crate::quickjs_sys::*;
+            let ctx = self.ctx;
+            let proto = self.proto_obj;
+
+            let f = JsCloneMethodTrampoline::<D, T, Def>::call;
             let list = Vec::leak(vec![CFUNC_DEF!(T::NAME, f, T::LEN)]);
             JS_SetPropertyFunctionList(ctx, proto, list.as_ptr(), 1);
         }
@@ -177,7 +235,7 @@ where
     const CLASS_NAME: &'static str;
     const CONSTRUCTOR_ARGC: u8;
 
-    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Option<C>;
+    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<C, JsValue>;
 
     fn proto_init(p: &mut JsClassProto<C, S>);
 
@@ -244,10 +302,9 @@ impl<C: Sized, Def: 'static + JsClassDef<C>> JsClassDefTrampoline<C, Def> {
             arg_vec.push(v);
         }
         let data = Def::constructor(n_ctx, arg_vec.as_slice());
-        if let Some(data) = data {
-            Def::gen_js_obj(n_ctx, data).into_qjs_value()
-        } else {
-            q::js_undefined()
+        match data {
+            Ok(data) => Def::gen_js_obj(n_ctx, data).into_qjs_value(),
+            Err(e) => e.into_qjs_value(),
         }
     }
 

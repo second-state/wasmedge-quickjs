@@ -255,14 +255,15 @@ mod tensorflow {
         const CLASS_NAME: &'static str = "TensorflowSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowSession> {
-            match argv.get(0)? {
+        fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<TensorflowSession, JsValue> {
+            match argv.get(0).ok_or(JsValue::UnDefined)? {
                 JsValue::String(path) => {
                     let path = path.to_string();
-                    let session = TensorflowSession::new_from_path(path).ok()?;
-                    Some(session)
+                    let session = TensorflowSession::new_from_path(path)
+                        .map_err(|e| ctx.throw_internal_type_error(e.as_str()))?;
+                    Ok(session)
                 }
-                _ => None,
+                _ => Err(JsValue::UnDefined),
             }
         }
 
@@ -562,14 +563,18 @@ mod tensorflow_lite {
         const CLASS_NAME: &'static str = "TensorflowLiteSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(_ctx: &mut Context, argv: &[JsValue]) -> Option<TensorflowLiteSession> {
-            match argv.get(0)? {
+        fn constructor(
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> Result<TensorflowLiteSession, JsValue> {
+            match argv.get(0).ok_or(JsValue::UnDefined)? {
                 JsValue::String(path) => {
                     let path = path.to_string();
-                    let session = TensorflowLiteSession::new_from_path(path).ok()?;
-                    Some(session)
+                    let session = TensorflowLiteSession::new_from_path(path)
+                        .map_err(|e| ctx.throw_internal_type_error(e.as_str()))?;
+                    Ok(session)
                 }
-                _ => None,
+                _ => Err(JsValue::UnDefined),
             }
         }
 
