@@ -1,8 +1,7 @@
 import React from 'react';
 import Page from './Page.jsx';
- 
-class Home extends React.Component {
 
+class Home extends React.Component {
   render() {
     const { dataList = [] } = this.props;
     return (
@@ -10,7 +9,7 @@ class Home extends React.Component {
         <div>This is home</div>
         <Page></Page>
       </div>
-    )
+    );
   }
 }
 
