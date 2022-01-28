@@ -1,3 +1,4 @@
 /target
 /.idea
 /example_js/*/node_modules/
+/example_js/*/dist

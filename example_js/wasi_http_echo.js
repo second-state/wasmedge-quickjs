@@ -25,28 +25,32 @@ async function handle_client(cs, handler_req) {
 }
 
 function handler_req(cs, req) {
-  print('version=', req.version);
-  print('uri=', req.uri);
-  print('method=', req.method);
-  print('headers=', Object.keys(req.headers));
-  print('body=', newStringFromUTF8(req.body));
+  print("version=", req.version);
+  print("uri=", req.uri);
+  print("method=", req.method);
+  print("headers=", Object.keys(req.headers));
+  print("body=", newStringFromUTF8(req.body));
 
   let resp = new http.WasiResponse();
-  resp.body = 'echo:' + newStringFromUTF8(req.body);
-  let r = resp.encode();
+  let body = 'echo:' + newStringFromUTF8(req.body);
+  let r = resp.encode(body);
   cs.write(r);
 }
 
 async function server_start() {
   print('listen 8000 ...');
-  let s = new net.WasiTcpServer(8000);
-  for (var i = 0; i < 100; i++) {
-    let cs = await s.accept();
-    try {
-      handle_client(cs, handler_req);
-    } catch (e) {
-      print(e);
+  try {
+    let s = new net.WasiTcpServer(8000);
+    for (var i = 0; i < 100; i++) {
+      let cs = await s.accept();
+      try {
+        handle_client(cs, handler_req);
+      } catch (e) {
+        print(e);
+      }
     }
+  } catch (e) {
+    print(e);
   }
 }
 

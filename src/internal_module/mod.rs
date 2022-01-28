@@ -1,4 +1,5 @@
 pub mod core;
+pub mod http;
 pub mod httpx;
 #[cfg(feature = "img")]
 pub mod img_module;

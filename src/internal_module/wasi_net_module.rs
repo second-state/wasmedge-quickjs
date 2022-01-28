@@ -7,8 +7,8 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
     const CLASS_NAME: &'static str = "WasiTcpConn\0";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Option<AsyncTcpConn> {
-        None
+    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Result<AsyncTcpConn, JsValue> {
+        Err(JsValue::Null)
     }
 
     fn proto_init(p: &mut JsClassProto<AsyncTcpConn, Self>) {
@@ -44,9 +44,14 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
                         event_poll,
                         Box::new(move |ctx, event| match event {
                             PollResult::Read(data) => {
-                                let buff = ctx.new_array_buffer(data.as_slice());
                                 if let JsValue::Function(ok) = ok {
-                                    ok.call(&[JsValue::ArrayBuffer(buff)]);
+                                    let ret = if data.len() > 0 {
+                                        let buff = ctx.new_array_buffer(data.as_slice());
+                                        JsValue::ArrayBuffer(buff)
+                                    } else {
+                                        JsValue::UnDefined
+                                    };
+                                    ok.call(&[ret]);
                                 }
                             }
                             PollResult::Error(e) => {
@@ -231,18 +236,15 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
     const CLASS_NAME: &'static str = "WasiTcpServer\0";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Option<AsyncTcpServer> {
-        let port = argv.get(0)?;
+    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<AsyncTcpServer, JsValue> {
+        let port = argv.get(0).ok_or_else(|| JsValue::UnDefined)?;
         if let (JsValue::Int(port), Some(event_loop)) = (port, ctx.event_loop()) {
             match event_loop.tcp_listen(*port as u16) {
-                Ok(tcp_server) => Some(tcp_server),
-                Err(e) => {
-                    ctx.throw_internal_type_error(e.to_string().as_str());
-                    None
-                }
+                Ok(tcp_server) => Ok(tcp_server),
+                Err(e) => Err(ctx.throw_internal_type_error(e.to_string().as_str()).into()),
             }
         } else {
-            None
+            Err(JsValue::UnDefined)
         }
     }
 
