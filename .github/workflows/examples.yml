@@ -85,7 +85,7 @@ jobs:
 
     - name: React SSR
       run: |
-        cargo build --target wasm32-wasi --release --features=cjs
+        cargo build --target wasm32-wasi --release
         cd example_js/react_ssr
         npm install
         npm run build
@@ -94,7 +94,7 @@ jobs:
         
     - name: React Stream SSR
       run: |
-        cargo build --target wasm32-wasi --release --features=cjs
+        cargo build --target wasm32-wasi --release
         cd example_js/react_ssr_stream
         npm install
         npm run build
