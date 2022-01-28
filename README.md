@@ -72,7 +72,7 @@ echo:WasmEdge
 ### Build
 
 ```shell
-$ cargo build --target wasm32-wasi --release --features=cjs
+$ cargo build --target wasm32-wasi --release
 ```
 
 Then use [rollup.js](https://rollupjs.org/) to bundle the React application into a combined JS file. It turns the CommonJS modules in the application into ES6 modules, which [we support](#es6-module-support).
@@ -96,7 +96,7 @@ $ wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist
 ### Build
 
 ```shell
-$ cargo build --target wasm32-wasi --release --features=cjs
+$ cargo build --target wasm32-wasi --release
 ```
 
 Then use [rollup.js](https://rollupjs.org/) to bundle the React application into a combined JS file. It turns the CommonJS modules in the application into ES6 modules, which [we support](#es6-module-support).
@@ -135,7 +135,6 @@ The results show the response comes in chuncks and the client closes the connect
 
 <!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><title>Title</title></head><body><div><div> This is LazyHome </div><!--$?--><template id="B:0"></template><div> loading... </div><!--/$--></div></body></html><div hidden id="S:0"><template id="P:1"></template></div><div hidden id="S:1"><div><div>This is lazy page</div></div></div><script>function $RS(a,b){a=document.getElementById(a);b=document.getElementById(b);for(a.parentNode.removeChild(a);a.firstChild;)b.parentNode.insertBefore(a.firstChild,b);b.parentNode.removeChild(b)};$RS("S:1","P:1")</script><script>function $RC(a,b){a=document.getElementById(a);b=document.getElementById(b);b.parentNode.removeChild(b);if(a){a=a.previousSibling;var f=a.parentNode,c=a.nextSibling,e=0;do{if(c&&8===c.nodeType){var d=c.data;if("/$"===d)if(0===e)break;else e--;else"$"!==d&&"$?"!==d&&"$!"!==d||e++}d=c.nextSibling;f.removeChild(c);c=d}while(c);for(;b.firstChild;)f.insertBefore(b.firstChild,c);a.data="$";a._reactRetry&&a._reactRetry()}};$RC("B:0","S:0")</script>
 ```
-
 
 ## TensorFlow
 
