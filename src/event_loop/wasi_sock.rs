@@ -232,14 +232,16 @@ impl Socket {
         }
     }
 
-    pub fn accept(&self) -> io::Result<Self> {
+    pub fn accept(&self, nonblocking: bool) -> io::Result<Self> {
         unsafe {
             let mut fd: u32 = 0;
             let res = sock_accept(self.as_raw_fd() as u32, &mut fd);
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
-                Ok(Socket(fd as i32))
+                let s = Socket(fd as i32);
+                s.set_nonblocking(nonblocking)?;
+                Ok(s)
             }
         }
     }
