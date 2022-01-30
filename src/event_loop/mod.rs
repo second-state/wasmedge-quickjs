@@ -62,10 +62,19 @@ impl AsyncTcpConn {
         let mut buff = [0u8; 1024];
         let mut data = vec![];
         loop {
-            let n = self.0.recv(&mut buff)?;
-            data.extend_from_slice(&buff[0..n]);
-            if n < 1024 {
-                break Ok(data);
+            match self.0.recv(&mut buff) {
+                Ok(0) => {
+                    return Ok(data);
+                }
+                Ok(n) => {
+                    data.extend_from_slice(&buff[0..n]);
+                }
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    return Ok(data);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
         }
     }
@@ -353,7 +362,7 @@ impl IoSelector {
                         match net_event {
                             NetPollEvent::Accept => {
                                 let s = std::mem::ManuallyDrop::new(wasi_sock::Socket(s));
-                                match s.accept() {
+                                match s.accept(true) {
                                     Ok(cs) => callback(ctx, PollResult::Accept(AsyncTcpConn(cs))),
                                     Err(e) => callback(ctx, PollResult::Error(e)),
                                 }
