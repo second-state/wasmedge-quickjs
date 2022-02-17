@@ -8,7 +8,7 @@ async function handle_client(cs, handler_req) {
   while (true) {
     try {
       let d = await cs.read();
-      if (d.byteLength <= 0) {
+      if (d==undefined || d.byteLength <= 0) {
         return;
       }
       buffer.append(d);
@@ -46,7 +46,7 @@ async function server_start() {
       try {
         handle_client(cs, handler_req);
       } catch (e) {
-        print(e);
+        print('handle_client:', e);
       }
     }
   } catch (e) {
