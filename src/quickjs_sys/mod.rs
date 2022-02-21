@@ -483,7 +483,20 @@ impl Context {
     }
 
     pub fn promise_loop_poll(&mut self) {
-        unsafe { js_std_loop(self.ctx) }
+        unsafe {
+            let rt = self.rt();
+            let mut pctx: *mut JSContext = 0 as *mut JSContext;
+
+            loop {
+                let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
+                if err <= 0 {
+                    if err < 0 {
+                        js_std_dump_error(pctx);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     pub fn js_loop(&mut self) -> std::io::Result<()> {

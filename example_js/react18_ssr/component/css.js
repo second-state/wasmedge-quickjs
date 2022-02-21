@@ -1,4 +1,4 @@
-export default css = `
+const css = `
 body {
     font-family: system-ui, sans-serif;
   }
@@ -74,3 +74,4 @@ body {
     }
   }
   `
+export default css
