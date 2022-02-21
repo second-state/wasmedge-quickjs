@@ -29,7 +29,6 @@ const fakeData = [
 
 export function useData() {
   const ctx = useContext(DataContext);
-  print('usedata ctx:',ctx)
   if (ctx !== null) {
     // This context is only provided on the server.
     // It is here to simulate a suspending data fetch.
