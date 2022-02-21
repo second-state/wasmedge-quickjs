@@ -397,10 +397,16 @@ pub struct EventLoop {
 
 impl EventLoop {
     pub fn run_once(&mut self, ctx: &mut qjs::Context) -> io::Result<usize> {
-        while let Some(f) = self.next_tick_queue.pop_front() {
-            f.call(&[]);
+        if self.next_tick_queue.is_empty() {
+            self.io_selector.poll(ctx)
+        } else {
+            let mut i = 0;
+            while let Some(f) = self.next_tick_queue.pop_front() {
+                f.call(&[]);
+                i += 1;
+            }
+            Ok(i)
         }
-        self.io_selector.poll(ctx)
     }
 
     pub fn set_timeout(

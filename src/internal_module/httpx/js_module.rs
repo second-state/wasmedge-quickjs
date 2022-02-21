@@ -570,6 +570,8 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
                 this_val
                     .0
                     .invoke("end", &[ctx.new_string("0\r\n\r\n").into()]);
+                // drop socket
+                this_val.0 = ctx.new_object();
                 JsValue::Bool(true)
             }
         }
