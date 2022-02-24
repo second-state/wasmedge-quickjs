@@ -142,6 +142,32 @@ impl JsFunctionTrampoline {
     }
 }
 
+#[derive(Default)]
+struct JsFunction2Trampoline;
+impl JsFunction2Trampoline {
+    // How i figured it out!
+    unsafe extern "C" fn callback<T: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue>(
+        ctx: *mut JSContext,
+        this_obj: JSValue,
+        len: ::std::os::raw::c_int,
+        argv: *mut JSValue,
+    ) -> JSValue {
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
+        let n_ctx = n_ctx.deref_mut();
+        let this_obj = JsValue::from_qjs_value(ctx, JS_DupValue_real(ctx, this_obj));
+        let mut arg_vec = vec![];
+        for i in 0..len {
+            let arg = argv.offset(i as isize);
+            let v = *arg;
+            let v = JsValue::from_qjs_value(ctx, JS_DupValue_real(ctx, v));
+            arg_vec.push(v);
+        }
+        let f = mem::zeroed::<T>();
+        let r = f(n_ctx, this_obj, arg_vec.as_slice());
+        r.into_qjs_value()
+    }
+}
+
 pub struct Context {
     ctx: *mut JSContext,
 }
@@ -372,6 +398,24 @@ impl Context {
             let v = JS_NewCFunction_real(
                 self.ctx,
                 Some(JsFunctionTrampoline::callback::<F>),
+                name.as_ptr(),
+                1,
+            );
+            JsFunction(JsRef { ctx: self.ctx, v })
+        }
+    }
+
+    pub fn wrap_function<F>(&mut self, name: &str, _: F) -> JsFunction
+    where
+        F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue,
+    {
+        unsafe {
+            assert_size_zero!(F);
+
+            let name = std::ffi::CString::new(name).unwrap();
+            let v = JS_NewCFunction_real(
+                self.ctx,
+                Some(JsFunction2Trampoline::callback::<F>),
                 name.as_ptr(),
                 1,
             );
