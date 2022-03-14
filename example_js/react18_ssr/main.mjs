@@ -2,15 +2,17 @@ import * as React from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
 import * as http from 'wasi_http';
 import * as net from 'wasi_net';
+import * as std from 'std';
 
 import App from './component/App.js';
 import { DataProvider } from './component/data.js'
-import css from './component/css.js'
 
 let assets = {
   'main.js': '/main.js',
   'main.css': '/main.css',
 };
+
+const css = std.loadFile('./public/main.css')
 
 function createServerData() {
   let done = false;
