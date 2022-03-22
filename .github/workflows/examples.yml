@@ -127,7 +127,7 @@ jobs:
         nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         echo $! > wasmedge.pid
         sleep 15
-        resp=$(curl http://localhost:8002)
+        resp=$(curl http://localhost:8003)
         echo "$resp"
         kill -9 `cat wasmedge.pid`
         rm wasmedge.pid
@@ -135,7 +135,7 @@ jobs:
         echo '> start wasmedge server transpiled by rollup'
         nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         sleep 15
-        resp=$(curl http://localhost:8002)
+        resp=$(curl http://localhost:8003)
         echo "$resp"
 
     - name: Tensorflow example
