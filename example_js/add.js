@@ -5,4 +5,4 @@ function add(a, b) {
 
 print('haha');
 
-module.exports = add;
+export default add;
