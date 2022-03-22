@@ -2,3 +2,5 @@
 /.idea
 /example_js/*/node_modules/
 /example_js/*/dist
+/example_js/*/build
+/example_js/*/server-build
