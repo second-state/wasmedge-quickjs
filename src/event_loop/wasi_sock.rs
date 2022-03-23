@@ -27,6 +27,31 @@ pub mod socket_types {
 }
 
 #[derive(Copy, Clone)]
+#[repr(u8, align(1))]
+pub enum SocketOptLevel {
+    SolSocket = 0,
+}
+
+#[derive(Copy, Clone)]
+#[repr(u8, align(1))]
+pub enum SocketOptName {
+    SoReuseaddr = 0,
+    SoType = 1,
+    SoError = 2,
+    SoDontroute = 3,
+    SoBroadcast = 4,
+    SoSndbuf = 5,
+    SoRcvbuf = 6,
+    SoKeepalive = 7,
+    SoOobinline = 8,
+    SoLinger = 9,
+    SoRcvlowat = 10,
+    SoRcvtimeo = 11,
+    SoSndtimeo = 12,
+    SoAcceptconn = 13,
+}
+
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct WasiAddress {
     pub buf: *const u8,
@@ -190,6 +215,17 @@ impl Socket {
     pub fn bind(&self, addrs: &SocketAddr) -> io::Result<()> {
         unsafe {
             let fd = self.as_raw_fd();
+
+            let opt_reuse = 1;
+            let opt_reuse_ptr: *const i32 = &opt_reuse;
+            sock_setsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoReuseaddr as i32,
+                opt_reuse_ptr,
+                std::mem::size_of::<i32>() as u32,
+            );
+
             let mut vaddr: [u8; 16] = [0; 16];
             let port;
             let size;
