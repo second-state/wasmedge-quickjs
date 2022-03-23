@@ -44,7 +44,13 @@ jobs:
         cargo build --target wasm32-wasi --release
         cd example_js
         wasmedge --env 'a=1' --env 'b=1' --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
-        
+    
+    - name: Image examples
+      run: |
+        cargo build --target wasm32-wasi --release
+        cd example_js
+        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm image.js
+      
     - name: Network client example
       run: |
         cargo build --target wasm32-wasi --release
