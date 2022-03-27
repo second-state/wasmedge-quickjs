@@ -128,6 +128,7 @@ jobs:
         cd example_js/create-react-app-ssr
         npm install
         npm run build
+        # Use webpack
         npm run webpack:build-server
         echo '> start wasmedge server transpiled by Webpack'
         nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
@@ -137,12 +138,13 @@ jobs:
         echo "$resp"
         kill -9 `cat wasmedge.pid`
         rm wasmedge.pid
-        # npm run rollup:build-server
-        # echo '> start wasmedge server transpiled by rollup'
-        # nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
-        # sleep 15
-        # resp=$(curl http://localhost:8003)
-        # echo "$resp"
+        # Use rollup.js
+        npm run rollup:build-server
+        echo '> start wasmedge server transpiled by rollup'
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
+        sleep 15
+        resp=$(curl http://localhost:8003)
+        echo "$resp"
 
     - name: Tensorflow example
       run: |
