@@ -10,9 +10,6 @@ pub mod socket_types {
     pub const AF_INET4: u8 = 0;
     pub const AF_INET6: u8 = 1;
 
-    pub const IPPROTO_TCP: i32 = 0;
-    pub const IPPROTO_UDP: i32 = 1;
-
     pub const SHUT_RD: i32 = 1;
     pub const SHUT_WR: i32 = 2;
     pub const SHUT_RDWR: i32 = 3;
