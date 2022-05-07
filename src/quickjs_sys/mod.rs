@@ -321,7 +321,7 @@ impl Context {
         super::internal_module::core::init_process_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
         super::internal_module::httpx::init_module(&mut ctx);
-        super::internal_module::http::init_module(&mut ctx);
+        super::internal_module::core::init_internal_js_module(&mut ctx);
 
         ctx
     }
