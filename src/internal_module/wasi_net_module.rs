@@ -305,6 +305,28 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
     }
 }
 
+fn js_nsloopup(ctx: &mut Context, _this: JsValue, param: &[JsValue]) -> JsValue {
+    let node = param.get(0);
+    let service = param.get(1);
+    if let (Some(JsValue::String(node)), Some(JsValue::String(service))) = (node, service) {
+        let r = event_loop::nslookup(node.as_str(), service.as_str());
+        match r {
+            Ok(addr_vec) => {
+                let mut array = ctx.new_array();
+                for (i,addr) in addr_vec.iter().enumerate(){
+                    array.set(i, ctx.new_string(addr.to_string().as_str()).into());
+                }
+                array.into()
+            }
+            Err(e) => {
+                ctx.throw_internal_type_error(e.to_string().as_str()).into()
+            }
+        }
+    } else {
+        JsValue::UnDefined
+    }
+}
+
 struct WasiNet;
 impl ModuleInit for WasiNet {
     fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
@@ -316,6 +338,9 @@ impl ModuleInit for WasiNet {
 
         let class_ctor = ctx.register_class(WasiTcpConn);
         m.add_export(WasiTcpConn::CLASS_NAME, class_ctor);
+
+        let f = ctx.wrap_function("nsloopup", js_nsloopup);
+        m.add_export("nsloopup\0", f.into());
     }
 }
 
@@ -327,6 +352,7 @@ pub fn init_module(ctx: &mut Context) {
             WasiTcpServer::CLASS_NAME,
             WasiTcpConn::CLASS_NAME,
             "connect\0",
+            "nsloopup\0"
         ],
     )
 }

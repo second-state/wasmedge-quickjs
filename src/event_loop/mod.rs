@@ -11,6 +11,8 @@ use std::mem::ManuallyDrop;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::ops::Add;
 
+pub use wasi_sock::nslookup;
+
 pub(crate) enum NetPollEvent {
     Accept,
     Read,
@@ -446,8 +448,10 @@ impl EventLoop {
             .parse()
             .map_err(|_e| io::Error::from(io::ErrorKind::InvalidInput))?;
 
-        use wasi_sock::socket_types as st;
-        let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
+        let s = wasi_sock::Socket::new(
+            wasi_sock::AddressFamily::Inet4,
+            wasi_sock::SocketType::Stream,
+        )?;
         s.set_nonblocking(true)?;
         s.bind(&addr)?;
         s.listen(1024)?;
@@ -460,8 +464,10 @@ impl EventLoop {
         callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
         timeout: Option<std::time::Duration>,
     ) -> io::Result<()> {
-        use wasi_sock::socket_types as st;
-        let s = wasi_sock::Socket::new(st::AF_INET4 as i32, st::SOCK_STREAM)?;
+        let s = wasi_sock::Socket::new(
+            wasi_sock::AddressFamily::Inet4,
+            wasi_sock::SocketType::Stream,
+        )?;
         s.set_nonblocking(true)?;
         if let Err(e) = s.connect(addr) {
             // Operation in progress

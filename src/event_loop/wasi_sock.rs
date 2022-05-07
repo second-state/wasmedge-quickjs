@@ -6,22 +6,39 @@ use std::net::{
 };
 use std::os::wasi::prelude::{AsRawFd, RawFd};
 
-pub mod socket_types {
-    pub const AF_INET4: u8 = 0;
-    pub const AF_INET6: u8 = 1;
-
-    pub const SHUT_RD: i32 = 1;
-    pub const SHUT_WR: i32 = 2;
-    pub const SHUT_RDWR: i32 = 3;
-
-    pub const SOCK_DGRAM: i32 = 0;
-    pub const SOCK_STREAM: i32 = 1;
-
-    pub const SOL_SOCKET: i32 = 0;
-
-    pub const SO_TYPE: i32 = 1;
-    pub const SO_ERROR: i32 = 2;
+#[derive(Copy, Clone, Debug)]
+#[repr(u8, align(1))]
+pub enum AddressFamily {
+    Inet4,
+    Inet6,
 }
+
+impl From<&SocketAddr> for AddressFamily {
+    fn from(addr: &SocketAddr) -> Self {
+        match addr {
+            SocketAddr::V4(_) => AddressFamily::Inet4,
+            SocketAddr::V6(_) => AddressFamily::Inet6,
+        }
+    }
+}
+
+impl AddressFamily {
+    pub fn is_v4(&self) -> bool {
+        matches!(*self, AddressFamily::Inet4)
+    }
+
+    pub fn is_v6(&self) -> bool {
+        matches!(*self, AddressFamily::Inet6)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8, align(1))]
+pub enum SocketType {
+    Datagram,
+    Stream,
+}
+
 
 #[derive(Copy, Clone)]
 #[repr(u8, align(1))]
@@ -53,6 +70,55 @@ pub enum SocketOptName {
 pub struct WasiAddress {
     pub buf: *const u8,
     pub size: usize,
+}
+
+unsafe impl Send for WasiAddress {}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u16, align(2))]
+pub enum AiFlags {
+    AiPassive,
+    AiCanonname,
+    AiNumericHost,
+    AiNumericServ,
+    AiV4Mapped,
+    AiAll,
+    AiAddrConfig,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8, align(1))]
+pub enum AiProtocol {
+    IPProtoTCP,
+    IPProtoUDP,
+}
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct WasiSockaddr {
+    pub family: AddressFamily,
+    pub sa_data_len: u32,
+    pub sa_data: *mut u8,
+}
+
+impl WasiSockaddr {
+    pub fn new(family: AddressFamily, sa_data: &mut [u8]) -> WasiSockaddr {
+        WasiSockaddr {
+            family,
+            sa_data_len: 14,
+            sa_data: sa_data.as_mut_ptr(),
+        }
+    }
+}
+
+impl Default for WasiSockaddr {
+    fn default() -> WasiSockaddr {
+        WasiSockaddr {
+            family: AddressFamily::Inet4,
+            sa_data_len: 14,
+            sa_data: std::ptr::null_mut(),
+        }
+    }
 }
 
 #[repr(C)]
@@ -120,15 +186,12 @@ fn fcntl_remove(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<
 }
 
 impl Socket {
-    pub fn new(_addr_family: i32, sock_kind: i32) -> io::Result<Self> {
+    pub fn new(addr_family: AddressFamily, sock_kind: SocketType) -> io::Result<Self> {
         unsafe {
-            if sock_kind != socket_types::SOCK_STREAM {
-                Err(io::Error::from(io::ErrorKind::Unsupported))?;
-            }
             let mut fd = 0;
-            let res = sock_open(socket_types::AF_INET4 as u8, sock_kind as u8, &mut fd);
+            let res = sock_open(addr_family as u8, sock_kind as u8, &mut fd);
             if res == 0 {
-                Ok(Socket(fd as i32))
+                Ok(Socket(fd as RawSocket))
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
@@ -344,12 +407,11 @@ impl Socket {
     }
 
     pub fn take_error(&self) -> io::Result<()> {
-        use socket_types as s;
         unsafe {
             let fd = self.0;
             let mut error = 0;
             let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(fd as u32, s::SOL_SOCKET, s::SO_ERROR, &mut error, &mut len);
+            let res = sock_getsockopt(fd as u32, SocketOptLevel::SolSocket as i32, SocketOptName::SoError as i32, &mut error, &mut len);
             if res == 0 && error == 0 {
                 Ok(())
             } else if res == 0 && error != 0 {
@@ -361,14 +423,13 @@ impl Socket {
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        use socket_types as s;
         unsafe {
             let flags = match how {
-                Shutdown::Read => s::SHUT_RD,
-                Shutdown::Write => s::SHUT_WR,
-                Shutdown::Both => s::SHUT_RDWR,
+                Shutdown::Read => 1,
+                Shutdown::Write => 2,
+                Shutdown::Both => 3,
             };
-            let res = sock_shutdown(self.as_raw_fd() as u32, flags as u8);
+            let res = sock_shutdown(self.as_raw_fd() as u32, flags);
             if res == 0 {
                 Ok(())
             } else {
@@ -392,6 +453,138 @@ impl<'a> Write for &'a Socket {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone)]
+#[repr(C, packed(4))]
+pub struct WasiAddrinfo {
+    pub ai_flags: AiFlags,
+    pub ai_family: AddressFamily,
+    pub ai_socktype: SocketType,
+    pub ai_protocol: AiProtocol,
+    pub ai_addrlen: u32,
+    pub ai_addr: *mut WasiSockaddr,
+    pub ai_canonname: *mut u8,
+    pub ai_canonnamelen: u32,
+    pub ai_next: *mut WasiAddrinfo,
+}
+
+
+impl WasiAddrinfo {
+    pub fn default() -> WasiAddrinfo {
+        WasiAddrinfo {
+            ai_flags: AiFlags::AiPassive,
+            ai_family: AddressFamily::Inet4,
+            ai_socktype: SocketType::Stream,
+            ai_protocol: AiProtocol::IPProtoTCP,
+            ai_addr: std::ptr::null_mut(),
+            ai_addrlen: 0,
+            ai_canonname: std::ptr::null_mut(),
+            ai_canonnamelen: 0,
+            ai_next: std::ptr::null_mut(),
+        }
+    }
+
+    /// Get Address Information
+    ///
+    /// As calling FFI, use buffer as parameter in order to avoid memory leak.
+    pub fn get_addrinfo(
+        node: &str,
+        service: &str,
+        hints: &WasiAddrinfo,
+        max_reslen: usize,
+        sockaddr: &mut Vec<WasiSockaddr>,
+        sockbuff: &mut Vec<[u8;26]>,
+        ai_canonname: &mut Vec<String>,
+    ) -> io::Result<Vec<WasiAddrinfo>> {
+        let mut node = node.to_string();
+        let mut service = service.to_string();
+
+        if !node.ends_with('\0') {
+            node.push('\0');
+        }
+
+        if !service.ends_with('\0') {
+            service.push('\0');
+        }
+
+        let mut res_len: u32 = 0;
+        sockbuff.resize(max_reslen, [0u8; 26]);
+        ai_canonname.resize(max_reslen, String::with_capacity(30));
+        sockaddr.resize(max_reslen, WasiSockaddr::default());
+        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = vec![WasiAddrinfo::default();max_reslen];
+
+        for i in 0..max_reslen {
+            sockaddr[i].sa_data = sockbuff[i].as_mut_ptr();
+            wasiaddrinfo_array[i].ai_addr = &mut sockaddr[i];
+            wasiaddrinfo_array[i].ai_canonname = ai_canonname[i].as_mut_ptr();
+            if i > 0 {
+                wasiaddrinfo_array[i - 1].ai_next = &mut wasiaddrinfo_array[i];
+            }
+        }
+        let mut res = wasiaddrinfo_array.as_mut_ptr() as u32;
+
+        unsafe {
+            let return_code = sock_getaddrinfo(
+                node.as_ptr(),
+                node.len() as u32,
+                service.as_ptr(),
+                service.len() as u32,
+                hints as *const WasiAddrinfo,
+                &mut res,
+                max_reslen as u32,
+                &mut res_len,
+            );
+            match return_code {
+                0 => Ok(wasiaddrinfo_array[..res_len as usize].to_vec()),
+                _ => Err(std::io::Error::last_os_error()),
+            }
+        }
+    }
+}
+
+pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    let hints: WasiAddrinfo = WasiAddrinfo::default();
+    let mut sockaddrs = Vec::new();
+    let mut sockbuffs = Vec::new();
+    let mut ai_canonnames = Vec::new();
+    let addrinfos = WasiAddrinfo::get_addrinfo(
+        &node,
+        &service,
+        &hints,
+        10,
+        &mut sockaddrs,
+        &mut sockbuffs,
+        &mut ai_canonnames,
+    )?;
+
+    let mut r_addrs = vec![];
+    for i in 0..addrinfos.len() {
+        let addrinfo = &addrinfos[i];
+        let sockaddr = &sockaddrs[i];
+        let sockbuff = &sockbuffs[i];
+
+        if addrinfo.ai_addrlen == 0 {
+            continue;
+        }
+
+        let addr = match sockaddr.family {
+            AddressFamily::Inet4 => {
+                let port_buf = [sockbuff[0], sockbuff[1]];
+                let port = u16::from_be_bytes(port_buf);
+                let ip = Ipv4Addr::new(sockbuff[2], sockbuff[3], sockbuff[4], sockbuff[5]);
+                SocketAddr::V4(SocketAddrV4::new(ip, port))
+            }
+            AddressFamily::Inet6 => {
+                // unimplemented!("not support IPv6")
+                continue;
+            }
+        };
+
+        r_addrs.push(addr);
+    }
+    Ok(r_addrs)
+}
+
 
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
@@ -436,5 +629,15 @@ extern "C" {
         addr: *mut WasiAddress,
         addr_type: *mut u32,
         port: *mut u32,
+    ) -> u32;
+    pub fn sock_getaddrinfo(
+        node: *const u8,
+        node_len: u32,
+        server: *const u8,
+        server_len: u32,
+        hint: *const WasiAddrinfo,
+        res: *mut u32,
+        max_len: u32,
+        res_len: *mut u32,
     ) -> u32;
 }
