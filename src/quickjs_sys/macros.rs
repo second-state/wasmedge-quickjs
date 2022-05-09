@@ -60,17 +60,13 @@ macro_rules! JS_CGETSET_DEF {
 
 #[macro_export]
 macro_rules! assert_size_zero {
-    ($t:tt) => {
-        {
-            struct AssertSize<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue>(
-                PhantomData<F>,
-            );
-            impl<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue> AssertSize<F> {
-                const ASSERT: [(); 1] = [()];
-                const F_SIZE_MUST_ZERO: () = Self::ASSERT[mem::size_of::<F>()];
-            }
-
-            let _ = AssertSize::<$t>::F_SIZE_MUST_ZERO;
+    ($t:tt) => {{
+        struct AssertSize<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue>(PhantomData<F>);
+        impl<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue> AssertSize<F> {
+            const ASSERT: [(); 1] = [()];
+            const F_SIZE_MUST_ZERO: () = Self::ASSERT[mem::size_of::<F>()];
         }
-    };
+
+        let _ = AssertSize::<$t>::F_SIZE_MUST_ZERO;
+    }};
 }

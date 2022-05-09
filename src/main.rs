@@ -29,7 +29,7 @@ fn main() {
             Ok(code) => {
                 rest_arg.insert(0, file_path.clone());
                 ctx.put_args(rest_arg);
-                ctx.eval_module_str(code.as_str(), &file_path);
+                ctx.eval_module_str(code, &file_path);
             }
             Err(e) => {
                 eprintln!("{}", e.to_string());

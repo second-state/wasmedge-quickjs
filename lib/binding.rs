@@ -2314,6 +2314,9 @@ extern "C" {
     pub fn JS_VALUE_GET_NORM_TAG_real(v: JSValue) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn JS_VALUE_GET_PTR_real(v: JSValue) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
     pub fn JS_IsNumber_real(v: JSValue) -> ::std::os::raw::c_int;
 }
 extern "C" {

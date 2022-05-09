@@ -70,18 +70,85 @@ pub trait JsFn {
     fn call(ctx: &mut Context, this_val: JsValue, argv: &[JsValue]) -> JsValue;
 }
 
+unsafe extern "C" fn module_loader(
+    ctx: *mut JSContext,
+    module_name_: *const ::std::os::raw::c_char,
+    _opaque: *mut ::std::os::raw::c_void,
+) -> *mut JSModuleDef {
+    let module_name = std::ffi::CStr::from_ptr(module_name_).to_str();
+    if module_name.is_err() {
+        return std::ptr::null_mut();
+    }
+    let module_name = module_name.unwrap();
+
+    let mut path = std::path::PathBuf::from(module_name);
+    let ext = path
+        .extension()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default();
+    match ext {
+        "" => {
+            path.set_extension("js");
+        }
+        "js" => {}
+        _ => {
+            JS_ThrowReferenceError(
+                ctx,
+                "could not load module filename '%s'\0".as_ptr().cast(),
+                module_name_,
+            );
+            return std::ptr::null_mut();
+        }
+    }
+
+    if !path.is_file() {
+        let internal_dir = std::env::var("QJS_LIB").unwrap_or("./internal".to_string());
+        path = std::path::PathBuf::from(internal_dir).join(path);
+    }
+
+    let code = std::fs::read(&path);
+    if code.is_err() {
+        JS_ThrowReferenceError(
+            ctx,
+            "could not load module filename '%s'\0".as_ptr().cast(),
+            module_name_,
+        );
+        return std::ptr::null_mut();
+    }
+
+    let buf = code.unwrap();
+    let buf_len = buf.len();
+    let buf = make_c_string(buf);
+
+    // compile the module
+    let func_val = JS_Eval(
+        ctx,
+        buf.as_ptr(),
+        buf_len,
+        module_name_,
+        (JS_EVAL_TYPE_MODULE | JS_EVAL_FLAG_COMPILE_ONLY) as i32,
+    );
+
+    if JS_IsException_real(func_val) != 0 {
+        return std::ptr::null_mut();
+    }
+
+    js_module_set_import_meta(ctx, func_val, 1, 0);
+
+    let m = JS_VALUE_GET_PTR_real(func_val);
+    JS_FreeValue_real(ctx, func_val);
+
+    m.cast()
+}
+
 pub struct Runtime(*mut JSRuntime);
 
 impl Runtime {
     pub fn new() -> Self {
         unsafe {
             let mut rt = Runtime(JS_NewRuntime());
-            JS_SetModuleLoaderFunc(
-                rt.0,
-                None,
-                Some(js_module_loader),
-                0 as *mut std::ffi::c_void,
-            );
+            JS_SetModuleLoaderFunc(rt.0, None, Some(module_loader), std::ptr::null_mut());
             rt.init_event_loop();
             rt
         }
@@ -321,7 +388,6 @@ impl Context {
         super::internal_module::core::init_process_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
         super::internal_module::httpx::init_module(&mut ctx);
-        super::internal_module::http::init_module(&mut ctx);
 
         ctx
     }
@@ -351,14 +417,15 @@ impl Context {
         global.set("args", args_obj.into());
     }
 
-    pub fn eval_buf(&mut self, code: &str, filename: &str, eval_flags: u32) -> JsValue {
+    pub fn eval_buf(&mut self, code: Vec<u8>, filename: &str, eval_flags: u32) -> JsValue {
         unsafe {
             let ctx = self.ctx;
+            let len = code.len();
             let val = if (eval_flags & JS_EVAL_TYPE_MASK) == JS_EVAL_TYPE_MODULE {
                 let val = JS_Eval(
                     ctx,
                     make_c_string(code).as_ptr(),
-                    code.len(),
+                    len,
                     make_c_string(filename).as_ptr(),
                     (eval_flags | JS_EVAL_FLAG_COMPILE_ONLY) as i32,
                 );
@@ -371,7 +438,7 @@ impl Context {
                 JS_Eval(
                     ctx,
                     make_c_string(code).as_ptr(),
-                    code.len(),
+                    len,
                     make_c_string(filename).as_ptr(),
                     eval_flags as i32,
                 )
@@ -383,12 +450,12 @@ impl Context {
         }
     }
 
-    pub fn eval_global_str(&mut self, code: &str) -> JsValue {
-        self.eval_buf(code, "<evalScript>", JS_EVAL_TYPE_GLOBAL)
+    pub fn eval_global_str(&mut self, code: String) -> JsValue {
+        self.eval_buf(code.into_bytes(), "<evalScript>", JS_EVAL_TYPE_GLOBAL)
     }
 
-    pub fn eval_module_str(&mut self, code: &str, filename: &str) {
-        self.eval_buf(code, filename, JS_EVAL_TYPE_MODULE);
+    pub fn eval_module_str(&mut self, code: String, filename: &str) {
+        self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE);
         self.promise_loop_poll();
     }
 

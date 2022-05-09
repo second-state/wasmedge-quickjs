@@ -100,10 +100,10 @@ impl JsFn for NextTick {
     }
 }
 
-fn env_object(ctx:&mut Context)->JsObject{
+fn env_object(ctx: &mut Context) -> JsObject {
     let mut env_obj = ctx.new_object();
     let env = std::env::vars();
-    for (k,v) in env {
+    for (k, v) in env {
         env_obj.set(&k, ctx.new_string(&v).into());
     }
     env_obj
@@ -122,5 +122,5 @@ impl ModuleInit for Process {
 }
 
 pub fn init_process_module(ctx: &mut Context) {
-    ctx.register_module("process\0", Process, &["nextTick\0", "default\0","env\0"])
+    ctx.register_module("process\0", Process, &["nextTick\0", "default\0", "env\0"])
 }
