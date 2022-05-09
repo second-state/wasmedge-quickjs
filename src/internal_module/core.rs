@@ -124,30 +124,3 @@ impl ModuleInit for Process {
 pub fn init_process_module(ctx: &mut Context) {
     ctx.register_module("process\0", Process, &["nextTick\0", "default\0", "env\0"])
 }
-
-pub fn init_internal_js_module(ctx: &mut Context) {
-    let internal_dir = std::env::var("QJS_LIB").unwrap_or("./internal".to_string());
-
-    if let Ok(dir) = std::fs::read_dir(internal_dir) {
-        for f in dir {
-            if let Ok(f) = f {
-
-                let filename = f.file_name();
-                let filename = filename.to_str();
-
-                let path = f.path();
-                let path_extension = path.extension();
-
-                if path.exists() && path_extension.is_some() && path_extension.unwrap() == "js" {
-
-                    let fs = std::fs::read_to_string(&path);
-                    if let (Some(filename), Ok(code)) = (filename, fs) {
-
-                        let filename = filename.trim_end_matches(".js");
-                        ctx.eval_module_str(code.as_str(), filename);
-                    }
-                }
-            }
-        }
-    };
-}

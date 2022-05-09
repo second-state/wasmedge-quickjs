@@ -313,14 +313,12 @@ fn js_nsloopup(ctx: &mut Context, _this: JsValue, param: &[JsValue]) -> JsValue 
         match r {
             Ok(addr_vec) => {
                 let mut array = ctx.new_array();
-                for (i,addr) in addr_vec.iter().enumerate(){
+                for (i, addr) in addr_vec.iter().enumerate() {
                     array.set(i, ctx.new_string(addr.to_string().as_str()).into());
                 }
                 array.into()
             }
-            Err(e) => {
-                ctx.throw_internal_type_error(e.to_string().as_str()).into()
-            }
+            Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()).into(),
         }
     } else {
         JsValue::UnDefined
@@ -352,7 +350,7 @@ pub fn init_module(ctx: &mut Context) {
             WasiTcpServer::CLASS_NAME,
             WasiTcpConn::CLASS_NAME,
             "connect\0",
-            "nsloopup\0"
+            "nsloopup\0",
         ],
     )
 }

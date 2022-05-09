@@ -39,7 +39,6 @@ pub enum SocketType {
     Stream,
 }
 
-
 #[derive(Copy, Clone)]
 #[repr(u8, align(1))]
 pub enum SocketOptLevel {
@@ -411,7 +410,13 @@ impl Socket {
             let fd = self.0;
             let mut error = 0;
             let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(fd as u32, SocketOptLevel::SolSocket as i32, SocketOptName::SoError as i32, &mut error, &mut len);
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoError as i32,
+                &mut error,
+                &mut len,
+            );
             if res == 0 && error == 0 {
                 Ok(())
             } else if res == 0 && error != 0 {
@@ -468,7 +473,6 @@ pub struct WasiAddrinfo {
     pub ai_next: *mut WasiAddrinfo,
 }
 
-
 impl WasiAddrinfo {
     pub fn default() -> WasiAddrinfo {
         WasiAddrinfo {
@@ -493,7 +497,7 @@ impl WasiAddrinfo {
         hints: &WasiAddrinfo,
         max_reslen: usize,
         sockaddr: &mut Vec<WasiSockaddr>,
-        sockbuff: &mut Vec<[u8;26]>,
+        sockbuff: &mut Vec<[u8; 26]>,
         ai_canonname: &mut Vec<String>,
     ) -> io::Result<Vec<WasiAddrinfo>> {
         let mut node = node.to_string();
@@ -511,7 +515,7 @@ impl WasiAddrinfo {
         sockbuff.resize(max_reslen, [0u8; 26]);
         ai_canonname.resize(max_reslen, String::with_capacity(30));
         sockaddr.resize(max_reslen, WasiSockaddr::default());
-        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = vec![WasiAddrinfo::default();max_reslen];
+        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = vec![WasiAddrinfo::default(); max_reslen];
 
         for i in 0..max_reslen {
             sockaddr[i].sa_data = sockbuff[i].as_mut_ptr();
@@ -584,7 +588,6 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     }
     Ok(r_addrs)
 }
-
 
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
