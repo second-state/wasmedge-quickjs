@@ -384,6 +384,7 @@ impl Context {
         }
 
         super::internal_module::core::init_ext_function(&mut ctx);
+        super::internal_module::encoding::init_encoding_module(&mut ctx);
         super::internal_module::core::init_event_function(&mut ctx);
         super::internal_module::core::init_process_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
