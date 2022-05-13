@@ -21,6 +21,7 @@ imageproc = { version =  "0.22.0", optional = true }
 libc = "0.2"
 url = "2.2.2"
 lazy_static = "1.4"
+encoding = "0.2"
 
 
 [features]
