@@ -34,6 +34,40 @@ $ cd example_js
 $ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
 ```
 
+## Add Core Module With JavaScript(ES)
+
+### Build
+
+```shell
+cargo build --target wasm32-wasi --release
+```
+
+### Edit JS File
+
+```javascript
+// ./modules/foo.js
+export function hello(){
+  console.log('foo say hello')
+}
+```
+```javascript
+// demo.js
+
+// load module 'foo' from ./modules/
+import { hello } from 'foo' 
+hello() // 'foo say hello'
+
+```
+
+### Run
+```shell
+wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+
+foo say hello
+```
+
+### 
+
 ## Async HTTP Request
 
 ### Build
