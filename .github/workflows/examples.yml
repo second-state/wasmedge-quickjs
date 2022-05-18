@@ -55,13 +55,13 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
 
     - name: Network fetch example
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_fetch.js
+        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_fetch.js
         
     - name: Network server example
       run: |
