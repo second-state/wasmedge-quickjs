@@ -103,8 +103,8 @@ unsafe extern "C" fn module_loader(
     }
 
     if !path.is_file() {
-        let internal_dir = std::env::var("QJS_LIB").unwrap_or("./internal".to_string());
-        path = std::path::PathBuf::from(internal_dir).join(path);
+        let modules_dir = std::env::var("QJS_LIB").unwrap_or("./modules".to_string());
+        path = std::path::PathBuf::from(modules_dir).join(path);
     }
 
     let code = std::fs::read(&path);
