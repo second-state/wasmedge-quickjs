@@ -221,7 +221,7 @@ impl ModuleInit for EncodingModule {
 
 pub fn init_encoding_module(ctx: &mut Context) {
     ctx.register_module(
-        "encoding\0",
+        "_encoding\0",
         EncodingModule,
         &["text_encode\0", "text_decode\0"],
     );
