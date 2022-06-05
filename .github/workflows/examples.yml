@@ -67,7 +67,7 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
-        nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+        nohup wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
         sleep 15
         resp=$(curl -d "WasmEdge" -X POST http://localhost:8000)
         echo "Server response is $resp"
@@ -96,7 +96,7 @@ jobs:
         npm install
         npm run build
         echo '> start wasmedge'
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+        wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
         
     - name: React Stream SSR
       run: |
@@ -105,7 +105,7 @@ jobs:
         npm install
         npm run build
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
+        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8001)
         echo "Server response is $resp"
@@ -117,7 +117,7 @@ jobs:
         npm install
         npm run build
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
+        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8002)
         echo "$resp"
@@ -131,7 +131,7 @@ jobs:
         # Use webpack
         npm run webpack:build-server
         echo '> start wasmedge server transpiled by Webpack'
-        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
+        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         echo $! > wasmedge.pid
         sleep 15
         resp=$(curl http://localhost:8003)
