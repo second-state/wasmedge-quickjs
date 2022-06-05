@@ -71,7 +71,7 @@ pub fn init_ext_function(ctx: &mut Context) {
     );
 }
 
-pub fn init_event_function(ctx: &mut Context) {
+pub fn init_global_function(ctx: &mut Context) {
     let mut global = ctx.get_global();
     global.set(
         "clearTimeout",
@@ -85,19 +85,7 @@ pub fn init_event_function(ctx: &mut Context) {
         "setImmediate",
         ctx.new_function::<SetImmediate>("setImmediate").into(),
     );
-}
-
-struct NextTick;
-
-impl JsFn for NextTick {
-    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        if let (Some(JsValue::Function(callback)), Some(event_loop)) =
-            (argv.get(0), ctx.event_loop())
-        {
-            event_loop.set_next_tick(callback.clone());
-        }
-        JsValue::UnDefined
-    }
+    global.set("env", env_object(ctx).into());
 }
 
 fn env_object(ctx: &mut Context) -> JsObject {
@@ -107,20 +95,4 @@ fn env_object(ctx: &mut Context) -> JsObject {
         env_obj.set(&k, ctx.new_string(&v).into());
     }
     env_obj
-}
-
-struct Process;
-impl ModuleInit for Process {
-    fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
-        let next_tick = ctx.new_function::<NextTick>("nextTick");
-        m.add_export("nextTick\0", next_tick.into());
-        let default = ctx.new_object();
-        m.add_export("default\0", default.into());
-        let env_obj = env_object(ctx);
-        m.add_export("env\0", env_obj.into());
-    }
-}
-
-pub fn init_process_module(ctx: &mut Context) {
-    ctx.register_module("process\0", Process, &["nextTick\0", "default\0", "env\0"])
 }
