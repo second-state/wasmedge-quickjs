@@ -9,6 +9,7 @@ use std::os::wasi::prelude::{AsRawFd, RawFd};
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AddressFamily {
+    Unspec,
     Inet4,
     Inet6,
 }
@@ -35,6 +36,7 @@ impl AddressFamily {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum SocketType {
+    Any,
     Datagram,
     Stream,
 }
@@ -88,6 +90,7 @@ pub enum AiFlags {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AiProtocol {
+    IPProtoIP,
     IPProtoTCP,
     IPProtoUDP,
 }
@@ -582,6 +585,10 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
                 // unimplemented!("not support IPv6")
                 continue;
             }
+            AddressFamily::Unspec => {
+                // unimplemented!("not support Unspec")
+                continue;
+            },
         };
 
         r_addrs.push(addr);
