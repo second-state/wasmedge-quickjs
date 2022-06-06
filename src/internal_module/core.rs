@@ -41,32 +41,7 @@ impl JsFn for ClearTimeout {
     }
 }
 
-struct NewStringFromUTF8;
-impl JsFn for NewStringFromUTF8 {
-    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        let obj = argv.get(0);
-        match obj {
-            Some(JsValue::ArrayBuffer(data)) => {
-                let s = String::from_utf8(data.to_vec());
-                match s {
-                    Ok(s) => ctx.new_string(&s).into(),
-                    Err(e) => ctx.throw_type_error(e.to_string().as_str()).into(),
-                }
-            }
-            Some(obj) => ctx.value_to_string(obj),
-            None => JsValue::UnDefined,
-        }
-    }
-}
-
-pub fn init_ext_function(ctx: &mut Context) {
-    let mut global = ctx.get_global();
-    global.set(
-        "newStringFromUTF8",
-        ctx.new_function::<NewStringFromUTF8>("newStringFromUTF8")
-            .into(),
-    );
-}
+pub fn init_ext_function(_ctx: &mut Context) {}
 
 pub fn init_global_function(ctx: &mut Context) {
     let mut global = ctx.get_global();

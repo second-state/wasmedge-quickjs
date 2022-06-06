@@ -1,5 +1,6 @@
 import * as http from 'wasi_http';
 import * as net from 'wasi_net';
+import { TextDecoder } from 'util'
 
 async function handle_response(s) {
   let buf = new http.Buffer();
@@ -14,7 +15,7 @@ async function handle_response(s) {
       if (typeof (resp_length) === "number") {
         if (buf.length >= resp.bodyLength) {
           print('resp.body');
-          print(newStringFromUTF8(buf.buffer));
+          print(new TextDecoder().decode(buf.buffer));
           break;
         }
       } else {

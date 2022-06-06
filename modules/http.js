@@ -1,5 +1,6 @@
 import * as net from 'wasi_net'
 import * as httpx from 'wasi_http'
+import { TextDecoder } from 'util'
 
 export class Request {
     constructor(input, init = {}) {
@@ -67,7 +68,7 @@ export class Response {
     }
 
     async text() {
-        return newStringFromUTF8(await this.body())
+        return new TextDecoder().decode(await this.body())
     }
 
     async json() {
@@ -118,7 +119,7 @@ export async function fetch(input, init = {}) {
         headers['Host'] = url.host
     }
 
-    let addr = net.nsloopup(url.host,`${url.port}`)[0];
+    let addr = net.nsloopup(url.host, `${url.port}`)[0];
 
     let s = await net.connect(addr)
     let req = new httpx.WasiRequest()
