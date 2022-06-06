@@ -2,35 +2,32 @@ use crate::quickjs_sys::*;
 use crate::EventLoop;
 use std::string::FromUtf8Error;
 
-struct SetTimeout;
-impl JsFn for SetTimeout {
-    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        let callback = argv.get(0);
-        let timeout = argv.get(1);
-        if let (Some(JsValue::Function(callback)), Some(JsValue::Int(timeout)), Some(event_loop)) =
-            (callback, timeout, ctx.event_loop())
-        {
-            let n = event_loop.set_timeout(
-                callback.clone(),
-                std::time::Duration::from_millis((*timeout) as u64),
-            );
-            JsValue::Int(n as i32)
-        } else {
-            JsValue::UnDefined
-        }
+fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    let callback = argv.get(0);
+    let timeout = argv.get(1);
+    let rest_args = argv.get(2..).map(|args| args.to_vec());
+    if let (Some(JsValue::Function(callback)), Some(JsValue::Int(timeout)), Some(event_loop)) =
+        (callback, timeout, ctx.event_loop())
+    {
+        let n = event_loop.set_timeout(
+            callback.clone(),
+            std::time::Duration::from_millis((*timeout) as u64),
+            rest_args,
+        );
+        JsValue::Int(n as i32)
+    } else {
+        JsValue::UnDefined
     }
 }
 
-struct SetImmediate;
-impl JsFn for SetImmediate {
-    fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        let callback = argv.get(0);
-        if let (Some(JsValue::Function(callback)), Some(event_loop)) = (callback, ctx.event_loop())
-        {
-            event_loop.set_next_tick(callback.clone());
-        }
-        JsValue::UnDefined
+fn set_immediate(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    let callback = argv.get(0);
+    let args = argv.get(1..).map(|v| v.to_vec());
+    if let (Some(JsValue::Function(callback)), Some(event_loop)) = (callback, ctx.event_loop())
+    {
+        event_loop.set_next_tick(callback.clone(), args);
     }
+    JsValue::UnDefined
 }
 
 struct ClearTimeout;
@@ -79,11 +76,11 @@ pub fn init_global_function(ctx: &mut Context) {
     );
     global.set(
         "setTimeout",
-        ctx.new_function::<SetTimeout>("setTimeout").into(),
+        ctx.wrap_function("setTimeout", set_timeout).into(),
     );
     global.set(
         "setImmediate",
-        ctx.new_function::<SetImmediate>("setImmediate").into(),
+        ctx.wrap_function("setImmediate",set_immediate).into(),
     );
     global.set("env", env_object(ctx).into());
 }
