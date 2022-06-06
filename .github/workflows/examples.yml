@@ -169,12 +169,3 @@ jobs:
         cd examples/embed_rust_module
         cargo build --target wasm32-wasi --release
         wasmedge --dir .:. target/wasm32-wasi/release/embed_rust_module.wasm
-
-    - name: Host functions
-      run: |
-        cd examples/host_function
-        cargo build --target wasm32-wasi --release
-        cd wasmedge_c
-        gcc demo_wasmedge.c -lwasmedge_c -o demo_wasmedge
-        export LD_LIBRARY_PATH=.
-        ./demo_wasmedge ../target/wasm32-wasi/release/host_function.wasm
