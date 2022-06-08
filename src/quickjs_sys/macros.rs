@@ -64,7 +64,7 @@ macro_rules! assert_size_zero {
         struct AssertSize<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue>(PhantomData<F>);
         impl<F: Fn(&mut Context, JsValue, &[JsValue]) -> JsValue> AssertSize<F> {
             const ASSERT: [(); 1] = [()];
-            const F_SIZE_MUST_ZERO: () = Self::ASSERT[mem::size_of::<F>()];
+            const F_SIZE_MUST_ZERO: () = Self::ASSERT[std::mem::size_of::<F>()];
         }
 
         let _ = AssertSize::<$t>::F_SIZE_MUST_ZERO;
@@ -98,5 +98,14 @@ macro_rules! assert_size_zero {
         }
 
         let _ = AssertSize::<$d, $getter, $setter>::GETTER_SETTER_SIZE_MUST_ZERO;
+    }};
+    (@module,$t:tt) => {{
+        struct AssertSize<F: Fn(&mut Context, &mut JsModuleDef)>(PhantomData<F>);
+        impl<F: Fn(&mut Context, &mut JsModuleDef)> AssertSize<F> {
+            const ASSERT: [(); 1] = [()];
+            const F_SIZE_MUST_ZERO: () = Self::ASSERT[std::mem::size_of::<F>()];
+        }
+
+        let _ = AssertSize::<$t>::F_SIZE_MUST_ZERO;
     }};
 }
