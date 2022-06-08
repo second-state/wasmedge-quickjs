@@ -2,7 +2,10 @@ use std::borrow::Cow;
 
 use crate::quickjs_sys::*;
 use encoding::{
-    all::{whatwg::{ISO_8859_8_I, X_USER_DEFINED}, *},
+    all::{
+        whatwg::{ISO_8859_8_I, X_USER_DEFINED},
+        *,
+    },
     DecoderTrap, EncoderTrap, Encoding,
 };
 
@@ -18,7 +21,6 @@ fn text_encode(ctx: &mut Context, _: JsValue, params: &[JsValue]) -> JsValue {
     if let JsValue::String(s) = ctx.value_to_string(s.unwrap()) {
         match utf_label {
             "" | "utf8" | "utf-8" => {
-                
                 let b = UTF_8.encode(s.as_str(), EncoderTrap::Replace);
                 match b {
                     Ok(ret) => ctx.new_array_buffer(&ret).into(),
@@ -42,8 +44,8 @@ fn text_decode(ctx: &mut Context, _: JsValue, params: &[JsValue]) -> JsValue {
         _ => "",
     };
     let fatal = match params.get(2) {
-        Some(JsValue::Bool(b))=>*b,
-        _=>false,
+        Some(JsValue::Bool(b)) => *b,
+        _ => false,
     };
 
     if s.is_none() {
@@ -52,7 +54,7 @@ fn text_decode(ctx: &mut Context, _: JsValue, params: &[JsValue]) -> JsValue {
 
     let trap = if fatal {
         DecoderTrap::Strict
-    }else{
+    } else {
         DecoderTrap::Replace
     };
 
@@ -69,43 +71,43 @@ fn text_decode(ctx: &mut Context, _: JsValue, params: &[JsValue]) -> JsValue {
                 let b = UTF_8.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "gbk"=>{
+            "gbk" => {
                 let b = GBK.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "gb18030"=>{
+            "gb18030" => {
                 let b = GB18030.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "hz-gb-2312"=>{
+            "hz-gb-2312" => {
                 let b = HZ.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "big5"=>{
+            "big5" => {
                 let b = BIG5_2003.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "euc-jp"=>{
+            "euc-jp" => {
                 let b = EUC_JP.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "iso-2022-jp"=>{
+            "iso-2022-jp" => {
                 let b = ISO_2022_JP.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "utf-16be"=>{
+            "utf-16be" => {
                 let b = UTF_16BE.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "utf-16le"=>{
+            "utf-16le" => {
                 let b = UTF_16LE.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "x-user-defined"=>{
-                let b = X_USER_DEFINED.decode(s.as_ref(),trap);
+            "x-user-defined" => {
+                let b = X_USER_DEFINED.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
-            "ibm866"=>{
+            "ibm866" => {
                 let b = IBM866.decode(s.as_ref(), trap);
                 ret_to_js(ctx, b)
             }
@@ -212,17 +214,13 @@ struct EncodingModule;
 impl ModuleInit for EncodingModule {
     fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
         let text_encode = ctx.wrap_function("text_encode", text_encode);
-        m.add_export("text_encode\0", text_encode.into());
+        m.add_export("text_encode", text_encode.into());
 
         let text_decode = ctx.wrap_function("text_decode", text_decode);
-        m.add_export("text_decode\0", text_decode.into());
+        m.add_export("text_decode", text_decode.into());
     }
 }
 
 pub fn init_encoding_module(ctx: &mut Context) {
-    ctx.register_module(
-        "_encoding\0",
-        EncodingModule,
-        &["text_encode\0", "text_decode\0"],
-    );
+    ctx.register_module("_encoding", EncodingModule, &["text_encode", "text_decode"]);
 }
