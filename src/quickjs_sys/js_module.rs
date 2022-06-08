@@ -570,6 +570,9 @@ fn register_module<F: ModuleInit, S: ToString>(ctx: &mut Context, name: S, expor
         for s in exports {
             export_string.clear();
             export_string.push_str(*s);
+            if !export_string.ends_with('\0'){
+                export_string.push('\0');
+            }
             q::JS_AddModuleExport(ctx, m, export_string.as_ptr().cast());
         }
     }
