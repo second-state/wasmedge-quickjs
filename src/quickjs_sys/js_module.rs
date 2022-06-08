@@ -58,6 +58,57 @@ impl<D: Sized, GS: JsClassGetterSetter<D>, Def: 'static + JsClassDef<D>>
     }
 }
 
+struct JsClassGetterSetter2Trampoline<D: Sized, Getter, Setter, Def: 'static + JsClassDef<D>>
+where
+    Getter: Fn(&D, &mut Context) -> JsValue,
+    Setter: Fn(&mut D, &mut Context, JsValue),
+{
+    _d: PhantomData<D>,
+    _getter: PhantomData<Getter>,
+    _setter: PhantomData<Setter>,
+    _def: PhantomData<Def>,
+}
+
+impl<D: Sized, Getter, Setter, Def: 'static + JsClassDef<D>>
+    JsClassGetterSetter2Trampoline<D, Getter, Setter, Def>
+where
+    Getter: Fn(&D, &mut Context) -> JsValue,
+    Setter: Fn(&mut D, &mut Context, JsValue),
+{
+    unsafe extern "C" fn getter(ctx: *mut JSContext, this_val: q::JSValue) -> q::JSValue {
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
+        let nctx = n_ctx.deref_mut();
+
+        let class_id = JsClassStore::<Def, D>::class_id(None);
+        let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
+
+        if this_obj.is_null() {
+            return q::js_exception();
+        }
+        let getter = std::mem::zeroed::<Getter>();
+        let r = getter(this_obj.as_ref().unwrap(), nctx);
+        r.into_qjs_value()
+    }
+
+    unsafe extern "C" fn setter(
+        ctx: *mut JSContext,
+        this_val: q::JSValue,
+        val: q::JSValue,
+    ) -> q::JSValue {
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
+        let nctx = n_ctx.deref_mut();
+        let class_id = JsClassStore::<Def, D>::class_id(None);
+        let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
+        if this_obj.is_null() {
+            return q::js_exception();
+        }
+        let val = JsValue::from_qjs_value(ctx, q::JS_DupValue_real(ctx, val));
+        let setter = std::mem::zeroed::<Setter>();
+        setter(this_obj.as_mut().unwrap(), nctx, val);
+        q::js_undefined()
+    }
+}
+
 pub trait JsMethod<D: Sized> {
     const NAME: &'static str;
     const LEN: u8;
@@ -97,6 +148,52 @@ impl<D: Sized, T: JsMethod<D>, Def: 'static + JsClassDef<D>> JsMethodTrampoline<
             arg_vec.push(v);
         }
         let r = T::call(n_ctx, this_obj, arg_vec.as_slice());
+        r.into_qjs_value()
+    }
+}
+
+struct JsMethod2Trampoline<D: Sized, F, Def>
+where
+    F: Fn(&mut D, &mut Context, &[JsValue]) -> JsValue,
+    Def: 'static + JsClassDef<D>,
+{
+    _d: PhantomData<D>,
+    _f: PhantomData<F>,
+    _def: PhantomData<Def>,
+}
+
+impl<D: Sized, F, Def> JsMethod2Trampoline<D, F, Def>
+where
+    F: Fn(&mut D, &mut Context, &[JsValue]) -> JsValue,
+    Def: 'static + JsClassDef<D>,
+{
+    unsafe extern "C" fn call(
+        ctx: *mut JSContext,
+        this_val: q::JSValue,
+        len: ::std::os::raw::c_int,
+        argv: *mut q::JSValue,
+    ) -> q::JSValue {
+        let class_id = JsClassStore::<Def, D>::class_id(None);
+
+        let mut n_ctx = std::mem::ManuallyDrop::new(Context { ctx });
+        let n_ctx = n_ctx.deref_mut();
+
+        let this_obj = q::JS_GetOpaque(this_val, class_id) as *mut D;
+        if this_obj.is_null() {
+            return q::js_undefined();
+        }
+
+        let this_obj = this_obj.as_mut().unwrap();
+
+        let mut arg_vec = vec![];
+        for i in 0..len {
+            let arg = argv.offset(i as isize);
+            let v = *arg;
+            let v = JsValue::from_qjs_value(ctx, q::JS_DupValue_real(ctx, v));
+            arg_vec.push(v);
+        }
+        let f = std::mem::zeroed::<F>();
+        let r = f(this_obj, n_ctx, arg_vec.as_slice());
         r.into_qjs_value()
     }
 }
@@ -168,6 +265,33 @@ impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
         }
     }
 
+    pub fn wrap_getter_setter<Getter, Setter>(
+        &mut self,
+        mut name: String,
+        _getter: Getter,
+        _setter: Setter,
+    ) where
+        Getter: Fn(&D, &mut Context) -> JsValue,
+        Setter: Fn(&mut D, &mut Context, JsValue),
+    {
+        assert_size_zero!(D, Getter, Setter);
+
+        unsafe {
+            use crate::quickjs_sys::*;
+            let ctx = self.ctx;
+            let proto = self.proto_obj;
+            if !name.ends_with('\0') {
+                name.push('\0')
+            }
+
+            let g = JsClassGetterSetter2Trampoline::<D, Getter, Setter, Def>::getter;
+            let s = JsClassGetterSetter2Trampoline::<D, Getter, Setter, Def>::setter;
+
+            let list = Vec::leak(vec![JS_CGETSET_DEF!(name, g, s)]);
+            JS_SetPropertyFunctionList(ctx, proto, list.as_ptr(), 1);
+        }
+    }
+
     pub fn add_function<T: JsMethod<D>>(&mut self) {
         unsafe {
             use crate::quickjs_sys::*;
@@ -176,6 +300,28 @@ impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
 
             let f = JsMethodTrampoline::<D, T, Def>::call;
             let list = Vec::leak(vec![CFUNC_DEF!(T::NAME, f, T::LEN)]);
+            JS_SetPropertyFunctionList(ctx, proto, list.as_ptr(), 1);
+        }
+    }
+
+    pub fn wrap_method<F: Fn(&mut D, &mut Context, &[JsValue]) -> JsValue>(
+        &mut self,
+        mut name: String,
+        args_size: u8,
+        _: F,
+    ) {
+        assert_size_zero!(D, F);
+
+        unsafe {
+            use crate::quickjs_sys::*;
+            let ctx = self.ctx;
+            let proto = self.proto_obj;
+            if !name.ends_with('\0') {
+                name.push('\0');
+            }
+
+            let f = JsMethod2Trampoline::<D, F, Def>::call;
+            let list = Vec::leak(vec![CFUNC_DEF!(name, f, args_size)]);
             JS_SetPropertyFunctionList(ctx, proto, list.as_ptr(), 1);
         }
     }
