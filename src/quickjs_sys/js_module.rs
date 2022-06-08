@@ -521,8 +521,12 @@ pub struct JsModuleDef {
 }
 
 impl JsModuleDef {
-    pub fn add_export(&mut self, name: &'static str, val: JsValue) {
+    pub fn add_export<S: ToString>(&mut self, name: S, val: JsValue) {
         unsafe {
+            let mut name = name.to_string();
+            if !name.ends_with('\0') {
+                name.push('\0')
+            }
             let v = val.into_qjs_value();
             q::JS_SetModuleExport(self.ctx, self.m, name.as_ptr().cast(), v);
         }
@@ -550,13 +554,23 @@ impl<F: ModuleInit> ModuleInitFnTrampoline<F> {
     }
 }
 
-fn register_module<F: ModuleInit>(ctx: &mut Context, name: &'static str, exports: &[&str]) {
+fn register_module<F: ModuleInit, S: ToString>(ctx: &mut Context, name: S, exports: &[&str]) {
     unsafe {
+        let mut name = name.to_string();
+        if !name.ends_with('\0') {
+            name.push('\0');
+        }
+
         let ctx = ctx.ctx;
         let js_module_init = ModuleInitFnTrampoline::<F>::init_module;
         let m = q::JS_NewCModule(ctx, name.as_ptr().cast(), Some(js_module_init));
+
+        let mut export_string = String::new();
+
         for s in exports {
-            q::JS_AddModuleExport(ctx, m, (*s).as_ptr().cast());
+            export_string.clear();
+            export_string.push_str(*s);
+            q::JS_AddModuleExport(ctx, m, export_string.as_ptr().cast());
         }
     }
 }
@@ -570,7 +584,7 @@ impl Context {
         register_class::<D, Def>(self, d)
     }
 
-    pub fn register_module<T: ModuleInit>(&mut self, name: &'static str, _: T, exports: &[&str]) {
-        register_module::<T>(self, name, exports)
+    pub fn register_module<T: ModuleInit, S: ToString>(&mut self, name: S, _: T, exports: &[&str]) {
+        register_module::<T, S>(self, name, exports)
     }
 }
