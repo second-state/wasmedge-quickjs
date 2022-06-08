@@ -210,17 +210,16 @@ fn text_decode(ctx: &mut Context, _: JsValue, params: &[JsValue]) -> JsValue {
     }
 }
 
-struct EncodingModule;
-impl ModuleInit for EncodingModule {
-    fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
-        let text_encode = ctx.wrap_function("text_encode", text_encode);
-        m.add_export("text_encode", text_encode.into());
-
-        let text_decode = ctx.wrap_function("text_decode", text_decode);
-        m.add_export("text_decode", text_decode.into());
-    }
-}
-
 pub fn init_encoding_module(ctx: &mut Context) {
-    ctx.register_module("_encoding", EncodingModule, &["text_encode", "text_decode"]);
+    ctx.register_fn_module(
+        "_encoding",
+        &["text_encode", "text_decode"],
+        |ctx: &mut Context, m: &mut JsModuleDef| {
+            let text_encode = ctx.wrap_function("text_encode", text_encode);
+            m.add_export("text_encode", text_encode.into());
+
+            let text_decode = ctx.wrap_function("text_decode", text_decode);
+            m.add_export("text_decode", text_decode.into());
+        },
+    );
 }
