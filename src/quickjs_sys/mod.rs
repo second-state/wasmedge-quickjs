@@ -410,7 +410,7 @@ impl Context {
         for arg in args {
             let arg = arg.as_ref();
             let arg_js_string = self.new_string(arg);
-            args_obj.set(i, arg_js_string.into());
+            args_obj.put(i, arg_js_string.into());
             i += 1;
         }
         let mut global = self.get_global();
@@ -461,7 +461,7 @@ impl Context {
 
     pub fn new_function<F: JsFn>(&mut self, name: &str) -> JsFunction {
         unsafe {
-            let name = std::ffi::CString::new(name).unwrap();
+            let name = make_c_string(name);
             let v = JS_NewCFunction_real(
                 self.ctx,
                 Some(JsFunctionTrampoline::callback::<F>),
@@ -479,7 +479,7 @@ impl Context {
         unsafe {
             assert_size_zero!(F);
 
-            let name = std::ffi::CString::new(name).unwrap();
+            let name = make_c_string(name);
             let v = JS_NewCFunction_real(
                 self.ctx,
                 Some(JsFunction2Trampoline::callback::<F>),
@@ -713,13 +713,12 @@ impl Drop for JsRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JsObject(JsRef);
+pub trait AsObject {
+    fn js_ref(&self) -> &JsRef;
 
-impl JsObject {
-    pub fn get(&self, key: &str) -> JsValue {
+    fn get(&self, key: &str) -> JsValue {
         unsafe {
-            let js_ref = &self.0;
+            let js_ref = self.js_ref();
             let ctx = js_ref.ctx;
             let v = js_ref.v;
             let r = JS_GetPropertyStr(ctx, v, make_c_string(key).as_ptr().cast());
@@ -727,27 +726,28 @@ impl JsObject {
         }
     }
 
-    pub fn set(&mut self, key: &str, value: JsValue) -> JsValue {
+    fn set(&mut self, key: &str, value: JsValue) -> JsValue {
         unsafe {
-            let js_ref = &self.0;
+            let js_ref = self.js_ref();
             let ctx = js_ref.ctx;
             let this_obj = js_ref.v;
             let v = value.into_qjs_value();
-            if JS_SetPropertyStr(ctx, this_obj, make_c_string(key).as_ptr().cast(), v) != 0 {
-                JsValue::Exception(JsException(JsRef {
+            match JS_SetPropertyStr(ctx, this_obj, make_c_string(key).as_ptr().cast(), v) {
+                1 => JsValue::Bool(true),
+                0 => JsValue::Bool(false),
+                _ => JsValue::Exception(JsException(JsRef {
                     ctx,
                     v: js_exception(),
-                }))
-            } else {
-                JsValue::UnDefined
+                })),
             }
         }
     }
 
-    pub fn invoke(&mut self, fn_name: &str, argv: &[JsValue]) -> JsValue {
+    fn invoke(&mut self, fn_name: &str, argv: &[JsValue]) -> JsValue {
         unsafe {
-            let ctx = self.0.ctx;
-            let this_obj = self.0.v;
+            let js_ref = self.js_ref();
+            let ctx = js_ref.ctx;
+            let this_obj = js_ref.v;
             let mut argv: Vec<JSValue> = argv.iter().map(|v| v.get_qjs_value()).collect();
             let fn_name = JS_NewAtom(ctx, make_c_string(fn_name).as_ptr());
             let v = JS_Invoke(ctx, this_obj, fn_name, argv.len() as i32, argv.as_mut_ptr());
@@ -756,20 +756,22 @@ impl JsObject {
         }
     }
 
-    pub fn delete(&mut self, key: &str) {
+    fn delete(&mut self, key: &str) {
         unsafe {
-            let ctx = self.0.ctx;
-            let this_obj = self.0.v;
+            let js_ref = self.js_ref();
+            let ctx = js_ref.ctx;
+            let this_obj = js_ref.v;
             let prop_name = JS_NewAtom(ctx, make_c_string(key).as_ptr());
             JS_DeleteProperty(ctx, this_obj, prop_name, 0);
             JS_FreeAtom(ctx, prop_name);
         }
     }
 
-    pub fn to_map(&self) -> Result<HashMap<String, JsValue>, JsException> {
+    fn to_map(&self) -> Result<HashMap<String, JsValue>, JsException> {
         unsafe {
-            let ctx = self.0.ctx;
-            let obj = self.0.v;
+            let js_ref = self.js_ref();
+            let ctx = js_ref.ctx;
+            let obj = js_ref.v;
 
             let mut properties: *mut JSPropertyEnum = std::ptr::null_mut();
             let mut count: u32 = 0;
@@ -813,13 +815,28 @@ impl JsObject {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        format!("{:?}", self.0)
+    fn to_string(&self) -> String {
+        format!("{:?}", self.js_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JsObject(JsRef);
+
+impl AsObject for JsObject {
+    fn js_ref(&self) -> &JsRef {
+        &self.0
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsFunction(JsRef);
+
+impl AsObject for JsFunction {
+    fn js_ref(&self) -> &JsRef {
+        &self.0
+    }
+}
 
 impl JsFunction {
     pub fn call(&self, argv: &[JsValue]) -> JsValue {
@@ -894,7 +911,7 @@ impl JsArray {
             to_u32(ctx, len).unwrap_or(0) as usize
         }
     }
-    pub fn get(&self, i: usize) -> JsValue {
+    pub fn take(&self, i: usize) -> JsValue {
         unsafe {
             let ctx = self.0.ctx;
             let this_obj = self.0.v;
@@ -902,13 +919,19 @@ impl JsArray {
             JsValue::from_qjs_value(ctx, v)
         }
     }
-    pub fn set(&mut self, i: usize, v: JsValue) {
+    pub fn put(&mut self, i: usize, v: JsValue) {
         unsafe {
             let ctx = self.0.ctx;
             let this_obj = self.0.v;
             let v = v.into_qjs_value();
             JS_SetPropertyUint32(ctx, this_obj, i as u32, v);
         }
+    }
+}
+
+impl AsObject for JsArray {
+    fn js_ref(&self) -> &JsRef {
+        &self.0
     }
 }
 
@@ -1085,6 +1108,7 @@ impl JsValue {
             }
         }
     }
+
     fn get_qjs_value(&self) -> JSValue {
         unsafe {
             match self {
@@ -1119,21 +1143,29 @@ impl JsValue {
 
 impl JsValue {
     pub fn get(&self, key: &str) -> Option<JsValue> {
-        if let JsValue::Object(obj) = self {
-            Some(obj.get(key))
-        } else {
-            None
+        match &self {
+            JsValue::Object(obj) => Some(obj.get(key)),
+            JsValue::Function(obj) => Some(obj.get(key)),
+            JsValue::Array(obj) => Some(obj.get(key)),
+            _ => None,
         }
     }
     pub fn index(&self, index: usize) -> Option<JsValue> {
         if let JsValue::Array(arr) = self {
-            Some(arr.get(index))
+            Some(arr.take(index))
         } else {
             None
         }
     }
     pub fn to_obj(self) -> Option<JsObject> {
         if let JsValue::Object(o) = self {
+            Some(o)
+        } else {
+            None
+        }
+    }
+    pub fn to_function(self) -> Option<JsFunction> {
+        if let JsValue::Function(o) = self {
             Some(o)
         } else {
             None

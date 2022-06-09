@@ -253,7 +253,7 @@ fn js_nsloopup(ctx: &mut Context, _this: JsValue, param: &[JsValue]) -> JsValue 
             Ok(addr_vec) => {
                 let mut array = ctx.new_array();
                 for (i, addr) in addr_vec.iter().enumerate() {
-                    array.set(i, ctx.new_string(addr.to_string().as_str()).into());
+                    array.put(i, ctx.new_string(addr.to_string().as_str()).into());
                 }
                 array.into()
             }

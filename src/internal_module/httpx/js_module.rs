@@ -5,8 +5,8 @@ use crate::internal_module::httpx::core::response::{BodyLen, HttpResponse};
 use crate::internal_module::httpx::core::Version::V1_1;
 use crate::internal_module::wasi_net_module::WasiTcpConn;
 use crate::{
-    Context, JsClassDef, JsClassGetterSetter, JsClassProto, JsFn, JsMethod, JsModuleDef, JsObject,
-    JsValue, ModuleInit,
+    AsObject, Context, JsClassDef, JsClassGetterSetter, JsClassProto, JsFn, JsMethod, JsModuleDef,
+    JsObject, JsValue, ModuleInit,
 };
 use std::collections::HashMap;
 use std::io::BufReader;
