@@ -1018,6 +1018,7 @@ pub enum JsValue {
     Promise(JsPromise),
     ArrayBuffer(JsArrayBuffer),
     Function(JsFunction),
+    Symbol(JsRef),
     Bool(bool),
     Null,
     UnDefined,
@@ -1066,6 +1067,7 @@ impl JsValue {
                 JS_TAG_FUNCTION_BYTECODE => {
                     JsValue::FunctionByteCode(JsFunctionByteCode(JsRef { ctx, v }))
                 }
+                JS_TAG_SYMBOL => JsValue::Symbol(JsRef { ctx, v }),
                 _ => JsValue::Other(JsRef { ctx, v }),
             }
         }
@@ -1091,6 +1093,7 @@ impl JsValue {
                 JsValue::Exception(JsException(JsRef { v, .. })) => *v,
                 JsValue::FunctionByteCode(JsFunctionByteCode(JsRef { v, .. })) => *v,
                 JsValue::Other(JsRef { v, .. }) => *v,
+                JsValue::Symbol(JsRef { v, .. }) => *v,
             }
         }
     }
