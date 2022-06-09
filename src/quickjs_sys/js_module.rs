@@ -252,6 +252,19 @@ pub struct JsClassProto<D: Sized, Def: 'static + JsClassDef<D>> {
 }
 
 impl<D: Sized, Def: 'static + JsClassDef<D>> JsClassProto<D, Def> {
+    pub fn set_proto(&mut self, parent_proto: JsValue) {
+        unsafe {
+            let parent_proto = parent_proto.get_qjs_value();
+            let proto = q::JS_NewObjectProto(self.ctx, parent_proto);
+            if q::JS_IsException_real(proto) == 0 {
+                q::JS_FreeValue_real(self.ctx, self.proto_obj);
+                self.proto_obj = proto;
+            } else {
+                q::JS_FreeValue_real(self.ctx, proto);
+            }
+        }
+    }
+
     pub fn add_getter_setter<T: JsClassGetterSetter<D>>(&mut self) {
         unsafe {
             use crate::quickjs_sys::*;
@@ -383,7 +396,7 @@ where
 
     fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<C, JsValue>;
 
-    fn proto_init(p: &mut JsClassProto<C, S>);
+    fn proto_init(ctx: &mut Context, p: &mut JsClassProto<C, S>);
 
     fn finalizer(_data: &mut C, _event_loop: &mut EventLoop) {}
 
@@ -391,6 +404,14 @@ where
         unsafe {
             let ctor = JsClassStore::<S, C>::class_ctor(None);
             JsValue::from_qjs_value(ctx.ctx, q::JS_DupValue_real(ctx.ctx, ctor))
+        }
+    }
+
+    fn proto_obj(ctx: &mut Context) -> JsValue {
+        unsafe {
+            let ctx = ctx.ctx;
+            let class_id = JsClassStore::<S, C>::class_id(None);
+            JsValue::from_qjs_value(ctx, q::JS_GetClassProto(ctx, class_id))
         }
     }
 
@@ -476,7 +497,6 @@ where
     unsafe {
         let mut class_id = 0;
         q::JS_NewClassID(&mut class_id);
-
         JsClassStore::<Def, D>::class_id(Some(class_id));
 
         let js_def = q::JSClassDef {
@@ -488,15 +508,14 @@ where
         };
 
         q::JS_NewClass(q::JS_GetRuntime(ctx.ctx), class_id, &js_def);
-        let proto = q::JS_NewObject(ctx.ctx);
         let mut proto_ref = JsClassProto::<D, Def> {
             ctx: ctx.ctx,
-            proto_obj: proto,
+            proto_obj: q::JS_NewObject(ctx.ctx),
             _p: Default::default(),
             _def: Default::default(),
         };
 
-        Def::proto_init(&mut proto_ref);
+        Def::proto_init(ctx, &mut proto_ref);
 
         let js_ctor = JS_NewCFunction2(
             ctx.ctx,
@@ -507,9 +526,8 @@ where
             0,
         );
 
-        q::JS_SetConstructor(ctx.ctx, js_ctor, proto);
-        let class_id = JsClassStore::<Def, D>::class_id(None);
-        q::JS_SetClassProto(ctx.ctx, class_id, proto);
+        q::JS_SetConstructor(ctx.ctx, js_ctor, proto_ref.proto_obj);
+        q::JS_SetClassProto(ctx.ctx, class_id, proto_ref.proto_obj);
         JsClassStore::<Def, D>::class_ctor(Some(js_ctor));
         JsValue::from_qjs_value(ctx.ctx, js_ctor)
     }
@@ -593,7 +611,7 @@ fn register_fn_module<F: Fn(&mut Context, &mut JsModuleDef), S: ToString>(
         for s in exports {
             export_string.clear();
             export_string.push_str(*s);
-            if !export_string.ends_with('\0'){
+            if !export_string.ends_with('\0') {
                 export_string.push('\0');
             }
             q::JS_AddModuleExport(ctx, m, export_string.as_ptr().cast());
@@ -617,7 +635,7 @@ fn register_module<F: ModuleInit, S: ToString>(ctx: &mut Context, name: S, expor
         for s in exports {
             export_string.clear();
             export_string.push_str(*s);
-            if !export_string.ends_with('\0'){
+            if !export_string.ends_with('\0') {
                 export_string.push('\0');
             }
             q::JS_AddModuleExport(ctx, m, export_string.as_ptr().cast());

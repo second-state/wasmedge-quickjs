@@ -267,7 +267,7 @@ mod tensorflow {
             }
         }
 
-        fn proto_init(p: &mut JsClassProto<TensorflowSession, Self>) {
+        fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<TensorflowSession, Self>) {
             struct AddInput8U;
             impl JsMethod<TensorflowSession> for AddInput8U {
                 const NAME: &'static str = "add_input_8u\0";
@@ -578,7 +578,7 @@ mod tensorflow_lite {
             }
         }
 
-        fn proto_init(p: &mut JsClassProto<TensorflowLiteSession, Self>) {
+        fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<TensorflowLiteSession, Self>) {
             struct AddInput;
             impl JsMethod<TensorflowLiteSession> for AddInput {
                 const NAME: &'static str = "add_input\0";

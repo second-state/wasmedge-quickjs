@@ -25,7 +25,7 @@ impl JsClassDef<Vec<u8>> for Buffer {
         }
     }
 
-    fn proto_init(p: &mut JsClassProto<Vec<u8>, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<Vec<u8>, Self>) {
         struct Append;
         impl JsMethod<Vec<u8>> for Append {
             const NAME: &'static str = "append\0";
@@ -118,7 +118,7 @@ impl JsClassDef<HttpRequest> for WasiRequest {
         })
     }
 
-    fn proto_init(p: &mut JsClassProto<HttpRequest, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<HttpRequest, Self>) {
         struct Body;
         impl JsClassGetterSetter<HttpRequest> for Body {
             const NAME: &'static str = "body\0";
@@ -264,7 +264,7 @@ impl JsClassDef<WasiResponse> for WasiResponseDef {
         }))
     }
 
-    fn proto_init(p: &mut JsClassProto<WasiResponse, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<WasiResponse, Self>) {
         struct BodyLength;
         impl JsClassGetterSetter<WasiResponse> for BodyLength {
             const NAME: &'static str = "bodyLength\0";
@@ -446,7 +446,7 @@ impl JsClassDef<WasiChunkResponse> for WasiChunkResponseDef {
         Err(JsValue::UnDefined)
     }
 
-    fn proto_init(p: &mut JsClassProto<WasiChunkResponse, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<WasiChunkResponse, Self>) {
         struct ON;
         impl JsMethod<WasiChunkResponse> for ON {
             const NAME: &'static str = "on\0";
@@ -600,7 +600,7 @@ mod js_url {
             }
         }
 
-        fn proto_init(p: &mut JsClassProto<url::Url, Self>) {
+        fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<url::Url, Self>) {
             p.add_getter_setter::<Scheme>();
             p.add_getter_setter::<Username>();
             p.add_getter_setter::<Password>();

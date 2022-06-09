@@ -11,7 +11,7 @@ impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
         Err(JsValue::Null)
     }
 
-    fn proto_init(p: &mut JsClassProto<AsyncTcpConn, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<AsyncTcpConn, Self>) {
         struct ON;
         impl JsMethod<AsyncTcpConn> for ON {
             const NAME: &'static str = "on\0";
@@ -248,7 +248,7 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
         }
     }
 
-    fn proto_init(p: &mut JsClassProto<AsyncTcpServer, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<AsyncTcpServer, Self>) {
         struct Accept;
         impl JsMethod<AsyncTcpServer> for Accept {
             const NAME: &'static str = "accept\0";

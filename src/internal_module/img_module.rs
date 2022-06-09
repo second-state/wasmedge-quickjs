@@ -77,7 +77,7 @@ impl JsClassDef<JsImage> for ImageClassDef {
         }
     }
 
-    fn proto_init(p: &mut JsClassProto<JsImage, Self>) {
+    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<JsImage, Self>) {
         struct SaveToFile;
         impl JsMethod<JsImage> for SaveToFile {
             const NAME: &'static str = "save_to_file\0";
