@@ -1101,6 +1101,44 @@ impl JsValue {
     }
 }
 
+impl JsValue {
+    pub fn get(&self, key: &str) -> Option<JsValue> {
+        if let JsValue::Object(obj) = self {
+            Some(obj.get(key))
+        } else {
+            None
+        }
+    }
+    pub fn index(&self, index: usize) -> Option<JsValue> {
+        if let JsValue::Array(arr) = self {
+            Some(arr.get(index))
+        } else {
+            None
+        }
+    }
+    pub fn to_obj(self) -> Option<JsObject> {
+        if let JsValue::Object(o) = self {
+            Some(o)
+        } else {
+            None
+        }
+    }
+    pub fn to_array(self) -> Option<JsArray> {
+        if let JsValue::Array(o) = self {
+            Some(o)
+        } else {
+            None
+        }
+    }
+    pub fn to_string(self) -> Option<JsString> {
+        if let JsValue::String(s) = self {
+            Some(s)
+        } else {
+            None
+        }
+    }
+}
+
 impl From<i32> for JsValue {
     fn from(v: i32) -> Self {
         Self::Int(v)
