@@ -350,11 +350,6 @@ impl IoSelector {
                         }),
                         poll::EVENTTYPE_FD_READ | poll::EVENTTYPE_FD_WRITE,
                     ) => {
-                        if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP > 0 {
-                            let e = io::Error::from(io::ErrorKind::ConnectionAborted);
-                            callback(ctx, PollResult::Error(e));
-                            continue;
-                        }
                         if event.error > 0 {
                             let e = io::Error::from_raw_os_error(event.error as i32);
                             callback(ctx, PollResult::Error(e));
@@ -378,8 +373,15 @@ impl IoSelector {
                                 }
                             }
                             NetPollEvent::Connect => {
-                                let s = AsyncTcpConn(wasi_sock::Socket(s));
-                                callback(ctx, PollResult::Connect(s));
+                                if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP
+                                    > 0
+                                {
+                                    let e = io::Error::from(io::ErrorKind::ConnectionAborted);
+                                    callback(ctx, PollResult::Error(e));
+                                } else {
+                                    let s = AsyncTcpConn(wasi_sock::Socket(s));
+                                    callback(ctx, PollResult::Connect(s));
+                                }
                             }
                         };
                     }
