@@ -657,6 +657,7 @@ pub(crate) fn make_c_string<T: Into<Vec<u8>>>(s: T) -> std::ffi::CString {
 }
 
 // unsafe impl Sync for JsRef {}
+#[derive(PartialEq, Eq)]
 pub struct JsRef {
     ctx: *mut JSContext,
     v: JSValue,
@@ -712,7 +713,7 @@ impl Drop for JsRef {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsObject(JsRef);
 
 impl JsObject {
@@ -817,7 +818,7 @@ impl JsObject {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsFunction(JsRef);
 
 impl JsFunction {
@@ -832,7 +833,7 @@ impl JsFunction {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsPromise(JsRef);
 
 impl JsPromise {
@@ -846,7 +847,7 @@ impl JsPromise {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsArray(JsRef);
 
 impl JsArray {
@@ -911,7 +912,7 @@ impl JsArray {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsArrayBuffer(JsRef);
 
 impl JsArrayBuffer {
@@ -947,7 +948,7 @@ impl AsMut<[u8]> for JsArrayBuffer {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct JsString(JsRef);
 
 impl JsString {
@@ -978,13 +979,19 @@ impl JsString {
     }
 }
 
-#[derive(Debug, Clone)]
+impl PartialEq for JsString {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsModule(JsRef);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsFunctionByteCode(JsRef);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct JsBigNum(JsRef);
 
 impl JsBigNum {
@@ -997,7 +1004,13 @@ impl JsBigNum {
     }
 }
 
-#[derive(Debug, Clone)]
+impl PartialEq for JsBigNum {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_int64() == other.to_int64()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JsException(JsRef);
 
 impl JsException {
@@ -1006,7 +1019,7 @@ impl JsException {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum JsValue {
     Int(i32),
     Float(f64),
