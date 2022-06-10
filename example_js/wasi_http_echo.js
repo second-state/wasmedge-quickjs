@@ -1,5 +1,7 @@
 import * as http from 'wasi_http';
 import * as net from 'wasi_net';
+import { TextDecoder } from 'util'
+
 
 async function handle_client(cs, handler_req) {
   print('open:', cs.peer());
@@ -8,7 +10,7 @@ async function handle_client(cs, handler_req) {
   while (true) {
     try {
       let d = await cs.read();
-      if (d==undefined || d.byteLength <= 0) {
+      if (d == undefined || d.byteLength <= 0) {
         return;
       }
       buffer.append(d);
@@ -29,10 +31,10 @@ function handler_req(cs, req) {
   print("uri=", req.uri);
   print("method=", req.method);
   print("headers=", Object.keys(req.headers));
-  print("body=", newStringFromUTF8(req.body));
+  print("body=", new TextDecoder().decode(req.body));
 
   let resp = new http.WasiResponse();
-  let body = 'echo:' + newStringFromUTF8(req.body);
+  let body = 'echo:' + new TextDecoder().decode(req.body);
   let r = resp.encode(body);
   cs.write(r);
 }

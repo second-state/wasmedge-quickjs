@@ -42,28 +42,24 @@ $ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.j
 cargo build --target wasm32-wasi --release
 ```
 
-### Edit JS File
-
-```javascript
-// ./modules/foo.js
-export function hello(){
-  console.log('foo say hello')
-}
-```
-```javascript
-// demo.js
-
-// load module 'foo' from ./modules/
-import { hello } from 'foo' 
-hello() // 'foo say hello'
-
-```
-
 ### Run
 ```shell
-wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js 
 
-foo say hello
+ReferenceError: could not load module filename 'my_mod_1'
+
+$ ls example_js/module_demo/modules/
+
+my_mod_1.js  my_mod_2.js
+
+# copy `my_mod_1.js` & `my_mod_2.js` into modules/
+# and wasmedge_quickjs will load it as a core module 
+$ cp example_js/module_demo/modules/* modules/
+$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js
+
+hello from "my_mod_1.js"
+hello from "my_mod_2.js"
+
 ```
 
 ### 

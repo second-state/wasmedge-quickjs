@@ -1,4 +1,6 @@
 import * as net from 'wasi_net';
+import { TextDecoder } from 'util'
+
 
 async function handle_client(cs) {
   print(cs.peer());
@@ -9,7 +11,7 @@ async function handle_client(cs) {
       if (d.byteLength <= 0) {
         break;
       }
-      let s = newStringFromUTF8(d)
+      let s = new TextDecoder().decode(d)
       print('recv:', s);
       cs.write('echo:' + s);
     } catch (e) {

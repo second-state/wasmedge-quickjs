@@ -393,7 +393,7 @@ impl IoSelector {
 
 #[derive(Default)]
 pub struct EventLoop {
-    next_tick_queue: LinkedList<qjs::JsFunction>,
+    next_tick_queue: LinkedList<(qjs::JsFunction, Option<Vec<JsValue>>)>,
     io_selector: IoSelector,
 }
 
@@ -403,8 +403,11 @@ impl EventLoop {
             self.io_selector.poll(ctx)
         } else {
             let mut i = 0;
-            while let Some(f) = self.next_tick_queue.pop_front() {
-                f.call(&[]);
+            while let Some((f, args)) = self.next_tick_queue.pop_front() {
+                match args {
+                    Some(argv) => f.call(&argv),
+                    None => f.call(&[]),
+                };
                 i += 1;
             }
             Ok(i)
@@ -415,6 +418,7 @@ impl EventLoop {
         &mut self,
         callback: qjs::JsFunction,
         timeout: std::time::Duration,
+        args: Option<Vec<JsValue>>,
     ) -> usize {
         let ddl = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -425,7 +429,10 @@ impl EventLoop {
         let timeout_task = PollTask::Timeout(TimeoutTask {
             timeout: ddl,
             callback: Box::new(move |_ctx, _res| {
-                callback.call(&[]);
+                match args {
+                    Some(argv) => callback.call(&argv),
+                    None => callback.call(&[]),
+                };
             }),
         });
         self.io_selector.add_task(timeout_task)
@@ -439,8 +446,8 @@ impl EventLoop {
         };
     }
 
-    pub fn set_next_tick(&mut self, callback: qjs::JsFunction) {
-        self.next_tick_queue.push_back(callback);
+    pub fn set_next_tick(&mut self, callback: qjs::JsFunction, args: Option<Vec<JsValue>>) {
+        self.next_tick_queue.push_back((callback, args));
     }
 
     pub fn tcp_listen(&mut self, port: u16) -> io::Result<AsyncTcpServer> {
