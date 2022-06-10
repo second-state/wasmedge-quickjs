@@ -50,6 +50,12 @@ jobs:
         cargo build --target wasm32-wasi --release
         cd example_js
         wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm image.js
+
+    - name: Modules examples
+      run: |
+        cargo build --target wasm32-wasi --release
+        cp example_js/module_demo/modules/* modules/
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js
       
     - name: Network client example
       run: |
