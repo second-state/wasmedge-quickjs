@@ -1,12 +1,13 @@
 #[macro_use]
 mod macros;
+mod js_class;
 mod js_module;
 
 use std::collections::HashMap;
 
-pub use js_module::{
-    JsClassDef, JsClassGetterSetter, JsClassProto, JsMethod, JsModuleDef, ModuleInit,
-};
+pub use js_module::{JsModuleDef, ModuleInit};
+
+pub use js_class::{JsClassDef, JsClassGetterSetter, JsClassProto, JsMethod};
 
 #[allow(warnings)]
 mod qjs {
@@ -134,7 +135,7 @@ unsafe extern "C" fn module_loader(
         return std::ptr::null_mut();
     }
 
-    js_module_set_import_meta(ctx, func_val, 1, 0);
+    js_module_set_import_meta(ctx, func_val, 0, 0);
 
     let m = JS_VALUE_GET_PTR_real(func_val);
     JS_FreeValue_real(ctx, func_val);
