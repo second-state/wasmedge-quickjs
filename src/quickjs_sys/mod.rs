@@ -1,7 +1,7 @@
 #[macro_use]
 mod macros;
-mod js_class;
-mod js_module;
+pub mod js_class;
+pub mod js_module;
 
 use std::collections::HashMap;
 
@@ -1158,6 +1158,13 @@ impl JsValue {
             None
         }
     }
+    pub fn is_exception(&self) -> bool {
+        if let JsValue::Exception(_) = self {
+            true
+        } else {
+            false
+        }
+    }
     pub fn to_obj(self) -> Option<JsObject> {
         if let JsValue::Object(o) = self {
             Some(o)
@@ -1269,5 +1276,11 @@ impl From<JsFunctionByteCode> for JsValue {
 impl From<JsRef> for JsValue {
     fn from(v: JsRef) -> Self {
         Self::from_qjs_value(v.ctx, v.v)
+    }
+}
+
+impl From<()> for JsValue {
+    fn from(_: ()) -> Self {
+        JsValue::Null
     }
 }
