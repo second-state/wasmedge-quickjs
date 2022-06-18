@@ -30,8 +30,7 @@ $ cargo build --target wasm32-wasi --release
 ### Run
 
 ```shell
-$ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/hello.js WasmEdge Runtime
 ```
 
 ## Add Core Module With JavaScript(ES)
@@ -77,15 +76,13 @@ $ cargo build --target wasm32-wasi --release
 HTTP client applications.
 
 ```shell
-$ cd example_js
-$ wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_client.js
 ```
 
 Start an HTTP server.
 
 ```
-$ cd example_js
-$ nohup wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+$ nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_echo.js &
 ```
 
 Access the server.
