@@ -602,8 +602,7 @@ pub mod v2 {
             .to_obj()
             .unwrap();
 
-        let name = Def::method_index(magic as usize);
-        let r = Def::method_fn(data, &mut this_obj, &name, &mut n_ctx, &arg_vec);
+        let r = Def::invoke_method_index(data, &mut this_obj, magic as usize, &mut n_ctx, &arg_vec);
         r.into_qjs_value()
     }
 
@@ -621,9 +620,7 @@ pub mod v2 {
         }
 
         let data = data.as_mut().unwrap();
-        let name = Def::field_index(magic as usize);
-
-        let r = Def::field_get(data, &name, &mut n_ctx);
+        let r = Def::field_get(data, magic as usize, &mut n_ctx);
         r.into_qjs_value()
     }
 
@@ -642,11 +639,9 @@ pub mod v2 {
         }
 
         let data = data.as_mut().unwrap();
-        let name = Def::field_index(magic as usize);
         let val = JsValue::from_qjs_value(ctx, JS_DupValue_real(ctx, val));
 
-        Def::field_set(data, &name, &mut n_ctx, val);
-
+        Def::field_set(data, magic as usize, &mut n_ctx, val);
         js_undefined()
     }
 
@@ -711,9 +706,7 @@ pub mod v2 {
         Vec::leak(entry_vec)
     }
 
-    pub trait JsClassTool {
-        type RefType;
-
+    pub trait JsClassTool: JsClassDef {
         fn class_id() -> u32;
 
         fn proto(ctx: &mut Context) -> JsValue {
@@ -742,8 +735,6 @@ pub mod v2 {
     }
 
     impl<T: JsClassDef> JsClassTool for T {
-        type RefType = <T as JsClassDef>::RefType;
-
         fn class_id() -> u32 {
             unsafe { *Self::mut_class_id_ptr() }
         }
@@ -752,36 +743,19 @@ pub mod v2 {
     pub trait ExtendsJsClassDef {
         type RefType: Sized
             + AsRef<<Self::BaseDef as JsClassDef>::RefType>
-            + AsMut<<Self::BaseDef as JsClassDef>::RefType>;
+            + AsMut<<Self::BaseDef as JsClassDef>::RefType>
+            + 'static;
 
         type BaseDef: JsClassDef;
 
         const CLASS_NAME: &'static str;
         const CONSTRUCTOR_ARGC: u8;
-        const FIELDS: &'static [&'static str];
-        const METHODS: &'static [(&'static str, u8)];
+        const FIELDS: &'static [JsClassField<Self::RefType>];
+        const METHODS: &'static [JsClassMethod<Self::RefType>];
 
         unsafe fn mut_class_id_ptr() -> &'static mut u32;
 
         fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue>;
-
-        fn method_fn(
-            this: &mut Self::RefType,
-            this_obj: &mut JsObject,
-            name: &str,
-            ctx: &mut Context,
-            argv: &[JsValue],
-        ) -> JsValue {
-            <Self::BaseDef as JsClassDef>::method_fn(this.as_mut(), this_obj, name, ctx, argv)
-        }
-
-        fn field_get(this: &Self::RefType, name: &str, ctx: &mut Context) -> JsValue {
-            <Self::BaseDef as JsClassDef>::field_get(this.as_ref(), name, ctx)
-        }
-
-        fn field_set(this: &mut Self::RefType, name: &str, ctx: &mut Context, val: JsValue) {
-            <Self::BaseDef as JsClassDef>::field_set(this.as_mut(), name, ctx, val)
-        }
 
         fn finalizer(_data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {}
 
@@ -795,8 +769,10 @@ pub mod v2 {
 
         const CONSTRUCTOR_ARGC: u8 = <Self as ExtendsJsClassDef>::CONSTRUCTOR_ARGC;
 
-        const FIELDS: &'static [&'static str] = <Self as ExtendsJsClassDef>::FIELDS;
-        const METHODS: &'static [(&'static str, u8)] = <Self as ExtendsJsClassDef>::METHODS;
+        const FIELDS: &'static [JsClassField<Self::RefType>] = <Self as ExtendsJsClassDef>::FIELDS;
+
+        const METHODS: &'static [JsClassMethod<Self::RefType>] =
+            <Self as ExtendsJsClassDef>::METHODS;
 
         unsafe fn mut_class_id_ptr() -> &'static mut u32 {
             <Self as ExtendsJsClassDef>::mut_class_id_ptr()
@@ -810,16 +786,28 @@ pub mod v2 {
         }
 
         #[inline(always)]
-        fn method_index(i: usize) -> PropEntryName {
+        fn invoke_method_index(
+            this: &mut Self::RefType,
+            this_obj: &mut JsObject,
+            i: usize,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
             let base_methods_len =
                 *<<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::methods_size();
             if i < base_methods_len {
-                <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::method_index(i)
+                <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::invoke_method_index(
+                    this.as_mut(),
+                    this_obj,
+                    i,
+                    ctx,
+                    argv,
+                )
             } else {
-                if let Some(s) = Self::METHODS.get(i - base_methods_len) {
-                    PropEntryName(s.0)
+                if let Some((_, _, f)) = Self::METHODS.get(i - base_methods_len) {
+                    f(this, this_obj, ctx, argv)
                 } else {
-                    PropEntryName("")
+                    JsValue::UnDefined
                 }
             }
         }
@@ -831,17 +819,36 @@ pub mod v2 {
             PropEntrySize(s)
         }
 
-        #[inline(always)]
-        fn field_index(i: usize) -> PropEntryName {
+        fn field_get(this: &Self::RefType, i: usize, ctx: &mut Context) -> JsValue {
             let base_fields_len =
                 *<<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_size();
             if i < base_fields_len {
-                <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_index(i)
+                <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_get(
+                    this.as_ref(),
+                    i,
+                    ctx,
+                )
             } else {
-                if let Some(s) = Self::FIELDS.get(i - base_fields_len) {
-                    PropEntryName(*s)
+                if let Some((_, getter, _)) = Self::FIELDS.get(i) {
+                    getter(this, ctx)
                 } else {
-                    PropEntryName("")
+                    JsValue::UnDefined
+                }
+            }
+        }
+        fn field_set(this: &mut Self::RefType, i: usize, ctx: &mut Context, val: JsValue) {
+            let base_fields_len =
+                *<<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_size();
+            if i < base_fields_len {
+                <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_set(
+                    this.as_mut(),
+                    i,
+                    ctx,
+                    val,
+                )
+            } else {
+                if let Some((_, _, Some(setter))) = Self::FIELDS.get(i) {
+                    setter(this, ctx, val)
                 }
             }
         }
@@ -875,34 +882,16 @@ pub mod v2 {
             <<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::property_keys_init(p);
 
             let l = *<<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::methods_size();
-            for (i, (name, argc)) in Self::METHODS.iter().enumerate() {
+            for (i, (name, argc, ..)) in Self::METHODS.iter().enumerate() {
                 p.methods.insert(name.to_string(), (*argc, i + l));
             }
 
             let l = *<<Self as ExtendsJsClassDef>::BaseDef as JsClassDef>::field_size();
-            for (i, name) in Self::FIELDS.iter().enumerate() {
+            for (i, (name, ..)) in Self::FIELDS.iter().enumerate() {
                 p.fields.insert(name.to_string(), i + l);
             }
 
             PropInitResult(())
-        }
-
-        fn method_fn(
-            this: &mut Self::RefType,
-            this_obj: &mut JsObject,
-            name: &str,
-            ctx: &mut Context,
-            argv: &[JsValue],
-        ) -> JsValue {
-            <Self as ExtendsJsClassDef>::method_fn(this, this_obj, name, ctx, argv)
-        }
-
-        fn field_get(this: &Self::RefType, name: &str, ctx: &mut Context) -> JsValue {
-            <Self as ExtendsJsClassDef>::field_get(this, name, ctx)
-        }
-
-        fn field_set(this: &mut Self::RefType, name: &str, ctx: &mut Context, val: JsValue) {
-            <Self as ExtendsJsClassDef>::field_set(this, name, ctx, val)
         }
     }
 
@@ -932,14 +921,27 @@ pub mod v2 {
         }
     }
 
+    pub type JsClassField<T> = (
+        &'static str,
+        fn(&T, &mut Context) -> JsValue,
+        Option<fn(&T, &mut Context, JsValue)>,
+    );
+
+    pub type JsClassMethod<T> = (
+        &'static str,
+        u8,
+        fn(&mut T, &mut JsObject, &mut Context, &[JsValue]) -> JsValue,
+    );
+
     pub trait JsClassDef {
-        type RefType: Sized;
+        type RefType: Sized + 'static;
 
         const CLASS_NAME: &'static str;
         const CONSTRUCTOR_ARGC: u8;
 
-        const FIELDS: &'static [&'static str];
-        const METHODS: &'static [(&'static str, u8)];
+        const FIELDS: &'static [JsClassField<Self::RefType>];
+
+        const METHODS: &'static [JsClassMethod<Self::RefType>];
 
         unsafe fn mut_class_id_ptr() -> &'static mut u32;
 
@@ -947,10 +949,10 @@ pub mod v2 {
 
         /// don't modify on impl trait
         fn property_keys_init(p: &mut JsClassProto) -> PropInitResult {
-            for (i, (name, argc)) in Self::METHODS.iter().enumerate() {
+            for (i, (name, argc, ..)) in Self::METHODS.iter().enumerate() {
                 p.methods.insert(name.to_string(), (*argc, i));
             }
-            for (i, name) in Self::FIELDS.iter().enumerate() {
+            for (i, (name, ..)) in Self::FIELDS.iter().enumerate() {
                 p.fields.insert(name.to_string(), i);
             }
 
@@ -963,21 +965,19 @@ pub mod v2 {
         }
 
         /// don't modify on impl trait
-        fn method_index(i: usize) -> PropEntryName {
-            if let Some(s) = Self::METHODS.get(i) {
-                PropEntryName(s.0)
-            } else {
-                PropEntryName("")
-            }
-        }
-
-        fn method_fn(
+        fn invoke_method_index(
             this: &mut Self::RefType,
-            this_obj: &mut JsObject, // unsafe
-            name: &str,
+            this_obj: &mut JsObject,
+            i: usize,
             ctx: &mut Context,
             argv: &[JsValue],
-        ) -> JsValue;
+        ) -> JsValue {
+            if let Some((_, _, f)) = Self::METHODS.get(i) {
+                f(this, this_obj, ctx, argv)
+            } else {
+                JsValue::UnDefined
+            }
+        }
 
         /// don't modify on impl trait
         fn field_size() -> PropEntrySize {
@@ -985,16 +985,20 @@ pub mod v2 {
         }
 
         /// don't modify on impl trait
-        fn field_index(i: usize) -> PropEntryName {
-            if let Some(s) = Self::FIELDS.get(i) {
-                PropEntryName(*s)
+        fn field_get(this: &Self::RefType, i: usize, ctx: &mut Context) -> JsValue {
+            if let Some((_, getter, _)) = Self::FIELDS.get(i) {
+                getter(this, ctx)
             } else {
-                PropEntryName("")
+                JsValue::UnDefined
             }
         }
 
-        fn field_get(this: &Self::RefType, name: &str, ctx: &mut Context) -> JsValue;
-        fn field_set(this: &mut Self::RefType, name: &str, ctx: &mut Context, val: JsValue);
+        /// don't modify on impl trait
+        fn field_set(this: &mut Self::RefType, i: usize, ctx: &mut Context, val: JsValue) {
+            if let Some((_, _, Some(setter))) = Self::FIELDS.get(i) {
+                setter(this, ctx, val)
+            }
+        }
 
         fn finalizer(_data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {}
 

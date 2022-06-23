@@ -1,18 +1,35 @@
-use wasmedge_quickjs::js_class::v2::{self, JsClassDef, JsClassTool};
-use wasmedge_quickjs::{AsObject, JsObject, JsValue, Runtime};
+use wasmedge_quickjs::js_class::v2::{self, JsClassDef, JsClassField, JsClassMethod, JsClassTool};
+use wasmedge_quickjs::{AsObject, Context, JsObject, JsValue, Runtime};
 
 #[derive(Debug)]
 struct ClassA(i32);
+
+impl ClassA {
+    pub fn get_val(&self, _ctx: &mut Context) -> JsValue {
+        JsValue::Int(self.0)
+    }
+
+    pub fn inc(
+        &mut self,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        self.0 += 1;
+        JsValue::Int(self.0)
+    }
+}
+
 impl v2::JsClassDef for ClassA {
     type RefType = ClassA;
 
-    const CLASS_NAME: &'static str = "A";
+    const CLASS_NAME: &'static str = "ClassA";
 
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    const FIELDS: &'static [&'static str] = &["val"];
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[("val", ClassA::get_val, None)];
 
-    const METHODS: &'static [(&'static str, u8)] = &[("inc", 0)];
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[("inc", 0, ClassA::inc)];
 
     unsafe fn mut_class_id_ptr() -> &'static mut u32 {
         static mut CLASS_ID: u32 = 0;
@@ -27,41 +44,6 @@ impl v2::JsClassDef for ClassA {
             Some(JsValue::Int(v)) => Ok(ClassA(*v)),
             _ => Ok(ClassA(0)),
         }
-    }
-
-    fn method_fn(
-        this: &mut Self::RefType,
-        _this_obj: &mut JsObject,
-        name: &str,
-        _ctx: &mut wasmedge_quickjs::Context,
-        _argv: &[wasmedge_quickjs::JsValue],
-    ) -> wasmedge_quickjs::JsValue {
-        if name == "inc" {
-            this.0 += 1;
-            JsValue::Int(this.0)
-        } else {
-            JsValue::UnDefined
-        }
-    }
-
-    fn field_get(
-        this: &Self::RefType,
-        name: &str,
-        _ctx: &mut wasmedge_quickjs::Context,
-    ) -> wasmedge_quickjs::JsValue {
-        if name == "val" {
-            JsValue::Int(this.0)
-        } else {
-            JsValue::UnDefined
-        }
-    }
-
-    fn field_set(
-        _this: &mut Self::RefType,
-        _name: &str,
-        _ctx: &mut wasmedge_quickjs::Context,
-        _val: wasmedge_quickjs::JsValue,
-    ) {
     }
 }
 
@@ -80,18 +62,45 @@ impl AsMut<ClassA> for ClassB {
     }
 }
 
+impl ClassB {
+    pub fn get_val_b(&self, _ctx: &mut Context) -> JsValue {
+        JsValue::Int(self.1)
+    }
+
+    pub fn inc_b(
+        &mut self,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        self.1 += 1;
+        JsValue::Int(self.1)
+    }
+
+    pub fn display(
+        &mut self,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        println!("display=> {:?}", self);
+        JsValue::UnDefined
+    }
+}
+
 impl v2::ExtendsJsClassDef for ClassB {
     type RefType = ClassB;
 
     type BaseDef = ClassA;
 
-    const CLASS_NAME: &'static str = "B";
+    const CLASS_NAME: &'static str = "ClassB";
 
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    const FIELDS: &'static [&'static str] = &["val_b"];
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[("val_b", ClassB::get_val_b, None)];
 
-    const METHODS: &'static [(&'static str, u8)] = &[("inc_b", 0), ("display", 0)];
+    const METHODS: &'static [JsClassMethod<Self::RefType>] =
+        &[("inc_b", 0, ClassB::inc_b), ("display", 0, ClassB::display)];
 
     unsafe fn mut_class_id_ptr() -> &'static mut u32 {
         static mut CLASS_ID: u32 = 0;
@@ -104,44 +113,6 @@ impl v2::ExtendsJsClassDef for ClassB {
     ) -> Result<Self::RefType, JsValue> {
         let a = ClassA::constructor_fn(ctx, argv)?;
         Ok(ClassB(a, 1))
-    }
-
-    fn method_fn(
-        this: &mut Self::RefType,
-        this_obj: &mut JsObject,
-        name: &str,
-        ctx: &mut wasmedge_quickjs::Context,
-        argv: &[wasmedge_quickjs::JsValue],
-    ) -> wasmedge_quickjs::JsValue {
-        match name {
-            "inc" => {
-                // Overload
-
-                this.0 .0 += 2;
-                JsValue::Int(this.0 .0)
-            }
-            "inc_b" => {
-                this.1 += 1;
-                JsValue::Int(this.1)
-            }
-            "display" => {
-                println!("display=> {:?}", this);
-                JsValue::UnDefined
-            }
-            _ => ClassA::method_fn(this.as_mut(), this_obj, name, ctx, argv), // same as super.call()
-        }
-    }
-
-    fn field_get(
-        this: &Self::RefType,
-        name: &str,
-        ctx: &mut wasmedge_quickjs::Context,
-    ) -> wasmedge_quickjs::JsValue {
-        if name == "val_b" {
-            JsValue::Int(this.1)
-        } else {
-            ClassA::field_get(this.as_ref(), name, ctx)
-        }
     }
 }
 
