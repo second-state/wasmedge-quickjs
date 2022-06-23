@@ -1,5 +1,5 @@
-use wasmedge_quickjs::js_class::v2::{self, JsClassDef};
-use wasmedge_quickjs::{AsObject, JsValue, Runtime};
+use wasmedge_quickjs::js_class::v2::{self, JsClassDef, JsClassTool};
+use wasmedge_quickjs::{AsObject, JsObject, JsValue, Runtime};
 
 #[derive(Debug)]
 struct ClassA(i32);
@@ -30,8 +30,9 @@ impl v2::JsClassDef for ClassA {
     }
 
     fn method_fn(
-        name: &str,
         this: &mut Self::RefType,
+        _this_obj: &mut JsObject,
+        name: &str,
         _ctx: &mut wasmedge_quickjs::Context,
         _argv: &[wasmedge_quickjs::JsValue],
     ) -> wasmedge_quickjs::JsValue {
@@ -44,8 +45,8 @@ impl v2::JsClassDef for ClassA {
     }
 
     fn field_get(
-        name: &str,
         this: &Self::RefType,
+        name: &str,
         _ctx: &mut wasmedge_quickjs::Context,
     ) -> wasmedge_quickjs::JsValue {
         if name == "val" {
@@ -56,8 +57,8 @@ impl v2::JsClassDef for ClassA {
     }
 
     fn field_set(
-        _name: &str,
         _this: &mut Self::RefType,
+        _name: &str,
         _ctx: &mut wasmedge_quickjs::Context,
         _val: wasmedge_quickjs::JsValue,
     ) {
@@ -79,7 +80,7 @@ impl AsMut<ClassA> for ClassB {
     }
 }
 
-impl v2::JsClassDefExtends for ClassB {
+impl v2::ExtendsJsClassDef for ClassB {
     type RefType = ClassB;
 
     type BaseDef = ClassA;
@@ -106,8 +107,9 @@ impl v2::JsClassDefExtends for ClassB {
     }
 
     fn method_fn(
-        name: &str,
         this: &mut Self::RefType,
+        this_obj: &mut JsObject,
+        name: &str,
         ctx: &mut wasmedge_quickjs::Context,
         argv: &[wasmedge_quickjs::JsValue],
     ) -> wasmedge_quickjs::JsValue {
@@ -126,19 +128,19 @@ impl v2::JsClassDefExtends for ClassB {
                 println!("display=> {:?}", this);
                 JsValue::UnDefined
             }
-            _ => ClassA::method_fn(name, this.as_mut(), ctx, argv), // same as super.call()
+            _ => ClassA::method_fn(this.as_mut(), this_obj, name, ctx, argv), // same as super.call()
         }
     }
 
     fn field_get(
-        name: &str,
         this: &Self::RefType,
+        name: &str,
         ctx: &mut wasmedge_quickjs::Context,
     ) -> wasmedge_quickjs::JsValue {
         if name == "val_b" {
             JsValue::Int(this.1)
         } else {
-            ClassA::field_get(name, this.as_ref(), ctx)
+            ClassA::field_get(this.as_ref(), name, ctx)
         }
     }
 }
