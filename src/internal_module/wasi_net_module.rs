@@ -1,9 +1,7 @@
 use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, PollResult};
 use crate::*;
 
-pub(crate) struct WasiTcpConn;
-
-impl WasiTcpConn {
+impl AsyncTcpConn {
     pub fn connect(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let addr = argv.get(0);
         let timeout = argv.get(1);
@@ -24,7 +22,7 @@ impl WasiTcpConn {
                         Box::new(move |ctx, event| match event {
                             PollResult::Connect(cs) => {
                                 if let JsValue::Function(ok) = ok {
-                                    let cs = WasiTcpConn::gen_js_obj(ctx, cs);
+                                    let cs = AsyncTcpConn::wrap_obj(ctx, cs);
                                     ok.call(&[cs]);
                                 }
                             }
@@ -67,11 +65,21 @@ impl WasiTcpConn {
         }
     }
 
-    pub fn on(_this_val: &mut AsyncTcpConn, _ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+    pub fn on(
+        _this_val: &mut AsyncTcpConn,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
         JsValue::UnDefined
     }
 
-    pub fn read(this_val: &mut AsyncTcpConn, ctx: &mut Context, argv: &[JsValue]) -> JsValue {
+    pub fn js_read(
+        this_val: &mut AsyncTcpConn,
+        _this_obj: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
         let (p, ok, error) = ctx.new_promise();
         if let Some(event_poll) = ctx.event_loop() {
             let timeout = if let Some(JsValue::Int(timeout)) = argv.get(0) {
@@ -123,7 +131,12 @@ impl WasiTcpConn {
         }
     }
 
-    pub fn write(this_val: &mut AsyncTcpConn, _ctx: &mut Context, argv: &[JsValue]) -> JsValue {
+    pub fn js_write(
+        this_val: &mut AsyncTcpConn,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
         let data = argv.get(0);
         match data {
             Some(JsValue::String(s)) => {
@@ -135,19 +148,33 @@ impl WasiTcpConn {
             Some(JsValue::Object(o)) => {
                 this_val.write(o.to_string().as_bytes());
             }
+            Some(JsValue::Symbol(s)) => {
+                let data = format!("{:?}", s);
+                this_val.write(data.as_bytes());
+            }
             _ => {}
         };
         JsValue::Bool(true)
     }
 
-    pub fn local(this_val: &mut AsyncTcpConn, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+    pub fn js_local(
+        this_val: &mut AsyncTcpConn,
+        _this_obj: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
         match this_val.local() {
             Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
             Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()).into(),
         }
     }
 
-    pub fn peer(this_val: &mut AsyncTcpConn, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+    pub fn js_peer(
+        this_val: &mut AsyncTcpConn,
+        _this_obj: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
         match this_val.peer() {
             Ok(addr) => ctx.new_string(addr.to_string().as_str()).into(),
             Err(e) => ctx.throw_internal_type_error(e.to_string().as_str()).into(),
@@ -155,27 +182,39 @@ impl WasiTcpConn {
     }
 }
 
-impl JsClassDef<AsyncTcpConn> for WasiTcpConn {
+impl JsClassDef for AsyncTcpConn {
+    type RefType = AsyncTcpConn;
     const CLASS_NAME: &'static str = "WasiTcpConn";
     const CONSTRUCTOR_ARGC: u8 = 0;
 
-    fn constructor(_ctx: &mut Context, _argv: &[JsValue]) -> Result<AsyncTcpConn, JsValue> {
-        Err(JsValue::Null)
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+        ("on", 1, Self::on),
+        ("read", 0, Self::js_read),
+        ("write", 1, Self::js_write),
+        ("end", 1, Self::js_write),
+        ("local", 0, Self::js_local),
+        ("peer", 0, Self::js_peer),
+    ];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
     }
 
-    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<AsyncTcpConn, Self>) {
-        p.wrap_method("on".to_string(), 1, Self::on);
-        p.wrap_method("read".to_string(), 0, Self::read);
-        p.wrap_method("write".to_string(), 1, Self::write);
-        p.wrap_method("end".to_string(), 1, Self::write);
-        p.wrap_method("local".to_string(), 0, Self::local);
-        p.wrap_method("peer".to_string(), 0, Self::peer);
+    fn constructor_fn(_ctx: &mut Context, _argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
+        Err(JsValue::Null)
     }
 }
 
-pub(crate) struct WasiTcpServer;
-impl WasiTcpServer {
-    pub fn accept(this_val: &mut AsyncTcpServer, ctx: &mut Context, argv: &[JsValue]) -> JsValue {
+impl AsyncTcpServer {
+    pub fn js_accept(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
         let timeout = if let Some(JsValue::Int(timeout)) = argv.get(0) {
             Some(std::time::Duration::from_millis((*timeout) as u64))
         } else {
@@ -183,11 +222,11 @@ impl WasiTcpServer {
         };
         let (p, ok, error) = ctx.new_promise();
         if let Some(event_loop) = ctx.event_loop() {
-            this_val.async_accept(
+            self.async_accept(
                 event_loop,
                 Box::new(move |ctx, r| match r {
                     PollResult::Accept(cs) => {
-                        let cs = WasiTcpConn::gen_js_obj(ctx, cs);
+                        let cs = AsyncTcpConn::wrap_obj(ctx, cs);
                         if let JsValue::Function(ok) = ok {
                             ok.call(&[cs]);
                         }
@@ -223,11 +262,22 @@ impl WasiTcpServer {
     }
 }
 
-impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
+impl JsClassDef for AsyncTcpServer {
     const CLASS_NAME: &'static str = "WasiTcpServer";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<AsyncTcpServer, JsValue> {
+    type RefType = AsyncTcpServer;
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[("accept", 0, Self::js_accept)];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
+    }
+
+    fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
         let port = argv.get(0).ok_or_else(|| JsValue::UnDefined)?;
         if let (JsValue::Int(port), Some(event_loop)) = (port, ctx.event_loop()) {
             match event_loop.tcp_listen(*port as u16) {
@@ -237,10 +287,6 @@ impl JsClassDef<AsyncTcpServer> for WasiTcpServer {
         } else {
             Err(JsValue::UnDefined)
         }
-    }
-
-    fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<AsyncTcpServer, Self>) {
-        p.wrap_method("accept".to_string(), 0, Self::accept);
     }
 }
 
@@ -268,23 +314,25 @@ pub fn init_module(ctx: &mut Context) {
     ctx.register_fn_module(
         "wasi_net\0",
         &[
-            WasiTcpServer::CLASS_NAME,
-            WasiTcpConn::CLASS_NAME,
+            AsyncTcpServer::CLASS_NAME,
+            AsyncTcpConn::CLASS_NAME,
             "connect",
             "nsloopup",
         ],
         |ctx, m| {
-            let conn = ctx.wrap_function("connect", WasiTcpConn::connect);
-            m.add_export("connect", conn.into());
+            let class_ctor = register_class::<AsyncTcpServer>(ctx);
+            m.add_export(AsyncTcpServer::CLASS_NAME, class_ctor);
 
-            let class_ctor = ctx.register_class(WasiTcpServer);
-            m.add_export(WasiTcpServer::CLASS_NAME, class_ctor);
+            let mut class_ctor = register_class::<AsyncTcpConn>(ctx);
+            if let JsValue::Function(tcp_conn_ctor) = &mut class_ctor {
+                let conn = ctx.wrap_function("connect", AsyncTcpConn::connect);
+                tcp_conn_ctor.set("connect", conn.into());
+            }
 
-            let class_ctor = ctx.register_class(WasiTcpConn);
-            m.add_export(WasiTcpConn::CLASS_NAME, class_ctor);
+            m.add_export(AsyncTcpConn::CLASS_NAME, class_ctor);
 
             let f = ctx.wrap_function("nsloopup", js_nsloopup);
-            m.add_export("nsloopup\0", f.into());
+            m.add_export("nsloopup", f.into());
         },
     )
 }

@@ -5,9 +5,8 @@ pub mod js_module;
 
 use std::collections::HashMap;
 
+pub use js_class::v2::*;
 pub use js_module::{JsModuleDef, ModuleInit};
-
-pub use js_class::{JsClassDef, JsClassGetterSetter, JsClassProto, JsMethod};
 
 #[allow(warnings)]
 mod qjs {
@@ -1163,6 +1162,13 @@ impl JsValue {
             true
         } else {
             false
+        }
+    }
+    pub fn invoke(&mut self, fn_name: &str, argv: &[JsValue]) -> Option<JsValue> {
+        if let JsValue::Object(obj) = self {
+            Some(obj.invoke(fn_name, argv))
+        } else {
+            None
         }
     }
     pub fn to_obj(self) -> Option<JsObject> {

@@ -250,12 +250,204 @@ mod tensorflow {
         }
     }
 
-    struct TensorflowClassDef;
-    impl JsClassDef<TensorflowSession> for TensorflowClassDef {
+    impl TensorflowSession {
+        fn js_add_input_8u(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+
+            let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
+                buf.as_ref()
+            } else {
+                return ctx
+                    .throw_type_error("'tensor_buf' must be of type buffer")
+                    .into();
+            };
+
+            let shape = if let Some(JsValue::Array(arr)) = argv.get(2) {
+                match arr.to_vec() {
+                    Ok(a) => a,
+                    Err(e) => return e.into(),
+                }
+            } else {
+                return ctx.throw_type_error("'shape' must be of type array").into();
+            };
+
+            let mut shape_arr = vec![];
+
+            for i in shape {
+                let v = match i {
+                    JsValue::Int(i) => i as i64,
+                    JsValue::Float(i) => i as i64,
+                    _ => {
+                        return ctx
+                            .throw_type_error("'shape' must be of type number array")
+                            .into()
+                    }
+                };
+                shape_arr.push(v);
+            }
+
+            unsafe {
+                self.add_input(
+                    name.as_str(),
+                    tensor_buf.as_ptr(),
+                    tensor_buf.len() as u32,
+                    InputDataType::U8 as u32,
+                    shape_arr.as_slice(),
+                );
+            }
+            JsValue::UnDefined
+        }
+
+        fn js_add_input_32f(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+
+            let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
+                buf.as_ref()
+            } else {
+                return ctx
+                    .throw_type_error("'tensor_buf' must be of type buffer")
+                    .into();
+            };
+
+            let shape = if let Some(JsValue::Array(arr)) = argv.get(2) {
+                match arr.to_vec() {
+                    Ok(a) => a,
+                    Err(e) => return e.into(),
+                }
+            } else {
+                return ctx.throw_type_error("'shape' must be of type array").into();
+            };
+
+            let mut shape_arr = vec![];
+
+            for i in shape {
+                let v = match i {
+                    JsValue::Int(i) => i as i64,
+                    JsValue::Float(i) => i as i64,
+                    _ => {
+                        return ctx
+                            .throw_type_error("'shape' must be of type number array")
+                            .into()
+                    }
+                };
+                shape_arr.push(v);
+            }
+
+            unsafe {
+                self.add_input(
+                    name.as_str(),
+                    tensor_buf.as_ptr(),
+                    tensor_buf.len() as u32,
+                    InputDataType::F32 as u32,
+                    shape_arr.as_slice(),
+                );
+            }
+            JsValue::UnDefined
+        }
+
+        fn js_add_output(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+
+            unsafe {
+                self.add_output(name.as_str());
+            }
+            JsValue::UnDefined
+        }
+
+        fn js_run(&mut self, _: &mut JsObject, _ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+            unsafe { self.run() }
+            JsValue::UnDefined
+        }
+
+        fn js_get_output(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+            let data = unsafe { self.get_output(name.as_str()) };
+
+            ctx.new_array_buffer(data.as_slice()).into()
+        }
+
+        fn js_clear_output(
+            &mut self,
+            _: &mut JsObject,
+            _ctx: &mut Context,
+            _argv: &[JsValue],
+        ) -> JsValue {
+            unsafe { self.clear_output() }
+            JsValue::UnDefined
+        }
+
+        fn js_clear_input(
+            &mut self,
+            _: &mut JsObject,
+            _ctx: &mut Context,
+            _argv: &[JsValue],
+        ) -> JsValue {
+            unsafe { self.clear_input() }
+            JsValue::UnDefined
+        }
+    }
+
+    impl JsClassDef for TensorflowSession {
+        type RefType = TensorflowSession;
         const CLASS_NAME: &'static str = "TensorflowSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<TensorflowSession, JsValue> {
+        const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+        const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+            ("add_input_8u", 3, Self::js_add_input_8u),
+            ("add_input_32f", 3, Self::js_add_input_32f),
+            ("add_output", 1, Self::js_add_output),
+            ("run", 0, Self::js_run),
+            ("get_output", 1, Self::js_get_output),
+            ("clear_output", 0, Self::js_clear_output),
+            ("clear_input", 0, Self::js_clear_input),
+        ];
+
+        unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+            static mut CLASS_ID: u32 = 0;
+            &mut CLASS_ID
+        }
+
+        fn constructor_fn(
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> Result<TensorflowSession, JsValue> {
             match argv.get(0).ok_or(JsValue::UnDefined)? {
                 JsValue::String(path) => {
                     let path = path.to_string();
@@ -266,221 +458,13 @@ mod tensorflow {
                 _ => Err(JsValue::UnDefined),
             }
         }
-
-        fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<TensorflowSession, Self>) {
-            struct AddInput8U;
-            impl JsMethod<TensorflowSession> for AddInput8U {
-                const NAME: &'static str = "add_input_8u\0";
-                const LEN: u8 = 3;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-
-                    let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.as_ref()
-                    } else {
-                        return ctx.throw_type_error("'tensor_buf' is not buffer").into();
-                    };
-
-                    let shape = if let Some(JsValue::Array(arr)) = argv.get(2) {
-                        match arr.to_vec() {
-                            Ok(a) => a,
-                            Err(e) => return e.into(),
-                        }
-                    } else {
-                        return ctx.throw_type_error("'shape' is not array").into();
-                    };
-
-                    let mut shape_arr = vec![];
-
-                    for i in shape {
-                        let v = match i {
-                            JsValue::Int(i) => i as i64,
-                            JsValue::Float(i) => i as i64,
-                            _ => return ctx.throw_type_error("'shape' is not number array").into(),
-                        };
-                        shape_arr.push(v);
-                    }
-
-                    unsafe {
-                        this_val.add_input(
-                            name.as_str(),
-                            tensor_buf.as_ptr(),
-                            tensor_buf.len() as u32,
-                            InputDataType::U8 as u32,
-                            shape_arr.as_slice(),
-                        );
-                    }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<AddInput8U>();
-
-            struct AddInput32F;
-            impl JsMethod<TensorflowSession> for AddInput32F {
-                const NAME: &'static str = "add_input_32f\0";
-                const LEN: u8 = 3;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-
-                    let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.as_ref()
-                    } else {
-                        return ctx.throw_type_error("'tensor_buf' is not buffer").into();
-                    };
-
-                    let shape = if let Some(JsValue::Array(arr)) = argv.get(2) {
-                        match arr.to_vec() {
-                            Ok(a) => a,
-                            Err(e) => return e.into(),
-                        }
-                    } else {
-                        return ctx.throw_type_error("'shape' is not array").into();
-                    };
-
-                    let mut shape_arr = vec![];
-
-                    for i in shape {
-                        let v = match i {
-                            JsValue::Int(i) => i as i64,
-                            JsValue::Float(i) => i as i64,
-                            _ => return ctx.throw_type_error("'shape' is not number array").into(),
-                        };
-                        shape_arr.push(v);
-                    }
-
-                    unsafe {
-                        this_val.add_input(
-                            name.as_str(),
-                            tensor_buf.as_ptr(),
-                            tensor_buf.len() as u32,
-                            InputDataType::F32 as u32,
-                            shape_arr.as_slice(),
-                        );
-                    }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<AddInput32F>();
-
-            struct AddOutput;
-            impl JsMethod<TensorflowSession> for AddOutput {
-                const NAME: &'static str = "add_output\0";
-                const LEN: u8 = 1;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-
-                    unsafe {
-                        this_val.add_output(name.as_str());
-                    }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<AddOutput>();
-
-            struct Run;
-            impl JsMethod<TensorflowSession> for Run {
-                const NAME: &'static str = "run\0";
-                const LEN: u8 = 0;
-
-                fn call(
-                    _ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    _argv: &[JsValue],
-                ) -> JsValue {
-                    unsafe { this_val.run() }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<Run>();
-
-            struct GetOutput;
-            impl JsMethod<TensorflowSession> for GetOutput {
-                const NAME: &'static str = "get_output\0";
-                const LEN: u8 = 1;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-                    let data = unsafe { this_val.get_output(name.as_str()) };
-
-                    ctx.new_array_buffer(data.as_slice()).into()
-                }
-            }
-            p.add_function::<GetOutput>();
-
-            struct ClearOutput;
-            impl JsMethod<TensorflowSession> for ClearOutput {
-                const NAME: &'static str = "clear_output\0";
-                const LEN: u8 = 0;
-
-                fn call(
-                    _ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    _argv: &[JsValue],
-                ) -> JsValue {
-                    unsafe { this_val.clear_output() }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<ClearOutput>();
-
-            struct ClearInput;
-            impl JsMethod<TensorflowSession> for ClearInput {
-                const NAME: &'static str = "clear_input\0";
-                const LEN: u8 = 0;
-
-                fn call(
-                    _ctx: &mut Context,
-                    this_val: &mut TensorflowSession,
-                    _argv: &[JsValue],
-                ) -> JsValue {
-                    unsafe { this_val.clear_input() }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<ClearInput>();
-        }
     }
 
     struct TensorflowModDef;
     impl ModuleInit for TensorflowModDef {
         fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
-            let ctor = ctx.register_class(TensorflowClassDef);
-            m.add_export(TensorflowClassDef::CLASS_NAME, ctor)
+            let ctor = register_class::<TensorflowSession>(ctx);
+            m.add_export(TensorflowSession::CLASS_NAME, ctor)
         }
     }
 
@@ -488,13 +472,13 @@ mod tensorflow {
         ctx.register_module(
             "tensorflow\0",
             TensorflowModDef,
-            &[TensorflowClassDef::CLASS_NAME],
+            &[TensorflowSession::CLASS_NAME],
         )
     }
 }
 
 mod tensorflow_lite {
-    use super::wasmedge_tensorflow::*;
+    use super::{tensorflow, wasmedge_tensorflow::*};
     use crate::*;
     use std::path::Path;
 
@@ -558,12 +542,78 @@ mod tensorflow_lite {
         }
     }
 
-    struct TensorflowClassDef;
-    impl JsClassDef<TensorflowLiteSession> for TensorflowClassDef {
+    impl TensorflowLiteSession {
+        pub fn js_add_input(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+
+            let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
+                buf.as_ref()
+            } else {
+                return ctx
+                    .throw_type_error("'tensor_buf' must be of type buffer")
+                    .into();
+            };
+
+            unsafe {
+                self.add_input(name.as_str(), tensor_buf.as_ptr(), tensor_buf.len() as u32);
+            }
+            JsValue::UnDefined
+        }
+
+        pub fn js_run(
+            &mut self,
+            _: &mut JsObject,
+            _ctx: &mut Context,
+            _argv: &[JsValue],
+        ) -> JsValue {
+            unsafe { self.run() }
+            JsValue::UnDefined
+        }
+
+        pub fn js_get_output(
+            &mut self,
+            _: &mut JsObject,
+            ctx: &mut Context,
+            argv: &[JsValue],
+        ) -> JsValue {
+            let name = if let Some(JsValue::String(s)) = argv.get(0) {
+                s.to_string()
+            } else {
+                return ctx.throw_type_error("'name' must be of type string").into();
+            };
+            let data = unsafe { self.get_output(name.as_str()) };
+
+            ctx.new_array_buffer(data.as_slice()).into()
+        }
+    }
+
+    impl JsClassDef for TensorflowLiteSession {
+        type RefType = TensorflowLiteSession;
         const CLASS_NAME: &'static str = "TensorflowLiteSession\0";
         const CONSTRUCTOR_ARGC: u8 = 1;
 
-        fn constructor(
+        const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+        const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+            ("add_input", 2, Self::js_add_input),
+            ("run", 0, Self::js_run),
+            ("get_output", 1, Self::js_get_output),
+        ];
+
+        unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+            static mut CLASS_ID: u32 = 0;
+            &mut CLASS_ID
+        }
+
+        fn constructor_fn(
             ctx: &mut Context,
             argv: &[JsValue],
         ) -> Result<TensorflowLiteSession, JsValue> {
@@ -577,87 +627,13 @@ mod tensorflow_lite {
                 _ => Err(JsValue::UnDefined),
             }
         }
-
-        fn proto_init(_ctx: &mut Context, p: &mut JsClassProto<TensorflowLiteSession, Self>) {
-            struct AddInput;
-            impl JsMethod<TensorflowLiteSession> for AddInput {
-                const NAME: &'static str = "add_input\0";
-                const LEN: u8 = 2;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowLiteSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-
-                    let tensor_buf = if let Some(JsValue::ArrayBuffer(buf)) = argv.get(1) {
-                        buf.as_ref()
-                    } else {
-                        return ctx.throw_type_error("'tensor_buf' is not buffer").into();
-                    };
-
-                    unsafe {
-                        this_val.add_input(
-                            name.as_str(),
-                            tensor_buf.as_ptr(),
-                            tensor_buf.len() as u32,
-                        );
-                    }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<AddInput>();
-
-            struct Run;
-            impl JsMethod<TensorflowLiteSession> for Run {
-                const NAME: &'static str = "run\0";
-                const LEN: u8 = 0;
-
-                fn call(
-                    _ctx: &mut Context,
-                    this_val: &mut TensorflowLiteSession,
-                    _argv: &[JsValue],
-                ) -> JsValue {
-                    unsafe { this_val.run() }
-                    JsValue::UnDefined
-                }
-            }
-            p.add_function::<Run>();
-
-            struct GetOutput;
-            impl JsMethod<TensorflowLiteSession> for GetOutput {
-                const NAME: &'static str = "get_output\0";
-                const LEN: u8 = 1;
-
-                fn call(
-                    ctx: &mut Context,
-                    this_val: &mut TensorflowLiteSession,
-                    argv: &[JsValue],
-                ) -> JsValue {
-                    let name = if let Some(JsValue::String(s)) = argv.get(0) {
-                        s.to_string()
-                    } else {
-                        return ctx.throw_type_error("'name' is not string").into();
-                    };
-                    let data = unsafe { this_val.get_output(name.as_str()) };
-
-                    ctx.new_array_buffer(data.as_slice()).into()
-                }
-            }
-            p.add_function::<GetOutput>();
-        }
     }
 
     struct TensorflowModDef;
     impl ModuleInit for TensorflowModDef {
         fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
-            let ctor = ctx.register_class(TensorflowClassDef);
-            m.add_export(TensorflowClassDef::CLASS_NAME, ctor)
+            let ctor = register_class::<TensorflowLiteSession>(ctx);
+            m.add_export(TensorflowLiteSession::CLASS_NAME, ctor)
         }
     }
 
@@ -665,7 +641,7 @@ mod tensorflow_lite {
         ctx.register_module(
             "tensorflow_lite\0",
             TensorflowModDef,
-            &[TensorflowClassDef::CLASS_NAME],
+            &[TensorflowLiteSession::CLASS_NAME],
         )
     }
 }
