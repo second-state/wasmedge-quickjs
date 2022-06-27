@@ -23,9 +23,14 @@ fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
 fn set_immediate(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
     let callback = argv.get(0);
     let args = argv.get(1..).map(|v| v.to_vec());
-    if let (Some(JsValue::Function(callback)), Some(event_loop)) = (callback, ctx.event_loop())
-    {
-        event_loop.set_next_tick(callback.clone(), args);
+    if let (Some(JsValue::Function(callback)), Some(event_loop)) = (callback, ctx.event_loop()) {
+        let callback = callback.clone();
+        event_loop.set_next_tick(Box::new(move |_ctx| {
+            match args {
+                Some(args) => callback.call(&args),
+                None => callback.call(&[]),
+            };
+        }));
     }
     JsValue::UnDefined
 }
@@ -55,7 +60,7 @@ pub fn init_global_function(ctx: &mut Context) {
     );
     global.set(
         "setImmediate",
-        ctx.wrap_function("setImmediate",set_immediate).into(),
+        ctx.wrap_function("setImmediate", set_immediate).into(),
     );
     global.set("env", env_object(ctx).into());
 }

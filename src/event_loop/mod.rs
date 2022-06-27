@@ -350,11 +350,6 @@ impl IoSelector {
                         }),
                         poll::EVENTTYPE_FD_READ | poll::EVENTTYPE_FD_WRITE,
                     ) => {
-                        if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP > 0 {
-                            let e = io::Error::from(io::ErrorKind::ConnectionAborted);
-                            callback(ctx, PollResult::Error(e));
-                            continue;
-                        }
                         if event.error > 0 {
                             let e = io::Error::from_raw_os_error(event.error as i32);
                             callback(ctx, PollResult::Error(e));
@@ -378,8 +373,15 @@ impl IoSelector {
                                 }
                             }
                             NetPollEvent::Connect => {
-                                let s = AsyncTcpConn(wasi_sock::Socket(s));
-                                callback(ctx, PollResult::Connect(s));
+                                if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP
+                                    > 0
+                                {
+                                    let e = io::Error::from(io::ErrorKind::ConnectionAborted);
+                                    callback(ctx, PollResult::Error(e));
+                                } else {
+                                    let s = AsyncTcpConn(wasi_sock::Socket(s));
+                                    callback(ctx, PollResult::Connect(s));
+                                }
                             }
                         };
                     }
@@ -393,25 +395,27 @@ impl IoSelector {
 
 #[derive(Default)]
 pub struct EventLoop {
-    next_tick_queue: LinkedList<(qjs::JsFunction, Option<Vec<JsValue>>)>,
+    next_tick_queue: LinkedList<Box<dyn FnOnce(&mut qjs::Context)>>,
     io_selector: IoSelector,
 }
 
 impl EventLoop {
     pub fn run_once(&mut self, ctx: &mut qjs::Context) -> io::Result<usize> {
-        if self.next_tick_queue.is_empty() {
-            self.io_selector.poll(ctx)
+        let n = self.run_tick_task(ctx);
+        if n > 0 {
+            Ok(n)
         } else {
-            let mut i = 0;
-            while let Some((f, args)) = self.next_tick_queue.pop_front() {
-                match args {
-                    Some(argv) => f.call(&argv),
-                    None => f.call(&[]),
-                };
-                i += 1;
-            }
-            Ok(i)
+            self.io_selector.poll(ctx)
         }
+    }
+
+    fn run_tick_task(&mut self, ctx: &mut qjs::Context) -> usize {
+        let mut i = 0;
+        while let Some(f) = self.next_tick_queue.pop_front() {
+            f(ctx);
+            i += 1;
+        }
+        i
     }
 
     pub fn set_timeout(
@@ -446,8 +450,8 @@ impl EventLoop {
         };
     }
 
-    pub fn set_next_tick(&mut self, callback: qjs::JsFunction, args: Option<Vec<JsValue>>) {
-        self.next_tick_queue.push_back((callback, args));
+    pub fn set_next_tick(&mut self, callback: Box<dyn FnOnce(&mut qjs::Context)>) {
+        self.next_tick_queue.push_back(callback);
     }
 
     pub fn tcp_listen(&mut self, port: u16) -> io::Result<AsyncTcpServer> {

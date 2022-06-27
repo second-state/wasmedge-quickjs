@@ -121,7 +121,7 @@ export async function fetch(input, init = {}) {
 
     let addr = net.nsloopup(url.host, `${url.port}`)[0];
 
-    let s = await net.connect(addr)
+    let s = await net.WasiTcpConn.connect(addr)
     let req = new httpx.WasiRequest()
     req.headers = headers
 

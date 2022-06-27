@@ -27,7 +27,7 @@ async function handle_response(s) {
 
 async function get_test() {
   try {
-    let ss = await net.connect('152.136.235.225:80');
+    let ss = await net.WasiTcpConn.connect('152.136.235.225:80');
     let req = new http.WasiRequest();
     req.headers = { 'Host': '152.136.235.225' };
     req.uri = '/get?a=123';
@@ -44,7 +44,7 @@ async function get_test() {
 
 async function post_test() {
   try {
-    let ss = await net.connect('152.136.235.225:80');
+    let ss = await net.WasiTcpConn.connect('152.136.235.225:80');
     let req = new http.WasiRequest();
     req.headers = {
       'Host': '152.136.235.225'

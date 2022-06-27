@@ -54,12 +54,180 @@ impl JsImage {
     }
 }
 
-struct ImageClassDef;
-impl JsClassDef<JsImage> for ImageClassDef {
-    const CLASS_NAME: &'static str = "Image\0";
+impl JsImage {
+    fn js_save_to_file(
+        &mut self,
+        _: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let path = if let Some(JsValue::String(p)) = argv.get(0) {
+            p.to_string()
+        } else {
+            return ctx.throw_type_error("'path' must be of type string").into();
+        };
+
+        let r = self.save_to_file(path);
+        if let Err(e) = r {
+            ctx.throw_internal_type_error(e.as_str()).into()
+        } else {
+            JsValue::UnDefined
+        }
+    }
+
+    fn js_save_to_buf(&mut self, _: &mut JsObject, ctx: &mut Context, argv: &[JsValue]) -> JsValue {
+        let fmt = if let Some(JsValue::String(p)) = argv.get(0) {
+            p.to_string()
+        } else {
+            return ctx.throw_type_error("'fmt' must be of type string").into();
+        };
+
+        let r = self.save_to_buf(fmt.as_str());
+        match r {
+            Ok(d) => ctx.new_array_buffer(d.as_slice()).into(),
+            Err(e) => ctx.throw_internal_type_error(e.as_str()).into(),
+        }
+    }
+
+    fn js_resize(&mut self, _: &mut JsObject, ctx: &mut Context, argv: &[JsValue]) -> JsValue {
+        let w = if let Some(JsValue::Int(w)) = argv.get(0) {
+            *w
+        } else {
+            return ctx.throw_type_error("'w' must be of type int").into();
+        };
+
+        let h = if let Some(JsValue::Int(h)) = argv.get(1) {
+            *h
+        } else {
+            return ctx.throw_type_error("'h' must be of type int").into();
+        };
+
+        let new_img = self.resize(w as u32, h as u32);
+        Self::wrap_obj(ctx, new_img)
+    }
+
+    fn js_pixels(&mut self, _: &mut JsObject, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+        ctx.new_array_buffer(self.pixels()).into()
+    }
+
+    fn js_pixels_32f(&mut self, _: &mut JsObject, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+        let pixels = self.pixels();
+        let mut pixels_32f = vec![0f32; pixels.len()];
+        for (i, p) in pixels.iter().enumerate() {
+            pixels_32f[i] = (*p as f32) / 255.;
+        }
+
+        ctx.new_array_buffer_t(pixels_32f.as_slice()).into()
+    }
+
+    fn js_to_rgb(&mut self, _: &mut JsObject, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+        let new_img = self.to_rgb();
+        Self::wrap_obj(ctx, new_img)
+    }
+
+    fn js_to_bgr(&mut self, _: &mut JsObject, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+        let new_img = self.to_bgr();
+        Self::wrap_obj(ctx, new_img)
+    }
+
+    fn js_to_luma(&mut self, _: &mut JsObject, ctx: &mut Context, _argv: &[JsValue]) -> JsValue {
+        let new_img = self.to_luma();
+        Self::wrap_obj(ctx, new_img)
+    }
+
+    fn js_draw_hollow_rect(
+        &mut self,
+        _: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let top_x = if let Some(JsValue::Int(v)) = argv.get(0) {
+            *v
+        } else {
+            return ctx.throw_type_error("'top_x' must be of type int").into();
+        };
+
+        let top_y = if let Some(JsValue::Int(v)) = argv.get(1) {
+            *v
+        } else {
+            return ctx.throw_type_error("'top_y' must be of type int").into();
+        };
+
+        let w = if let Some(JsValue::Int(v)) = argv.get(2) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'w' must be of type int").into();
+        };
+
+        let h = if let Some(JsValue::Int(v)) = argv.get(3) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'h' must be of type int").into();
+        };
+
+        let color = if let Some(JsValue::Int(v)) = argv.get(4) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'color' must be of type int").into();
+        };
+
+        let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
+
+        self.draw_hollow_rect((top_x, top_y), (w, h), color_arr);
+
+        JsValue::UnDefined
+    }
+
+    fn js_draw_filled_rect(
+        &mut self,
+        _: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let top_x = if let Some(JsValue::Int(v)) = argv.get(0) {
+            *v
+        } else {
+            return ctx.throw_type_error("'top_x' must be of type int").into();
+        };
+
+        let top_y = if let Some(JsValue::Int(v)) = argv.get(1) {
+            *v
+        } else {
+            return ctx.throw_type_error("'top_y' must be of type int").into();
+        };
+
+        let w = if let Some(JsValue::Int(v)) = argv.get(2) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'w' must be of type int").into();
+        };
+
+        let h = if let Some(JsValue::Int(v)) = argv.get(3) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'h' must be of type int").into();
+        };
+
+        let color = if let Some(JsValue::Int(v)) = argv.get(4) {
+            *v as u32
+        } else {
+            return ctx.throw_type_error("'color' must be of type int").into();
+        };
+
+        let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
+
+        self.draw_filled_rect((top_x, top_y), (w, h), color_arr);
+
+        JsValue::UnDefined
+    }
+}
+
+impl JsClassDef for JsImage {
+    type RefType = Self;
+    const CLASS_NAME: &'static str = "Image";
     const CONSTRUCTOR_ARGC: u8 = 1;
 
-    fn constructor(ctx: &mut Context, argv: &[JsValue]) -> Result<JsImage, JsValue> {
+    fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<JsImage, JsValue> {
         let param = argv.get(0).ok_or(JsValue::UnDefined)?;
         match param {
             JsValue::String(path) => {
@@ -77,237 +245,31 @@ impl JsClassDef<JsImage> for ImageClassDef {
         }
     }
 
-    fn proto_init(p: &mut JsClassProto<JsImage, Self>) {
-        struct SaveToFile;
-        impl JsMethod<JsImage> for SaveToFile {
-            const NAME: &'static str = "save_to_file\0";
-            const LEN: u8 = 1;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
-                let path = if let Some(JsValue::String(p)) = argv.get(0) {
-                    p.to_string()
-                } else {
-                    return ctx.throw_type_error("'path' is not string").into();
-                };
-
-                let r = this_val.save_to_file(path);
-                if let Err(e) = r {
-                    ctx.throw_internal_type_error(e.as_str()).into()
-                } else {
-                    JsValue::UnDefined
-                }
-            }
-        }
-
-        struct SaveToBuf;
-        impl JsMethod<JsImage> for SaveToBuf {
-            const NAME: &'static str = "save_to_buf\0";
-            const LEN: u8 = 1;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
-                let fmt = if let Some(JsValue::String(p)) = argv.get(0) {
-                    p.to_string()
-                } else {
-                    return ctx.throw_type_error("'fmt' is not string").into();
-                };
-
-                let r = this_val.save_to_buf(fmt.as_str());
-                match r {
-                    Ok(d) => ctx.new_array_buffer(d.as_slice()).into(),
-                    Err(e) => ctx.throw_internal_type_error(e.as_str()).into(),
-                }
-            }
-        }
-
-        struct ResizeFn;
-        impl JsMethod<JsImage> for ResizeFn {
-            const NAME: &'static str = "resize\0";
-            const LEN: u8 = 2;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
-                let w = if let Some(JsValue::Int(w)) = argv.get(0) {
-                    *w
-                } else {
-                    return ctx.throw_type_error("'w' is not int").into();
-                };
-
-                let h = if let Some(JsValue::Int(h)) = argv.get(1) {
-                    *h
-                } else {
-                    return ctx.throw_type_error("'h' is not int").into();
-                };
-
-                let new_img = this_val.resize(w as u32, h as u32);
-                ImageClassDef::gen_js_obj(ctx, new_img)
-            }
-        }
-
-        struct Pixels;
-        impl JsMethod<JsImage> for Pixels {
-            const NAME: &'static str = "pixels\0";
-            const LEN: u8 = 0;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
-                let pixels = this_val.pixels();
-                ctx.new_array_buffer(pixels).into()
-            }
-        }
-
-        struct Pixels32f;
-        impl JsMethod<JsImage> for Pixels32f {
-            const NAME: &'static str = "pixels_32f\0";
-            const LEN: u8 = 0;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
-                let pixels = this_val.pixels();
-                let mut pixels_32f = vec![0f32; pixels.len()];
-                for (i, p) in pixels.iter().enumerate() {
-                    pixels_32f[i] = (*p as f32) / 255.;
-                }
-
-                ctx.new_array_buffer_t(pixels_32f.as_slice()).into()
-            }
-        }
-
-        struct RGB;
-        impl JsMethod<JsImage> for RGB {
-            const NAME: &'static str = "to_rgb\0";
-            const LEN: u8 = 0;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
-                let new_img = this_val.to_rgb();
-                ImageClassDef::gen_js_obj(ctx, new_img)
-            }
-        }
-
-        struct BGR;
-        impl JsMethod<JsImage> for BGR {
-            const NAME: &'static str = "to_bgr\0";
-            const LEN: u8 = 0;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
-                let new_img = this_val.to_bgr();
-                ImageClassDef::gen_js_obj(ctx, new_img)
-            }
-        }
-
-        struct LUMA;
-        impl JsMethod<JsImage> for LUMA {
-            const NAME: &'static str = "to_luma\0";
-            const LEN: u8 = 0;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, _argv: &[JsValue]) -> JsValue {
-                let new_img = this_val.to_luma();
-                ImageClassDef::gen_js_obj(ctx, new_img)
-            }
-        }
-
-        struct DrawHollowRect;
-        impl JsMethod<JsImage> for DrawHollowRect {
-            const NAME: &'static str = "draw_hollow_rect\0";
-            const LEN: u8 = 5;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
-                let top_x = if let Some(JsValue::Int(v)) = argv.get(0) {
-                    *v
-                } else {
-                    return ctx.throw_type_error("'top_x' is not int").into();
-                };
-
-                let top_y = if let Some(JsValue::Int(v)) = argv.get(1) {
-                    *v
-                } else {
-                    return ctx.throw_type_error("'top_y' is not int").into();
-                };
-
-                let w = if let Some(JsValue::Int(v)) = argv.get(2) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'w' is not int").into();
-                };
-
-                let h = if let Some(JsValue::Int(v)) = argv.get(3) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'h' is not int").into();
-                };
-
-                let color = if let Some(JsValue::Int(v)) = argv.get(4) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'color' is not int").into();
-                };
-
-                let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
-
-                this_val.draw_hollow_rect((top_x, top_y), (w, h), color_arr);
-
-                JsValue::UnDefined
-            }
-        }
-
-        struct DrawFilledRect;
-        impl JsMethod<JsImage> for DrawFilledRect {
-            const NAME: &'static str = "draw_filled_rect\0";
-            const LEN: u8 = 5;
-
-            fn call(ctx: &mut Context, this_val: &mut JsImage, argv: &[JsValue]) -> JsValue {
-                let top_x = if let Some(JsValue::Int(v)) = argv.get(1) {
-                    *v
-                } else {
-                    return ctx.throw_type_error("'top_x' is not int").into();
-                };
-
-                let top_y = if let Some(JsValue::Int(v)) = argv.get(2) {
-                    *v
-                } else {
-                    return ctx.throw_type_error("'top_y' is not int").into();
-                };
-
-                let w = if let Some(JsValue::Int(v)) = argv.get(3) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'w' is not int").into();
-                };
-
-                let h = if let Some(JsValue::Int(v)) = argv.get(4) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'h' is not int").into();
-                };
-
-                let color = if let Some(JsValue::Int(v)) = argv.get(0) {
-                    *v as u32
-                } else {
-                    return ctx.throw_type_error("'color' is not int").into();
-                };
-
-                let color_arr = [(color >> 16) as u8, (color >> 8) as u8, color as u8, 255u8];
-
-                this_val.draw_filled_rect((top_x, top_y), (w, h), color_arr);
-
-                JsValue::UnDefined
-            }
-        }
-
-        p.add_function::<SaveToFile>();
-        p.add_function::<SaveToBuf>();
-        p.add_function::<ResizeFn>();
-        p.add_function::<Pixels>();
-        p.add_function::<Pixels32f>();
-        p.add_function::<RGB>();
-        p.add_function::<BGR>();
-        p.add_function::<LUMA>();
-        p.add_function::<DrawFilledRect>();
-        p.add_function::<DrawHollowRect>();
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
     }
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+        ("save_to_file", 1, Self::js_save_to_file),
+        ("save_to_buf", 1, Self::js_save_to_buf),
+        ("resize", 2, Self::js_resize),
+        ("pixels", 0, Self::js_pixels),
+        ("pixels_32f", 0, Self::js_pixels_32f),
+        ("to_rgb", 0, Self::js_to_rgb),
+        ("to_bgr", 0, Self::js_to_bgr),
+        ("to_luma", 0, Self::js_to_luma),
+        ("draw_hollow_rect", 5, Self::js_draw_hollow_rect),
+        ("draw_filled_rect", 5, Self::js_draw_filled_rect),
+    ];
 }
 
 struct ImageModule;
 
 impl ModuleInit for ImageModule {
     fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
-        let class_ctor = ctx.register_class(ImageClassDef);
+        let class_ctor = register_class::<JsImage>(ctx);
         m.add_export("Image\0", class_ctor);
     }
 }

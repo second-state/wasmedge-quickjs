@@ -143,6 +143,7 @@ pub struct Socket(pub RawSocket);
 impl Drop for Socket {
     fn drop(&mut self) {
         self.shutdown(Shutdown::Both);
+        unsafe { libc::close(self.0) };
     }
 }
 
@@ -588,7 +589,7 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
             AddressFamily::Unspec => {
                 // unimplemented!("not support Unspec")
                 continue;
-            },
+            }
         };
 
         r_addrs.push(addr);

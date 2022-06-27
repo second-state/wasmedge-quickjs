@@ -175,3 +175,8 @@ jobs:
         cd examples/embed_rust_module
         cargo build --target wasm32-wasi --release
         wasmedge --dir .:. target/wasm32-wasi/release/embed_rust_module.wasm
+
+    - name: Use Rust to extends JS Class
+      run: |
+        cargo build --target wasm32-wasi --release --example=js_extend
+        wasmedge --dir .:. target/wasm32-wasi/release/examples/js_extend.wasm
