@@ -5,7 +5,7 @@ pub mod js_module;
 
 use std::collections::HashMap;
 
-pub use js_class::v2::*;
+pub use js_class::*;
 pub use js_module::{JsModuleDef, ModuleInit};
 
 #[allow(warnings)]

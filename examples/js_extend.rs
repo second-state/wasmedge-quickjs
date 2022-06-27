@@ -1,5 +1,8 @@
-use wasmedge_quickjs::js_class::v2::{self, JsClassDef, JsClassField, JsClassMethod, JsClassTool};
-use wasmedge_quickjs::{AsObject, Context, JsObject, JsValue, Runtime};
+use wasmedge_quickjs::js_class;
+use wasmedge_quickjs::{
+    AsObject, Context, ExtendsJsClassDef, JsClassDef, JsClassField, JsClassMethod, JsClassTool,
+    JsObject, JsValue, Runtime,
+};
 
 #[derive(Debug)]
 struct ClassA(i32);
@@ -20,7 +23,7 @@ impl ClassA {
     }
 }
 
-impl v2::JsClassDef for ClassA {
+impl JsClassDef for ClassA {
     type RefType = ClassA;
 
     const CLASS_NAME: &'static str = "ClassA";
@@ -88,7 +91,7 @@ impl ClassB {
     }
 }
 
-impl v2::ExtendsJsClassDef for ClassB {
+impl ExtendsJsClassDef for ClassB {
     type RefType = ClassB;
 
     type BaseDef = ClassA;
@@ -119,13 +122,13 @@ impl v2::ExtendsJsClassDef for ClassB {
 fn main() {
     let mut rt = Runtime::new();
     rt.run_with_context(|ctx| {
-        let a_ctor = v2::register_class::<ClassA>(ctx);
-        let b_ctor = v2::register_class::<ClassB>(ctx);
+        let a_ctor = js_class::register_class::<ClassA>(ctx);
+        let b_ctor = js_class::register_class::<ClassB>(ctx);
 
         let a_proto = ClassA::proto(ctx);
         let b_proto = ClassB::proto(ctx);
 
-        v2::class_extends(ctx, b_proto, a_proto);
+        js_class::class_extends(ctx, b_proto, a_proto);
 
         let mut global = ctx.get_global();
         global.set("ClassA", a_ctor);
