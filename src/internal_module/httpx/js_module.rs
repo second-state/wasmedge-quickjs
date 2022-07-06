@@ -30,7 +30,11 @@ impl DerefMut for Buffer {
 
 impl Buffer {
     fn js_buffer(&self, ctx: &mut Context) -> JsValue {
-        ctx.new_array_buffer(self).into()
+        if self.len() > 0 {
+            ctx.new_array_buffer(self).into()
+        } else {
+            JsValue::Null
+        }
     }
 
     fn js_length(&self, _ctx: &mut Context) -> JsValue {
@@ -60,7 +64,10 @@ impl Buffer {
         match HttpRequest::parse(self.as_slice()) {
             Ok(req) => HttpRequest::wrap_obj(ctx, req),
             Err(ParseError::Pending) => JsValue::UnDefined,
-            Err(e) => ctx.new_error(format!("{:?}", e).as_str()),
+            Err(e) => {
+                let err = ctx.new_error(format!("{:?}", e).as_str());
+                ctx.throw_error(err).into()
+            }
         }
     }
 
@@ -78,6 +85,16 @@ impl Buffer {
             Err(ParseError::Pending) => JsValue::UnDefined,
             Err(e) => ctx.new_error(format!("{:?}", e).as_str()),
         }
+    }
+
+    fn js_clear(
+        &mut self,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        self.clear();
+        JsValue::UnDefined
     }
 }
 
@@ -102,8 +119,10 @@ impl JsClassDef for Buffer {
 
     const METHODS: &'static [crate::JsClassMethod<Self::RefType>] = &[
         ("append", 1, Self::js_append),
+        ("write", 1, Self::js_append),
         ("parseRequest", 0, Self::js_parse_request),
         ("parseResponse", 0, Self::js_parse_response),
+        ("clear", 0, Self::js_clear),
     ];
 
     unsafe fn mut_class_id_ptr() -> &'static mut u32 {
@@ -114,7 +133,11 @@ impl JsClassDef for Buffer {
 
 impl HttpRequest {
     pub fn js_get_body(&self, ctx: &mut Context) -> JsValue {
-        ctx.new_array_buffer(self.body.as_slice()).into()
+        if self.body.len() > 0 {
+            ctx.new_array_buffer(self.body.as_slice()).into()
+        } else {
+            JsValue::Null
+        }
     }
 
     pub fn js_set_body(&mut self, _ctx: &mut Context, val: JsValue) {
@@ -148,7 +171,7 @@ impl HttpRequest {
                 self.headers.clear();
                 for (k, v) in h {
                     if let JsValue::String(v_str) = ctx.value_to_string(&v) {
-                        self.headers.insert(k, v_str.to_string());
+                        self.headers.insert(k.to_lowercase(), v_str.to_string());
                     }
                 }
             }
@@ -191,6 +214,38 @@ impl HttpRequest {
             let uri = super::core::request::Resource::Path(uri);
             self.resource = uri;
         }
+    }
+
+    pub fn js_get_header(
+        &mut self,
+        _this_obj: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        if let Some(JsValue::String(s)) = argv.first() {
+            let key = s.as_str();
+            if let Some(v) = self.headers.get(key) {
+                ctx.new_string(&v).into()
+            } else {
+                JsValue::Null
+            }
+        } else {
+            JsValue::Null
+        }
+    }
+
+    pub fn js_set_header(
+        &mut self,
+        _this_obj: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        if let (Some(JsValue::String(k)), Some(JsValue::String(v))) = (argv.get(0), argv.get(1)) {
+            self.headers
+                .insert(k.as_str().to_lowercase(), v.to_string());
+        }
+
+        JsValue::UnDefined
     }
 
     pub fn js_encode(
@@ -236,8 +291,11 @@ impl JsClassDef for HttpRequest {
         ("uri", Self::js_get_uri, Some(Self::js_set_uri)),
     ];
 
-    const METHODS: &'static [crate::JsClassMethod<Self::RefType>] =
-        &[("encode", 0, Self::js_encode)];
+    const METHODS: &'static [crate::JsClassMethod<Self::RefType>] = &[
+        ("encode", 0, Self::js_encode),
+        ("getHeader", 1, Self::js_get_header),
+        ("setHeader", 1, Self::js_set_header),
+    ];
 }
 
 impl HttpResponse {
@@ -574,6 +632,10 @@ mod js_url {
             ctx.new_string(format!("{}", self.0).as_str()).into()
         }
 
+        pub fn js_get_href(&self, ctx: &mut Context) -> JsValue {
+            ctx.new_string(format!("{}", self.0).as_str()).into()
+        }
+
         pub fn js_get_scheme(&self, ctx: &mut Context) -> JsValue {
             ctx.new_string(self.scheme()).into()
         }
@@ -619,6 +681,7 @@ mod js_url {
         const CONSTRUCTOR_ARGC: u8 = 1;
 
         const FIELDS: &'static [JsClassField<Self::RefType>] = &[
+            ("href", Self::js_get_href, None),
             ("scheme", Self::js_get_scheme, None),
             ("username", Self::js_get_username, None),
             ("password", Self::js_get_password, None),
