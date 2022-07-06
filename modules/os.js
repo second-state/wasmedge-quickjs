@@ -3,6 +3,8 @@ import { Buffer } from 'buffer';
 import { text_encode } from '_encoding';
 import { _memorySize } from '_node:os';
 
+export * from 'qjs:os';
+
 function unimplemented(name) {
   throw new Error('Node.js os ' + name + ' is not supported');
 }
