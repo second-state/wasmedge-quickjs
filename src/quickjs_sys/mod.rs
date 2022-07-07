@@ -366,7 +366,7 @@ impl Context {
         JS_EnableBignumExt(ctx, 1);
         js_std_add_console(ctx);
         js_init_module_std(ctx, "std\0".as_ptr() as *const i8);
-        js_init_module_os(ctx, "os\0".as_ptr() as *const i8);
+        js_init_module_os(ctx, "qjs:os\0".as_ptr() as *const i8);
         let mut ctx = Context { ctx };
 
         #[cfg(feature = "img")]
@@ -388,6 +388,7 @@ impl Context {
         super::internal_module::encoding::init_encoding_module(&mut ctx);
         super::internal_module::wasi_net_module::init_module(&mut ctx);
         super::internal_module::httpx::init_module(&mut ctx);
+        super::internal_module::os::init_module(&mut ctx);
 
         ctx
     }
