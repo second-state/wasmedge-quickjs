@@ -1,4 +1,4 @@
-import { ERR_SOCKET_BAD_PORT } from 'internal/errors'
+import { ERR_SOCKET_BAD_PORT, ERR_INVALID_ARG_TYPE, hideStackFrames } from 'internal/errors'
 
 export function validatePort(port, name = "Port", allowZero = true) {
     if (
@@ -13,4 +13,22 @@ export function validatePort(port, name = "Port", allowZero = true) {
     }
 
     return port;
+}
+
+export const validateFunction = hideStackFrames(
+    (value, name) => {
+        if (typeof value !== "function") {
+            throw new ERR_INVALID_ARG_TYPE(name, "Function", value);
+        }
+    },
+);
+
+export function validateString(value, name) {
+    if (typeof value !== "string") {
+        throw new ERR_INVALID_ARG_TYPE(name, "string", value);
+    }
+}
+
+export default {
+    validatePort, validateFunction, validateString
 }

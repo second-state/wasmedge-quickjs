@@ -1,5 +1,3 @@
-import { inspect } from 'util'
-
 export class ERR_HTTP_HEADERS_SENT extends Error {
     constructor(x) {
         super(
@@ -125,6 +123,26 @@ function createInvalidArgType(name, expected) {
     return msg;
 }
 
+function invalidArgTypeHelper(input) {
+    if (input == null) {
+        return ` Received ${input}`;
+    }
+    if (typeof input === "function" && input.name) {
+        return ` Received function ${input.name}`;
+    }
+    if (typeof input === "object") {
+        if (input.constructor && input.constructor.name) {
+            return ` Received an instance of ${input.constructor.name}`;
+        }
+        return ` Received ${inspect(input, { depth: -1 })}`;
+    }
+    let inspected = inspect(input, { colors: false });
+    if (inspected.length > 25) {
+        inspected = `${inspected.slice(0, 25)}...`;
+    }
+    return ` Received type ${typeof input} (${inspected})`;
+}
+
 export class ERR_INVALID_ARG_TYPE_RANGE extends RangeError {
     constructor(name, expected, actual) {
         const msg = createInvalidArgType(name, expected);
@@ -133,10 +151,32 @@ export class ERR_INVALID_ARG_TYPE_RANGE extends RangeError {
     }
 }
 
+export class ERR_INVALID_ARG_TYPE extends TypeError {
+    constructor(name, expected) {
+        const msg = createInvalidArgType(name, expected);
+
+        super("ERR_INVALID_ARG_TYPE", `${msg}.${invalidArgTypeHelper(actual)}`);
+    }
+
+    static RangeError = ERR_INVALID_ARG_TYPE_RANGE;
+}
+
 export class ERR_INVALID_ARG_VALUE_RANGE extends RangeError {
     constructor(name, value, reason = "is invalid") {
         const type = name.includes(".") ? "property" : "argument";
-        const inspected = inspect(value);
+        const inspected = JSON.stringify(value);
+
+        super(
+            "ERR_INVALID_ARG_VALUE",
+            `The ${type} '${name}' ${reason}. Received ${inspected}`,
+        );
+    }
+}
+
+export class ERR_INVALID_ARG_VALUE extends TypeError {
+    constructor(name, value, reason = "is invalid") {
+        const type = name.includes(".") ? "property" : "argument";
+        const inspected = JSON.stringify(value);
 
         super(
             "ERR_INVALID_ARG_VALUE",
