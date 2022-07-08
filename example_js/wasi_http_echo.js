@@ -1,59 +1,47 @@
-import * as http from 'wasi_http';
-import * as net from 'wasi_net';
-import { TextDecoder } from 'util'
+import { createServer, request, fetch } from 'http';
 
+createServer((req, resp) => {
+  print("server: req.httpVersion=", req.httpVersion);
+  print("server: req.url=", req.url);
+  print("server: req.method=", req.method);
+  print("server: req.headers=", Object.keys(req.headers));
 
-async function handle_client(cs, handler_req) {
-  print('open:', cs.peer());
-  let buffer = new http.Buffer();
+  req.on('data', (body) => {
+    print("server: req.body=", body);
+    print()
 
-  while (true) {
-    try {
-      let d = await cs.read();
-      if (d == undefined || d.byteLength <= 0) {
-        return;
-      }
-      buffer.append(d);
-      let req = buffer.parseRequest();
-      if (req instanceof http.WasiRequest) {
-        handler_req(cs, req);
-        break;
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-  print('close:', cs.peer());
+    resp.write('echo:')
+    resp.end(body)
+  })
+}).listen(8001, () => {
+  print('listen 8001 ...\n');
+})
+
+async function test_request() {
+  let client = request({ href: "http://127.0.0.1:8001/request", method: 'POST' }, (resp) => {
+    var data = '';
+    resp.on('data', (chunk) => {
+      data += chunk;
+    })
+    resp.on('end', () => {
+      print('request client recv:', data)
+      print()
+    })
+  })
+
+  client.end('hello server')
 }
 
-function handler_req(cs, req) {
-  print("version=", req.version);
-  print("uri=", req.uri);
-  print("method=", req.method);
-  print("headers=", Object.keys(req.headers));
-  print("body=", new TextDecoder().decode(req.body));
-
-  let resp = new http.WasiResponse();
-  let body = 'echo:' + new TextDecoder().decode(req.body);
-  let r = resp.encode(body);
-  cs.write(r);
+async function test_fetch() {
+  let resp = await fetch('http://127.0.0.1:8001/fetch', { method: 'POST', body: 'hello server' })
+  print('fetch client recv:', await resp.text())
+  print()
 }
 
-async function server_start() {
-  print('listen 8000 ...');
-  try {
-    let s = new net.WasiTcpServer(8000);
-    for (var i = 0; i < 100; i++) {
-      let cs = await s.accept();
-      try {
-        handle_client(cs, handler_req);
-      } catch (e) {
-        print('handle_client:', e);
-      }
-    }
-  } catch (e) {
-    print(e);
-  }
+async function run_test() {
+  await test_request()
+  await test_fetch()
+  exit(0)
 }
 
-server_start();
+run_test()

@@ -51,26 +51,23 @@ jobs:
         cd example_js
         wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm image.js
       
-    - name: Network client example
+    - name: Network example
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
-        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_client.js
+        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_net_echo.js
 
-    - name: Network fetch example
+    - name: Http fetch example
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
         wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_fetch.js
         
-    - name: Network server example
+    - name: Http server example
       run: |
         cargo build --target wasm32-wasi --release
         cd example_js
-        nohup wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
-        sleep 15
-        resp=$(curl -d "WasmEdge" -X POST http://localhost:8000)
-        echo "Server response is $resp"
+        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
         
     - name: ES6 module
       run: |
