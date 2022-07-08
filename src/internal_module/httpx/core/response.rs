@@ -156,7 +156,7 @@ impl HttpResponse {
                         let len = value.parse().map_err(|_| ParseError::InvalidHeaders)?;
                         parsed_body_len = BodyLen::Length(len);
                     } else if header_key.as_str() == "transfer-encoding"
-                        && value.as_str() == "chunk"
+                        && value.as_str() == "chunked"
                     {
                         parsed_body_len = BodyLen::Chunked;
                     }

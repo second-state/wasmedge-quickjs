@@ -2,68 +2,6 @@ function unimplemented(name) {
   throw new Error('Node.js process ' + name + ' is not supported');
 }
 
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-  if (!draining || !currentQueue)
-    { return; }
-  draining = false;
-  if (currentQueue.length) {
-    queue = currentQueue.concat(queue);
-  }
-  else {
-    queueIndex = -1;
-  }
-  if (queue.length)
-    { drainQueue(); }
-}
-
-function drainQueue() {
-  if (draining)
-    { return; }
-  var timeout = setTimeout(cleanUpNextTick, 0);
-  draining = true;
-
-  var len = queue.length;
-  while(len) {
-    currentQueue = queue;
-    queue = [];
-    while (++queueIndex < len) {
-      if (currentQueue)
-        { currentQueue[queueIndex].run(); }
-    }
-    queueIndex = -1;
-    len = queue.length;
-  }
-  currentQueue = null;
-  draining = false;
-  clearTimeout(timeout);
-}
-
-function nextTick (fun) {
-  var arguments$1 = arguments;
-
-  var args = new Array(arguments.length - 1);
-  if (arguments.length > 1) {
-    for (var i = 1; i < arguments.length; i++)
-      { args[i - 1] = arguments$1[i]; }
-  }
-  queue.push(new Item(fun, args));
-  if (queue.length === 1 && !draining)
-    { setTimeout(drainQueue, 0); }
-}
-// v8 likes predictible objects
-function Item(fun, array) {
-  this.fun = fun;
-  this.array = array;
-}
-Item.prototype.run = function () {
-  this.fun.apply(null, this.array);
-};
-
 var title = 'wasmedge_quickjs';
 var arch = 'wasm';
 var platform = 'wasi';
@@ -73,16 +11,16 @@ var execArgv = [];
 var version = 'v16.8.0';
 var versions = {};
 
-var emitWarning = function(message, type) {
+var emitWarning = function (message, type) {
   console.warn((type ? (type + ': ') : '') + message);
 };
 
-var binding = function(name) { unimplemented('binding'); };
+var binding = function (name) { unimplemented('binding'); };
 
-var umask = function(mask) { return 0; };
+var umask = function (mask) { return 0; };
 
-var cwd = function() { return './'; };
-var chdir = function(dir) {unimplemented('chdir');};
+var cwd = function () { return './'; };
+var chdir = function (dir) { unimplemented('chdir'); };
 
 var release = {
   name: 'wasmedge_quickjs',
@@ -91,7 +29,7 @@ var release = {
   libUrl: '',
 };
 
-function noop() {}
+function noop() { }
 
 var _rawDebug = noop;
 var moduleLoadList = [];
@@ -104,11 +42,11 @@ function _getActiveRequests() { return []; }
 function _getActiveHandles() { return []; }
 var reallyExit = noop;
 var _kill = noop;
-var cpuUsage = function() { return {}; };
+var cpuUsage = function () { return {}; };
 var resourceUsage = cpuUsage;
 var memoryUsage = cpuUsage;
 var kill = noop;
-var exit = noop;
+var exit = globalThis.exit;
 var openStdin = noop;
 var allowedNodeEnvironmentFlags = {};
 function assert(condition, message) {
@@ -127,7 +65,7 @@ var features = {
 };
 var _fatalExceptions = noop;
 var setUncaughtExceptionCaptureCallback = noop;
-function hasUncaughtExceptionCaptureCallback() { return false; }var _tickCallback = noop;
+function hasUncaughtExceptionCaptureCallback() { return false; } var _tickCallback = noop;
 var _debugProcess = noop;
 var _debugEnd = noop;
 var _startProfilerIdleNotifier = noop;
@@ -145,8 +83,8 @@ var _preload_modules = [];
 var setSourceMapsEnabled = noop;
 
 var _performance = {
-  now: typeof performance !== 'undefined' ? performance.now.bind(performance) : undefined,
-  timing: typeof performance !== 'undefined' ? performance.timing : undefined,
+  now: undefined,
+  timing: undefined,
 };
 if (_performance.now === undefined) {
   var nowOffset = Date.now();
@@ -176,7 +114,9 @@ function hrtime(previousTimestamp) {
     }
   }
   return [seconds, nanoseconds];
-}hrtime.bigint = function(time) {
+}
+
+hrtime.bigint = function (time) {
   var diff = hrtime(time);
   if (typeof BigInt === 'undefined') {
     return diff[0] * nanoPerSec + diff[1];
@@ -187,7 +127,7 @@ function hrtime(previousTimestamp) {
 var _maxListeners = 10;
 var _events = {};
 var _eventsCount = 0;
-function on () { return process }var addListener = on;
+function on() { return process } var addListener = on;
 var once = on;
 var off = on;
 var removeListener = on;
@@ -195,7 +135,7 @@ var removeAllListeners = on;
 var emit = noop;
 var prependListener = on;
 var prependOnceListener = on;
-function listeners (name) { return []; }
+function listeners(name) { return []; }
 var process = {
   version: version,
   versions: versions,
@@ -241,7 +181,7 @@ var process = {
   setUncaughtExceptionCaptureCallback: setUncaughtExceptionCaptureCallback,
   hasUncaughtExceptionCaptureCallback: hasUncaughtExceptionCaptureCallback,
   emitWarning: emitWarning,
-  nextTick: nextTick,
+  nextTick: globalThis.nextTick,
   _tickCallback: _tickCallback,
   _debugProcess: _debugProcess,
   _debugEnd: _debugEnd,
@@ -267,5 +207,7 @@ var process = {
   _preload_modules: _preload_modules,
   setSourceMapsEnabled: setSourceMapsEnabled,
 };
+
+const nextTick = globalThis.nextTick;
 
 export { _debugEnd, _debugProcess, _events, _eventsCount, _exiting, _fatalExceptions, _getActiveHandles, _getActiveRequests, _kill, _linkedBinding, _maxListeners, _preload_modules, _rawDebug, _startProfilerIdleNotifier, _stopProfilerIdleNotifier, _tickCallback, abort, addListener, allowedNodeEnvironmentFlags, arch, argv, argv0, assert, binding, chdir, config, cpuUsage, cwd, debugPort, process as default, dlopen, domain, emit, emitWarning, env, execArgv, execPath, exit, features, hasUncaughtExceptionCaptureCallback, hrtime, kill, listeners, memoryUsage, moduleLoadList, nextTick, off, on, once, openStdin, pid, platform, ppid, prependListener, prependOnceListener, reallyExit, release, removeAllListeners, removeListener, resourceUsage, setSourceMapsEnabled, setUncaughtExceptionCaptureCallback, stderr, stdin, stdout, title, umask, uptime, version, versions };

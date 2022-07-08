@@ -101,9 +101,9 @@ impl HttpRequest {
 
 fn process_req_line(s: &str) -> Result<(Method, Resource, Version), ParseError> {
     let mut words = s.split_whitespace();
-    let method = words.next().ok_or(ParseError::Pending)?;
-    let resource = words.next().ok_or(ParseError::Pending)?;
-    let version = words.next().ok_or(ParseError::Pending)?;
+    let method = words.next().ok_or(ParseError::InvalidMethod)?;
+    let resource = words.next().ok_or(ParseError::InvalidUrl)?;
+    let version = words.next().ok_or(ParseError::InvalidVersion)?;
 
     Ok((
         method.parse()?,
@@ -118,7 +118,7 @@ fn process_header_line(s: &str) -> (String, String) {
     let mut value = String::from("");
 
     if let Some(k) = header_items.next() {
-        key = k.to_string();
+        key = k.to_lowercase();
     }
 
     if let Some(v) = header_items.next() {

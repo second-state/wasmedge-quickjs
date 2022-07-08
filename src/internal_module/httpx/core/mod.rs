@@ -2,6 +2,7 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+pub mod chunk;
 pub mod request;
 pub mod response;
 
