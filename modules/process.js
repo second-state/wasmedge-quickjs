@@ -46,7 +46,7 @@ var cpuUsage = function () { return {}; };
 var resourceUsage = cpuUsage;
 var memoryUsage = cpuUsage;
 var kill = noop;
-var exit = noop;
+var exit = globalThis.exit;
 var openStdin = noop;
 var allowedNodeEnvironmentFlags = {};
 function assert(condition, message) {

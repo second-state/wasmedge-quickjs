@@ -1,3 +1,4 @@
+use super::core::chunk::HttpChunk;
 use super::core::request::HttpRequest;
 use super::core::ParseError;
 use crate::event_loop::AsyncTcpConn;
@@ -13,7 +14,7 @@ use std::io::BufReader;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-struct Buffer(Vec<u8>);
+struct Buffer(Vec<u8>, usize);
 
 impl Deref for Buffer {
     type Target = Vec<u8>;
@@ -28,17 +29,28 @@ impl DerefMut for Buffer {
     }
 }
 
+impl AsRef<[u8]> for Buffer {
+    fn as_ref(&self) -> &[u8] {
+        if self.len() > self.1 {
+            &self.0[self.1..]
+        } else {
+            &[]
+        }
+    }
+}
+
 impl Buffer {
     fn js_buffer(&self, ctx: &mut Context) -> JsValue {
-        if self.len() > 0 {
-            ctx.new_array_buffer(self).into()
+        let buf = self.as_ref();
+        if buf.len() > 0 {
+            ctx.new_array_buffer(buf).into()
         } else {
             JsValue::Null
         }
     }
 
     fn js_length(&self, _ctx: &mut Context) -> JsValue {
-        JsValue::Int(self.len() as i32)
+        JsValue::Int(self.as_ref().len() as i32)
     }
 
     fn js_append(
@@ -47,11 +59,20 @@ impl Buffer {
         _ctx: &mut Context,
         argv: &[JsValue],
     ) -> JsValue {
-        if let Some(JsValue::ArrayBuffer(data)) = argv.get(0) {
-            self.extend_from_slice(data.as_ref());
-            JsValue::Bool(true)
-        } else {
-            JsValue::Bool(false)
+        match argv.get(0) {
+            Some(JsValue::ArrayBuffer(data)) => {
+                self.extend_from_slice(data.as_ref());
+                JsValue::Bool(true)
+            }
+            Some(JsValue::Object(obj)) => {
+                if let Some(v) = Buffer::opaque(&JsValue::Object(obj.clone())) {
+                    self.extend_from_slice(v.as_ref());
+                    JsValue::Bool(true)
+                } else {
+                    JsValue::Bool(false)
+                }
+            }
+            _ => JsValue::Bool(false),
         }
     }
 
@@ -61,7 +82,7 @@ impl Buffer {
         ctx: &mut Context,
         _argv: &[JsValue],
     ) -> JsValue {
-        match HttpRequest::parse(self.as_slice()) {
+        match HttpRequest::parse(self.as_ref()) {
             Ok(req) => HttpRequest::wrap_obj(ctx, req),
             Err(ParseError::Pending) => JsValue::UnDefined,
             Err(e) => {
@@ -77,10 +98,32 @@ impl Buffer {
         ctx: &mut Context,
         _argv: &[JsValue],
     ) -> JsValue {
-        match HttpResponse::parse(self.as_slice()) {
+        match HttpResponse::parse(self.as_ref()) {
             Ok((resp, n)) => {
-                self.0 = self.0[n..].to_vec();
+                self.1 += n;
                 HttpResponse::wrap_obj(ctx, resp)
+            }
+            Err(ParseError::Pending) => JsValue::UnDefined,
+            Err(e) => ctx.new_error(format!("{:?}", e).as_str()),
+        }
+    }
+
+    fn js_parse_chunk_data(
+        &mut self,
+        _this_obj: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        match HttpChunk::parse(self.as_ref()) {
+            Ok((buf, n)) => {
+                let r = if buf.len() == 0 {
+                    JsValue::Null
+                } else {
+                    let array_buf = ctx.new_array_buffer(buf);
+                    array_buf.into()
+                };
+                self.1 += n;
+                r
             }
             Err(ParseError::Pending) => JsValue::UnDefined,
             Err(e) => ctx.new_error(format!("{:?}", e).as_str()),
@@ -93,7 +136,8 @@ impl Buffer {
         _ctx: &mut Context,
         _argv: &[JsValue],
     ) -> JsValue {
-        self.clear();
+        self.0.clear();
+        self.1 = 0;
         JsValue::UnDefined
     }
 }
@@ -106,9 +150,9 @@ impl JsClassDef for Buffer {
 
     fn constructor_fn(_ctx: &mut Context, argv: &[JsValue]) -> Result<Buffer, JsValue> {
         if let Some(JsValue::ArrayBuffer(s)) = argv.get(0) {
-            Ok(Buffer(s.as_ref().to_vec()))
+            Ok(Buffer(s.as_ref().to_vec(), 0))
         } else {
-            Ok(Buffer(vec![]))
+            Ok(Buffer(vec![], 0))
         }
     }
 
@@ -122,6 +166,7 @@ impl JsClassDef for Buffer {
         ("write", 1, Self::js_append),
         ("parseRequest", 0, Self::js_parse_request),
         ("parseResponse", 0, Self::js_parse_response),
+        ("parseChunk", 0, Self::js_parse_chunk_data),
         ("clear", 0, Self::js_clear),
     ];
 
@@ -483,7 +528,7 @@ impl WasiChunkResponse {
         if let Some(v) = self.0.invoke("on", argv) {
             v
         } else {
-            ctx.throw_internal_type_error("chunk is shutdown").into()
+            ctx.throw_internal_type_error("socket is shutdown").into()
         }
     }
 
@@ -494,7 +539,7 @@ impl WasiChunkResponse {
         argv: &[JsValue],
     ) -> JsValue {
         if let JsValue::UnDefined = self.0 {
-            return ctx.throw_internal_type_error("chunk is shutdown").into();
+            return ctx.throw_internal_type_error("socket is shutdown").into();
         }
         match argv.get(0) {
             Some(JsValue::String(s)) => {
@@ -557,7 +602,7 @@ impl WasiChunkResponse {
         argv: &[JsValue],
     ) -> JsValue {
         if let JsValue::UnDefined = self.0 {
-            return ctx.throw_internal_type_error("chunk is shutdown").into();
+            return ctx.throw_internal_type_error("socket is shutdown").into();
         }
         let e = this_obj.invoke("write", argv);
         if e.is_exception() {

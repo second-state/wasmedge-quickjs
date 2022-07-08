@@ -1,6 +1,5 @@
 import EventEmitter, { EventEmitter as EventEmitter$1 } from 'events';
 import { debuglog, inherits, deprecate } from 'util';
-import { nextTick } from 'process';
 import { Buffer as Buffer$1 } from 'buffer';
 import { StringDecoder } from 'string_decoder';
 

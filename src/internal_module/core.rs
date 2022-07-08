@@ -47,6 +47,16 @@ fn next_tick(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue
     JsValue::UnDefined
 }
 
+fn os_exit(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    let code = if let Some(JsValue::Int(c)) = argv.get(0) {
+        *c
+    } else {
+        0
+    };
+
+    std::process::exit(code)
+}
+
 struct ClearTimeout;
 impl JsFn for ClearTimeout {
     fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
@@ -75,6 +85,7 @@ pub fn init_global_function(ctx: &mut Context) {
         ctx.wrap_function("setImmediate", set_immediate).into(),
     );
     global.set("nextTick", ctx.wrap_function("nextTick", next_tick).into());
+    global.set("exit", ctx.wrap_function("exit", os_exit).into());
     global.set("env", env_object(ctx).into());
 }
 

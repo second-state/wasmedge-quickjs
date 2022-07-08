@@ -48,6 +48,10 @@ export class Request {
 }
 
 export class Response {
+    #chunked = false;
+    #chunkBuff = null;
+    #bodyUsed = false
+
     constructor(resp, buffer, reader, option = {}) {
         this.response = resp
         this.buffer = buffer
@@ -57,27 +61,100 @@ export class Response {
         this.headers = resp.headers
         this.statusText = resp.statusText
         this.status = resp.status
+
+        if (typeof (resp.bodyLength) === "number") {
+            this.#chunked = false
+        } else {
+            this.#chunked = true
+            this.#chunkBuff = buffer
+            this.buffer = new httpx.Buffer()
+        }
+
+        this.onChunk = undefined;
+    }
+
+    get chunked() {
+        return this.#chunked
     }
 
     get ok() {
         return this.status >= 200 && this.status < 300;
     }
 
-    async body() {
-        while (true) {
-            let data = await this.reader.read()
+    get bodyUsed() {
+        return this.#bodyUsed
+    }
 
+    async #readChunk() {
+        while (true) {
+            let chunk = this.#chunkBuff.parseChunk();
+
+            if (chunk === undefined) {
+                let data = await this.reader.read()
+                if (data === undefined) {
+                    throw new Error('socket is shutdown')
+                }
+                this.#chunkBuff.write(data)
+                continue
+            } else if (chunk === null) {
+                // end
+                return null
+            } else if (chunk instanceof ArrayBuffer) {
+                return chunk
+            } else {
+                throw chunk
+            }
+        }
+    }
+
+    async #readBody() {
+        while (true) {
+
+            if (this.buffer.byteLength >= this.response.bodyLength) {
+                let buf = this.buffer.buffer;
+                this.buffer.clear();
+                return buf;
+            }
+
+            let data = await this.reader.read()
             if (data === undefined) {
                 let buf = this.buffer.buffer;
                 this.buffer.clear();
                 return buf;
             }
-            this.buffer.append(data)
+
+            this.buffer.write(data)
+        }
+    }
+
+    async arrayBuffer() {
+        this.#bodyUsed = true;
+        if (this.#chunked) {
+            while (true) {
+                let chunk = await this.#readChunk();
+                if (chunk === null) {
+                    let buf = this.buffer.buffer;
+                    this.buffer.clear();
+                    return buf;
+                }
+                this.buffer.write(chunk)
+                if (typeof this.onChunk === 'function') {
+                    let onChunk = this.onChunk;
+                    onChunk(chunk)
+                }
+            }
+        } else {
+            let body = await this.#readBody()
+            if (typeof this.onChunk === 'function') {
+                let onChunk = this.onChunk;
+                onChunk(body)
+            }
+            return body
         }
     }
 
     async text() {
-        return new TextDecoder().decode(await this.body())
+        return new TextDecoder().decode(await this.arrayBuffer())
     }
 
     async json() {
@@ -100,13 +177,7 @@ async function wait_response(reader, url) {
         buf.append(buff)
         resp = buf.parseResponse()
         if (resp instanceof httpx.WasiResponse) {
-            let body_length = resp.bodyLength
-            if (typeof (body_length) === "number") {
-                return new Response(resp, buf, reader, { url })
-            } else {
-                // todo support
-                throw new TypeError('no support chuncked')
-            }
+            return new Response(resp, buf, reader, { url })
         }
     }
 }
@@ -132,6 +203,7 @@ export async function fetch(input, init = {}) {
 
     let s = await net.WasiTcpConn.connect(addr)
     let req = new httpx.WasiRequest()
+    req.version = init.version || 'HTTP/1.1'
     req.headers = headers
 
     let path = url.path
@@ -298,9 +370,11 @@ export class IncomingMessageForClient extends Readable {
 
     async _read(_size) {
         try {
-            // todo
-            const res = await this.response.body();
-            this.push(Buffer.from(res));
+            this.response.onChunk = (chunk) => {
+                this.push(Buffer.from(chunk));
+            }
+
+            const _ = await this.response.arrayBuffer();
             this.emit('end')
         } catch (e) {
             // deno-lint-ignore no-explicit-any
@@ -342,6 +416,7 @@ export class ServerResponse extends Writable {
             defaultEncoding: "utf-8",
             emitClose: true,
             write: (chunk, _encoding, cb) => {
+                // fixme
                 if (!this.headersSent) {
                     if (this.#firstChunk === null) {
                         this.#firstChunk = chunk;
@@ -442,11 +517,11 @@ export class ServerResponse extends Writable {
 
     // deno-lint-ignore no-explicit-any
     end(chunk, encoding, cb) {
-        if (!chunk && this.#headers.has("transfer-encoding")) {
+        if (!chunk && this.hasHeader("transfer-encoding")) {
             // FIXME(bnoordhuis) Node sends a zero length chunked body instead, i.e.,
             // the trailing "0\r\n", but respondWith() just hangs when I try that.
-            this.#headers.set("content-length", "0");
-            this.#headers.delete("transfer-encoding");
+            this.setHeader("content-length", "0");
+            this.removeHeader("transfer-encoding");
         }
 
         // @ts-expect-error The signature for cb is stricter than the one implemented here
