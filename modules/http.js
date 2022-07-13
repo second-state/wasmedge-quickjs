@@ -6,6 +6,7 @@ import { EventEmitter } from 'events'
 import process from 'process'
 import { validatePort } from 'internal/validators'
 import { Readable, Writable } from "stream";
+import { isTypedArray } from 'util/types'
 
 const URL = httpx.URL;
 
@@ -302,6 +303,9 @@ function chunkToU8(chunk) {
     if (typeof chunk === "string") {
         return Buffer.from(chunk);
     }
+    if (isTypedArray(chunk)) {
+        return Buffer.from(chunk);
+    }
     return chunk;
 }
 
@@ -409,6 +413,7 @@ export class ServerResponse extends Writable {
     headersSent = false;
     #conn;
     #firstChunk = null;
+    #_end = false;
 
     constructor(conn) {
         super({
@@ -416,12 +421,14 @@ export class ServerResponse extends Writable {
             defaultEncoding: "utf-8",
             emitClose: true,
             write: (chunk, _encoding, cb) => {
-                // fixme
                 if (!this.headersSent) {
                     if (this.#firstChunk === null) {
                         this.#firstChunk = chunk;
+                        if (!this.#_end) {
+                            this.respond(false, this.#firstChunk);
+                            this.#firstChunk = null;
+                        }
                         return cb();
-
                     } else {
                         this.respond(false, this.#firstChunk);
                         this.#firstChunk = null;
@@ -445,7 +452,6 @@ export class ServerResponse extends Writable {
                 return cb();
             },
             destroy: (err, cb) => {
-
                 // if (err) {
                 //     controller.error(err);
                 // }
@@ -517,12 +523,15 @@ export class ServerResponse extends Writable {
 
     // deno-lint-ignore no-explicit-any
     end(chunk, encoding, cb) {
-        if (!chunk && this.hasHeader("transfer-encoding")) {
-            // FIXME(bnoordhuis) Node sends a zero length chunked body instead, i.e.,
-            // the trailing "0\r\n", but respondWith() just hangs when I try that.
-            this.setHeader("content-length", "0");
-            this.removeHeader("transfer-encoding");
+        if (!this.headersSent) {
+            if (!chunk && this.hasHeader("transfer-encoding")) {
+                // FIXME(bnoordhuis) Node sends a zero length chunked body instead, i.e.,
+                // the trailing "0\r\n", but respondWith() just hangs when I try that.
+                this.setHeader("content-length", "0");
+                this.removeHeader("transfer-encoding");
+            }
         }
+        this.#_end = true;
 
         // @ts-expect-error The signature for cb is stricter than the one implemented here
         return super.end(chunk, encoding, cb);
@@ -649,7 +658,7 @@ class HttpConn {
     write(chunk) {
         if (chunk) {
             let conn = this.#chunkBuffer ?? this.#chunk ?? this.socket;
-            conn.write(chunkToU8(chunk).buffer);
+            conn?.write(chunkToU8(chunk).buffer);
         }
     }
 
