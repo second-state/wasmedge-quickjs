@@ -759,8 +759,6 @@ h.resolveObject;
 
 h.URL;
 
-print('h:', JSON.stringify(h))
-
 var CHAR_FORWARD_SLASH$1 = 47;
 var CHAR_LOWERCASE_A$1 = 97;
 var CHAR_LOWERCASE_Z$1 = 122;
