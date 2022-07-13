@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
-import * as http from 'wasi_http';
-import * as net from 'wasi_net';
+import { createServer } from 'http';
 import * as std from 'std';
 
 import App from './component/App.js';
@@ -37,62 +36,35 @@ function createServerData() {
   };
 }
 
-async function handle_client(cs) {
-  print('open:', cs.peer());
-  let buffer = new http.Buffer();
-
-  while (true) {
-    try {
-      let d = await cs.read();
-      if (d == undefined || d.byteLength <= 0) {
-        return;
-      }
-      buffer.append(d);
-      let req = buffer.parseRequest();
-      if (req instanceof http.WasiRequest) {
-        handle_req(cs, req);
-        break;
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-  print('end:', cs.peer());
-}
-
-async function handle_req(s, req) {
-  print('uri:', req.uri)
-  let resp = new http.WasiResponse();
-  if (req.uri == '/main.css') {
-    resp.headers = {
-      "Content-Type": "text/css; charset=utf-8"
-    }
-    let r = resp.encode(css);
-    s.write(r);
+createServer((req, res) => {
+  print(req.url)
+  if (req.url == '/main.css') {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8')
+    res.end(css)
+  } else if (req.url == '/favicon.ico') {
+    res.end()
   } else {
-    resp.headers = {
-      "Content-Type": "text/html; charset=utf-8"
-    }
+    res.setHeader('Content-type', 'text/html');
+
+    res.on('error', (e) => {
+      print('res error', e)
+    })
     let data = createServerData()
-    renderToPipeableStream(
+    print('createServerData')
+
+    const stream = renderToPipeableStream(
       <DataProvider data={data}>
         <App assets={assets} />
-      </DataProvider>
-    ).pipe(resp.chunk(s));
-  }
-}
-
-async function server_start() {
-  print('listen 8002...');
-  try {
-    let s = new net.WasiTcpServer(8002);
-    for (var i = 0; ; i++) {
-      let cs = await s.accept();
-      handle_client(cs);
+      </DataProvider>, {
+      onShellReady: () => {
+        stream.pipe(res)
+      },
+      onShellError: (e) => {
+        print('onShellError:', e)
+      }
     }
-  } catch (e) {
-    print(e)
+    );
   }
-}
-
-server_start();
+}).listen(8002, () => {
+  print('listen 8002...')
+})
