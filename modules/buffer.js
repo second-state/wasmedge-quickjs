@@ -1,5 +1,5 @@
 var exports$3 = {},
-    _dewExec$2 = false;
+  _dewExec$2 = false;
 function dew$2() {
   if (_dewExec$2) { return exports$3; }
   _dewExec$2 = true;
@@ -125,7 +125,7 @@ function dew$2() {
 }
 
 var exports$2 = {},
-    _dewExec$1 = false;
+  _dewExec$1 = false;
 function dew$1() {
   if (_dewExec$1) { return exports$2; }
   _dewExec$1 = true;
@@ -145,13 +145,13 @@ function dew$1() {
     s >>= -nBits;
     nBits += eLen;
 
-    for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+    for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) { }
 
     m = e & (1 << -nBits) - 1;
     e >>= -nBits;
     nBits += mLen;
 
-    for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
+    for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) { }
 
     if (e === 0) {
       e = 1 - eBias;
@@ -210,12 +210,12 @@ function dew$1() {
       }
     }
 
-    for (; mLen >= 8; buffer[offset + i] = m & 255, i += d, m /= 256, mLen -= 8) {}
+    for (; mLen >= 8; buffer[offset + i] = m & 255, i += d, m /= 256, mLen -= 8) { }
 
     e = e << mLen | m;
     eLen += mLen;
 
-    for (; eLen > 0; buffer[offset + i] = e & 255, i += d, e /= 256, eLen -= 8) {}
+    for (; eLen > 0; buffer[offset + i] = e & 255, i += d, e /= 256, eLen -= 8) { }
 
     buffer[offset + i - d] |= s * 128;
   };
@@ -224,7 +224,7 @@ function dew$1() {
 }
 
 var exports$1 = {},
-    _dewExec = false;
+  _dewExec = false;
 function dew() {
   if (_dewExec) { return exports$1; }
   _dewExec = true;
@@ -234,7 +234,7 @@ function dew() {
   var ieee754 = dew$1();
 
   var customInspectSymbol = typeof Symbol === "function" && typeof Symbol["for"] === "function" ? Symbol["for"]("nodejs.util.inspect.custom") // eslint-disable-line dot-notation
-  : null;
+    : null;
   exports$1.Buffer = Buffer;
   exports$1.SlowBuffer = SlowBuffer;
   exports$1.INSPECT_MAX_BYTES = 50;
@@ -667,7 +667,7 @@ function dew() {
 
     var loweredCase = false;
 
-    for (;;) {
+    for (; ;) {
       switch (encoding) {
         case "ascii":
         case "latin1":
@@ -957,9 +957,9 @@ function dew() {
     if (byteOffset < 0) { byteOffset = buffer.length + byteOffset; }
 
     if (byteOffset >= buffer.length) {
-      if (dir) { return -1; }else { byteOffset = buffer.length - 1; }
+      if (dir) { return -1; } else { byteOffset = buffer.length - 1; }
     } else if (byteOffset < 0) {
-      if (dir) { byteOffset = 0; }else { return -1; }
+      if (dir) { byteOffset = 0; } else { return -1; }
     } // Normalize val
 
 
@@ -1147,7 +1147,7 @@ function dew() {
     if (!encoding) { encoding = "utf8"; }
     var loweredCase = false;
 
-    for (;;) {
+    for (; ;) {
       switch (encoding) {
         case "hex":
           return hexWrite(this, string, offset, length);
@@ -1454,8 +1454,8 @@ function dew() {
       boundsError(offset, this.length - 8);
     }
 
-    var lo = first + this[++offset] * Math.pow( 2, 8 ) + this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 24 );
-    var hi = this[++offset] + this[++offset] * Math.pow( 2, 8 ) + this[++offset] * Math.pow( 2, 16 ) + last * Math.pow( 2, 24 );
+    var lo = first + this[++offset] * Math.pow(2, 8) + this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 24);
+    var hi = this[++offset] + this[++offset] * Math.pow(2, 8) + this[++offset] * Math.pow(2, 16) + last * Math.pow(2, 24);
     return BigInt(lo) + (BigInt(hi) << BigInt(32));
   });
   Buffer.prototype.readBigUInt64BE = defineBigIntMethod(function readBigUInt64BE(offset) {
@@ -1468,8 +1468,8 @@ function dew() {
       boundsError(offset, this.length - 8);
     }
 
-    var hi = first * Math.pow( 2, 24 ) + this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 8 ) + this[++offset];
-    var lo = this[++offset] * Math.pow( 2, 24 ) + this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 8 ) + last;
+    var hi = first * Math.pow(2, 24) + this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 8) + this[++offset];
+    var lo = this[++offset] * Math.pow(2, 24) + this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 8) + last;
     return (BigInt(hi) << BigInt(32)) + BigInt(lo);
   });
 
@@ -1550,9 +1550,9 @@ function dew() {
       boundsError(offset, this.length - 8);
     }
 
-    var val = this[offset + 4] + this[offset + 5] * Math.pow( 2, 8 ) + this[offset + 6] * Math.pow( 2, 16 ) + (last << 24); // Overflow
+    var val = this[offset + 4] + this[offset + 5] * Math.pow(2, 8) + this[offset + 6] * Math.pow(2, 16) + (last << 24); // Overflow
 
-    return (BigInt(val) << BigInt(32)) + BigInt(first + this[++offset] * Math.pow( 2, 8 ) + this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 24 ));
+    return (BigInt(val) << BigInt(32)) + BigInt(first + this[++offset] * Math.pow(2, 8) + this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 24));
   });
   Buffer.prototype.readBigInt64BE = defineBigIntMethod(function readBigInt64BE(offset) {
     offset = offset >>> 0;
@@ -1565,8 +1565,8 @@ function dew() {
     }
 
     var val = (first << 24) + // Overflow
-    this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 8 ) + this[++offset];
-    return (BigInt(val) << BigInt(32)) + BigInt(this[++offset] * Math.pow( 2, 24 ) + this[++offset] * Math.pow( 2, 16 ) + this[++offset] * Math.pow( 2, 8 ) + last);
+      this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 8) + this[++offset];
+    return (BigInt(val) << BigInt(32)) + BigInt(this[++offset] * Math.pow(2, 24) + this[++offset] * Math.pow(2, 16) + this[++offset] * Math.pow(2, 8) + last);
   });
 
   Buffer.prototype.readFloatLE = function readFloatLE(offset, noAssert) {
@@ -1732,12 +1732,12 @@ function dew() {
   }
 
   Buffer.prototype.writeBigUInt64LE = defineBigIntMethod(function writeBigUInt64LE(value, offset) {
-    if ( offset === void 0 ) offset = 0;
+    if (offset === void 0) offset = 0;
 
     return wrtBigUInt64LE(this, value, offset, BigInt(0), BigInt("0xffffffffffffffff"));
   });
   Buffer.prototype.writeBigUInt64BE = defineBigIntMethod(function writeBigUInt64BE(value, offset) {
-    if ( offset === void 0 ) offset = 0;
+    if (offset === void 0) offset = 0;
 
     return wrtBigUInt64BE(this, value, offset, BigInt(0), BigInt("0xffffffffffffffff"));
   });
@@ -1843,12 +1843,12 @@ function dew() {
   };
 
   Buffer.prototype.writeBigInt64LE = defineBigIntMethod(function writeBigInt64LE(value, offset) {
-    if ( offset === void 0 ) offset = 0;
+    if (offset === void 0) offset = 0;
 
     return wrtBigUInt64LE(this, value, offset, -BigInt("0x8000000000000000"), BigInt("0x7fffffffffffffff"));
   });
   Buffer.prototype.writeBigInt64BE = defineBigIntMethod(function writeBigInt64BE(value, offset) {
-    if ( offset === void 0 ) offset = 0;
+    if (offset === void 0) offset = 0;
 
     return wrtBigUInt64BE(this, value, offset, -BigInt("0x8000000000000000"), BigInt("0x7fffffffffffffff"));
   });
@@ -2031,8 +2031,8 @@ function dew() {
         delete this.name;
       }
 
-      if ( Base ) NodeError.__proto__ = Base;
-      NodeError.prototype = Object.create( Base && Base.prototype );
+      if (Base) NodeError.__proto__ = Base;
+      NodeError.prototype = Object.create(Base && Base.prototype);
       NodeError.prototype.constructor = NodeError;
 
       var prototypeAccessors = { code: { configurable: true } };
@@ -2050,11 +2050,11 @@ function dew() {
         });
       };
 
-      NodeError.prototype.toString = function toString () {
+      NodeError.prototype.toString = function toString() {
         return ((this.name) + " [" + sym + "]: " + (this.message));
       };
 
-      Object.defineProperties( NodeError.prototype, prototypeAccessors );
+      Object.defineProperties(NodeError.prototype, prototypeAccessors);
 
       return NodeError;
     }(Base));
@@ -2074,12 +2074,12 @@ function dew() {
     var msg = "The value of \"" + str + "\" is out of range.";
     var received = input;
 
-    if (Number.isInteger(input) && Math.abs(input) > Math.pow( 2, 32 )) {
+    if (Number.isInteger(input) && Math.abs(input) > Math.pow(2, 32)) {
       received = addNumericalSeparator(String(input));
     } else if (typeof input === "bigint") {
       received = String(input);
 
-      if (input > Math.pow( BigInt(2), BigInt(32) ) || input < -(Math.pow( BigInt(2), BigInt(32) ))) {
+      if (input > Math.pow(BigInt(2), BigInt(32)) || input < -(Math.pow(BigInt(2), BigInt(32)))) {
         received = addNumericalSeparator(received);
       }
 
@@ -2325,5 +2325,7 @@ exports['Buffer']; exports['SlowBuffer']; exports['INSPECT_MAX_BYTES']; exports[
 var Buffer = exports.Buffer;
 var INSPECT_MAX_BYTES = exports.INSPECT_MAX_BYTES;
 var kMaxLength = exports.kMaxLength;
+
+globalThis.Buffer = Buffer
 
 export { Buffer, INSPECT_MAX_BYTES, exports as default, kMaxLength };

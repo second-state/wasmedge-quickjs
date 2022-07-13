@@ -1,4 +1,4 @@
-import { text_encode, text_decode } from '_encoding'
+import { text_encode, text_decode, text_encode_into } from '_encoding'
 
 function isError(e) {
     return isObject(e) &&
@@ -25,6 +25,14 @@ export class TextEncoder {
             return new Uint8Array()
         } else {
             return new Uint8Array(arr)
+        }
+    }
+
+    encodeInto(src, dest) {
+        if (dest instanceof Uint8Array) {
+            return text_encode_into(src, 'utf8', dest.buffer, dest.byteOffset)
+        } else {
+            throw new TypeError('The "dest" argument must be an instance of Uint8Array.')
         }
     }
 }
@@ -81,3 +89,6 @@ export class TextDecoder {
 
     }
 }
+
+globalThis.TextDecoder = TextDecoder;
+globalThis.TextEncoder = TextEncoder;

@@ -1,3 +1,10 @@
+export function hideStackFrames(fn) {
+    const hidden = "__node_internal_" + fn.name;
+    Object.defineProperty(fn, "name", { value: hidden });
+
+    return fn;
+}
+
 export class ERR_HTTP_HEADERS_SENT extends Error {
     constructor(x) {
         super(
@@ -238,6 +245,28 @@ export class ERR_STREAM_DESTROYED extends Error {
     }
 }
 
+export function aggregateTwoErrors(innerError, outerError) {
+    if (innerError && outerError && innerError !== outerError) {
+        if (Array.isArray(outerError.errors)) {
+            // If `outerError` is already an `AggregateError`.
+            outerError.errors.push(innerError);
+            return outerError;
+        }
+        // eslint-disable-next-line no-restricted-syntax
+        const err = new AggregateError(
+            [
+                outerError,
+                innerError,
+            ],
+            outerError.message,
+        );
+        // deno-lint-ignore no-explicit-any
+        err.code = outerError.code;
+        return err;
+    }
+    return innerError || outerError;
+}
+
 export class ERR_SOCKET_BAD_PORT extends RangeError {
     constructor(name, port, allowZero = true) {
         assert(
@@ -254,9 +283,102 @@ export class ERR_SOCKET_BAD_PORT extends RangeError {
     }
 }
 
-export function hideStackFrames(fn) {
-    const hidden = "__node_internal_" + fn.name;
-    Object.defineProperty(fn, "name", { value: hidden });
+export class ERR_STREAM_PREMATURE_CLOSE extends Error {
+    constructor() {
+        super("ERR_STREAM_PREMATURE_CLOSE", `Premature close`);
+    }
+}
 
-    return fn;
+export class AbortError extends Error {
+    constructor() {
+        super("The operation was aborted");
+        this.code = "ABORT_ERR";
+        this.name = "AbortError";
+    }
+}
+
+export class ERR_INVALID_CALLBACK extends TypeError {
+    constructor(object) {
+        super(
+            "ERR_INVALID_CALLBACK",
+            `Callback must be a function. Received ${JSON.stringify(object)}`,
+        );
+    }
+}
+
+export class ERR_MISSING_ARGS extends TypeError {
+    constructor(...args) {
+        let msg = "The ";
+
+        const len = args.length;
+
+        const wrap = (a) => `"${a}"`;
+
+        args = args.map((a) =>
+            Array.isArray(a) ? a.map(wrap).join(" or ") : wrap(a)
+        );
+
+        switch (len) {
+            case 1:
+                msg += `${args[0]} argument`;
+                break;
+            case 2:
+                msg += `${args[0]} and ${args[1]} arguments`;
+                break;
+            default:
+                msg += args.slice(0, len - 1).join(", ");
+                msg += `, and ${args[len - 1]} arguments`;
+                break;
+        }
+
+        super("ERR_MISSING_ARGS", `${msg} must be specified`);
+    }
+}
+export class ERR_MISSING_OPTION extends TypeError {
+    constructor(x) {
+        super("ERR_MISSING_OPTION", `${x} is required`);
+    }
+}
+export class ERR_MULTIPLE_CALLBACK extends Error {
+    constructor() {
+        super("ERR_MULTIPLE_CALLBACK", `Callback called multiple times`);
+    }
+}
+
+export class ERR_STREAM_PUSH_AFTER_EOF extends Error {
+    constructor() {
+        super("ERR_STREAM_PUSH_AFTER_EOF", `stream.push() after EOF`);
+    }
+}
+
+export class ERR_STREAM_UNSHIFT_AFTER_END_EVENT extends Error {
+    constructor() {
+        super(
+            "ERR_STREAM_UNSHIFT_AFTER_END_EVENT",
+            `stream.unshift() after end event`,
+        );
+    }
+}
+
+export class ERR_UNKNOWN_ENCODING extends TypeError {
+    constructor(x) {
+        super("ERR_UNKNOWN_ENCODING", `Unknown encoding: ${x}`);
+    }
+}
+
+function buildReturnPropertyType(value) {
+    if (value && value.constructor && value.constructor.name) {
+        return `instance of ${value.constructor.name}`;
+    } else {
+        return `type ${typeof value}`;
+    }
+}
+
+export class ERR_INVALID_RETURN_VALUE extends TypeError {
+    constructor(input, name, value) {
+        super(
+            "ERR_INVALID_RETURN_VALUE",
+            `Expected ${input} to be returned from the "${name}" function but got ${buildReturnPropertyType(value)}.`,
+        );
+    }
 }
