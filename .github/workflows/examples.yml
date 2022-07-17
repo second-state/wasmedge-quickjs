@@ -47,7 +47,7 @@ jobs:
     - name: Image examples
       run: |
         cargo build --target wasm32-wasi --release
-        wasmedge --dir .:example_js target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
 
     - name: Modules examples
       run: |
@@ -73,7 +73,7 @@ jobs:
     - name: ES6 module
       run: |
         cargo build --target wasm32-wasi --release
-        wasmedge --dir .:example_js/es6_module_demo target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
 
     - name: CommonJs with rollup.js
       run: |
