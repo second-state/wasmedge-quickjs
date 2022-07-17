@@ -42,14 +42,12 @@ jobs:
     - name: Regular examples
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --env 'a=1' --env 'b=1' --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+        wasmedge --env 'a=1' --env 'b=1' --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/hello.js WasmEdge Runtime
     
     - name: Image examples
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm image.js
+        wasmedge --dir .:./example_js target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
 
     - name: Modules examples
       run: |
@@ -75,8 +73,7 @@ jobs:
     - name: ES6 module
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js/es6_module_demo
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+        wasmedge --dir .:./example_js/es6_module_demo target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
 
     - name: CommonJs with rollup.js
       run: |
@@ -85,9 +82,10 @@ jobs:
         npm install
         npm run build
         echo '> wasmedge aot'
-        wasmedgec ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm  wasmedge_quickjs.so
+        cd ../..
+        wasmedgec target/wasm32-wasi/release/wasmedge_quickjs.wasm  wasmedge_quickjs.wasm
         echo '> start wasmedge'
-        time wasmedge --dir .:. wasmedge_quickjs.so dist/npm_main.mjs
+        time wasmedge --dir .:. wasmedge_quickjs.wasm example_js/simple_common_js_demo/dist/npm_main.mjs
 
     - name: React SSR
       run: |
@@ -95,8 +93,9 @@ jobs:
         cd example_js/react_ssr
         npm install
         npm run build
+        cd ../..
         echo '> start wasmedge'
-        wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react_ssr/dist/main.js
         
     - name: React Stream SSR
       run: |
@@ -104,8 +103,8 @@ jobs:
         cd example_js/react_ssr_stream
         npm install
         npm run build
-        echo '> start wasmedge'
         cd ../..
+        echo '> start wasmedge'
         nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react_ssr_stream/dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8001)
@@ -117,8 +116,8 @@ jobs:
         cd example_js/react18_ssr
         npm install
         npm run build
-        echo '> start wasmedge'
         cd ../..
+        echo '> start wasmedge'
         nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react18_ssr/dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8002)
@@ -132,8 +131,9 @@ jobs:
         npm run build
         # Use webpack
         npm run webpack:build-server
+        cd ../..
         echo '> start wasmedge server transpiled by Webpack'
-        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
+        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/create-react-app-ssr/server-build/index.js &
         echo $! > wasmedge.pid
         sleep 15
         resp=$(curl http://localhost:8003)
@@ -141,9 +141,11 @@ jobs:
         kill -9 `cat wasmedge.pid`
         rm wasmedge.pid
         # Use rollup.js
+        cd example_js/create-react-app-ssr
         npm run rollup:build-server
+        cd ../..
         echo '> start wasmedge server transpiled by rollup'
-        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
+        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/create-react-app-ssr/server-build/index.js &
         sleep 15
         resp=$(curl http://localhost:8003)
         echo "$resp"
