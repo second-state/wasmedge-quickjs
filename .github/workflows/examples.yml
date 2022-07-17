@@ -47,7 +47,7 @@ jobs:
     - name: Image examples
       run: |
         cargo build --target wasm32-wasi --release
-        wasmedge --dir .:./example_js target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
+        wasmedge --dir .:example_js target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
 
     - name: Modules examples
       run: |
@@ -73,7 +73,7 @@ jobs:
     - name: ES6 module
       run: |
         cargo build --target wasm32-wasi --release
-        wasmedge --dir .:./example_js/es6_module_demo target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
+        wasmedge --dir .:example_js/es6_module_demo target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
 
     - name: CommonJs with rollup.js
       run: |
@@ -131,9 +131,8 @@ jobs:
         npm run build
         # Use webpack
         npm run webpack:build-server
-        cd ../..
         echo '> start wasmedge server transpiled by Webpack'
-        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/create-react-app-ssr/server-build/index.js &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         echo $! > wasmedge.pid
         sleep 15
         resp=$(curl http://localhost:8003)
@@ -141,7 +140,6 @@ jobs:
         kill -9 `cat wasmedge.pid`
         rm wasmedge.pid
         # Use rollup.js
-        cd example_js/create-react-app-ssr
         npm run rollup:build-server
         cd ../..
         echo '> start wasmedge server transpiled by rollup'
