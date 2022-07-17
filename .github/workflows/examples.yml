@@ -141,9 +141,8 @@ jobs:
         rm wasmedge.pid
         # Use rollup.js
         npm run rollup:build-server
-        cd ../..
         echo '> start wasmedge server transpiled by rollup'
-        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/create-react-app-ssr/server-build/index.js &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         sleep 15
         resp=$(curl http://localhost:8003)
         echo "$resp"
