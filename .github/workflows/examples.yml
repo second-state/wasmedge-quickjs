@@ -46,7 +46,7 @@ jobs:
     
     - name: Image examples
       run: |
-        cargo build --target wasm32-wasi --release
+        cargo build --target wasm32-wasi --release --features=img
         wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
 
     - name: Modules examples
@@ -93,9 +93,9 @@ jobs:
         cd example_js/react_ssr
         npm install
         npm run build
-        cd ../..
+        cp -r ../../modules .
         echo '> start wasmedge'
-        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react_ssr/dist/main.js
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
         
     - name: React Stream SSR
       run: |
@@ -103,9 +103,9 @@ jobs:
         cd example_js/react_ssr_stream
         npm install
         npm run build
-        cd ../..
+        cp -r ../../modules .
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react_ssr_stream/dist/main.mjs &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8001)
         echo "Server response is $resp"
@@ -116,9 +116,9 @@ jobs:
         cd example_js/react18_ssr
         npm install
         npm run build
-        cd ../..
+        cp -r ../../modules .
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/react18_ssr/dist/main.mjs &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8002)
         echo "$resp"
@@ -129,6 +129,7 @@ jobs:
         cd example_js/create-react-app-ssr
         npm install
         npm run build
+        cp -r ../../modules .
         # Use webpack
         npm run webpack:build-server
         echo '> start wasmedge server transpiled by Webpack'
@@ -150,8 +151,7 @@ jobs:
     - name: Tensorflow example
       run: |
         cargo build --target wasm32-wasi --release --features=tensorflow
-        cd example_js/tensorflow_lite_demo
-        wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
+        wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/main.js
 
     - name: Embed JS in Rust
       run: |
