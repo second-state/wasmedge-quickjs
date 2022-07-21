@@ -2,12 +2,12 @@ import {Image} from 'image';
 import * as std from 'std';
 import {TensorflowLiteSession} from 'tensorflow_lite';
 
-let img = new Image('food.jpg');
+let img = new Image(__dirname + '/food.jpg');
 let img_rgb = img.to_rgb().resize(192, 192);
 let rgb_pix = img_rgb.pixels();
 
 let session = new TensorflowLiteSession(
-    'lite-model_aiy_vision_classifier_food_V1_1.tflite');
+    __dirname + '/lite-model_aiy_vision_classifier_food_V1_1.tflite');
 session.add_input('input', rgb_pix);
 session.run();
 let output = session.get_output('MobilenetV1/Predictions/Softmax');
@@ -21,7 +21,7 @@ for (var i in output_view) {
     max_idx = i;
   }
 }
-let label_file = std.open('aiy_food_V1_labelmap.txt', 'r');
+let label_file = std.open(__dirname + '/aiy_food_V1_labelmap.txt', 'r');
 let label = '';
 for (var i = 0; i <= max_idx; i++) {
   label = label_file.getline();

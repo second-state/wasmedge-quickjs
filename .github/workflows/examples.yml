@@ -42,14 +42,12 @@ jobs:
     - name: Regular examples
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --env 'a=1' --env 'b=1' --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm hello.js WasmEdge Runtime
+        wasmedge --env 'a=1' --env 'b=1' --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/hello.js WasmEdge Runtime
     
     - name: Image examples
       run: |
-        cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. ../target/wasm32-wasi/release/wasmedge_quickjs.wasm image.js
+        cargo build --target wasm32-wasi --release --features=img
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/image.js
 
     - name: Modules examples
       run: |
@@ -60,26 +58,22 @@ jobs:
     - name: Network example
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_net_echo.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_net_echo.js
 
     - name: Http fetch example
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_fetch.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_fetch.js
         
     - name: Http server example
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js
-        wasmedge --dir .:. --dir ./modules:../modules ../target/wasm32-wasi/release/wasmedge_quickjs.wasm wasi_http_echo.js &
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_echo.js &
         
     - name: ES6 module
       run: |
         cargo build --target wasm32-wasi --release
-        cd example_js/es6_module_demo
-        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm demo.js
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/es6_module_demo/demo.js
 
     - name: CommonJs with rollup.js
       run: |
@@ -88,9 +82,10 @@ jobs:
         npm install
         npm run build
         echo '> wasmedge aot'
-        wasmedgec ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm  wasmedge_quickjs.so
+        cd ../..
+        wasmedgec target/wasm32-wasi/release/wasmedge_quickjs.wasm  wasmedge_quickjs.wasm
         echo '> start wasmedge'
-        time wasmedge --dir .:. wasmedge_quickjs.so dist/npm_main.mjs
+        time wasmedge --dir .:. wasmedge_quickjs.wasm example_js/simple_common_js_demo/dist/npm_main.mjs
 
     - name: React SSR
       run: |
@@ -98,8 +93,9 @@ jobs:
         cd example_js/react_ssr
         npm install
         npm run build
+        cp -r ../../modules .
         echo '> start wasmedge'
-        wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
+        wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.js
         
     - name: React Stream SSR
       run: |
@@ -107,8 +103,9 @@ jobs:
         cd example_js/react_ssr_stream
         npm install
         npm run build
+        cp -r ../../modules .
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8001)
         echo "Server response is $resp"
@@ -119,8 +116,9 @@ jobs:
         cd example_js/react18_ssr
         npm install
         npm run build
+        cp -r ../../modules .
         echo '> start wasmedge'
-        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm dist/main.mjs &
         sleep 15
         resp=$(curl http://localhost:8002)
         echo "$resp"
@@ -131,10 +129,11 @@ jobs:
         cd example_js/create-react-app-ssr
         npm install
         npm run build
+        cp -r ../../modules .
         # Use webpack
         npm run webpack:build-server
         echo '> start wasmedge server transpiled by Webpack'
-        nohup wasmedge --dir .:. --dir ./modules:../../modules ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
+        nohup wasmedge --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm server-build/index.js &
         echo $! > wasmedge.pid
         sleep 15
         resp=$(curl http://localhost:8003)
@@ -152,8 +151,7 @@ jobs:
     - name: Tensorflow example
       run: |
         cargo build --target wasm32-wasi --release --features=tensorflow
-        cd example_js/tensorflow_lite_demo
-        wasmedge-tensorflow-lite --dir .:. ../../target/wasm32-wasi/release/wasmedge_quickjs.wasm main.js
+        wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/main.js
 
     - name: Embed JS in Rust
       run: |
