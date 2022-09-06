@@ -97,11 +97,19 @@ pub fn init_global_function(ctx: &mut Context) {
     global.set("env", env_object(ctx).into());
 }
 
+#[cfg(feature = "inherit_env")]
 fn env_object(ctx: &mut Context) -> JsObject {
     let mut env_obj = ctx.new_object();
+
     let env = std::env::vars();
     for (k, v) in env {
         env_obj.set(&k, ctx.new_string(&v).into());
     }
+
     env_obj
+}
+
+#[cfg(not(feature = "inherit_env"))]
+fn env_object(ctx: &mut Context) -> JsObject {
+    ctx.new_object()
 }

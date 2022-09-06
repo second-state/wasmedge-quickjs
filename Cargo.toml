@@ -29,4 +29,10 @@ default = []
 img = ["image", "imageproc"]
 tensorflow = ["img"]
 cjs = []
+
+# Enables IO based calls and dependent functions (setTimeout, setImmediate, sockets, etc.).
 wasi_snapshot_preview1 = []
+
+# If enabled, the executed JS will inherit the process env of the surrounding Rust code,
+# from the point of instantiating a Context.
+inherit_env = []

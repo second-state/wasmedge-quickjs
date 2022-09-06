@@ -56,7 +56,10 @@ impl AsyncTcpServer {
     }
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 pub struct AsyncTcpConn(wasi_sock::Socket);
+
+#[cfg(feature = "wasi_snapshot_preview1")]
 impl AsyncTcpConn {
     pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.send(buf)
@@ -96,7 +99,6 @@ impl AsyncTcpConn {
                 .add(timeout)
                 .as_nanos();
 
-            #[cfg(feature = "wasi_snapshot_preview1")]
             event_loop
                 .io_selector
                 .add_task(PollTask::SocketTimeout(SocketTimeoutTask {
@@ -106,7 +108,6 @@ impl AsyncTcpConn {
                     callback,
                 }));
         } else {
-            #[cfg(feature = "wasi_snapshot_preview1")]
             event_loop
                 .io_selector
                 .add_task(PollTask::Socket(SocketTask {
@@ -132,8 +133,10 @@ impl AsyncTcpConn {
 
 pub enum PollResult {
     Timeout,
+    #[cfg(feature = "wasi_snapshot_preview1")]
     Accept(AsyncTcpConn),
     Read(Vec<u8>),
+    #[cfg(feature = "wasi_snapshot_preview1")]
     Connect(AsyncTcpConn),
     Error(io::Error),
 }

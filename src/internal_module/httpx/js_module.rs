@@ -1,7 +1,10 @@
 use super::core::chunk::HttpChunk;
 use super::core::request::HttpRequest;
 use super::core::ParseError;
+
+#[cfg(feature = "wasi_snapshot_preview1")]
 use crate::event_loop::AsyncTcpConn;
+
 use crate::internal_module::httpx::core::response::{BodyLen, HttpResponse};
 use crate::internal_module::httpx::core::Version::V1_1;
 use crate::{
