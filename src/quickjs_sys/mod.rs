@@ -340,7 +340,10 @@ impl Context {
         super::internal_module::core::init_global_function(&mut ctx);
         super::internal_module::core::init_ext_function(&mut ctx);
         super::internal_module::encoding::init_encoding_module(&mut ctx);
+
+        #[cfg(feature = "wasi_snapshot_preview1")]
         super::internal_module::wasi_net_module::init_module(&mut ctx);
+
         super::internal_module::httpx::init_module(&mut ctx);
         super::internal_module::os::init_module(&mut ctx);
 

@@ -19,7 +19,9 @@ pub(crate) enum NetPollEvent {
     Connect,
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 pub struct AsyncTcpServer(wasi_sock::Socket);
+#[cfg(feature = "wasi_snapshot_preview1")]
 impl AsyncTcpServer {
     pub fn async_accept(
         &mut self,
@@ -94,6 +96,7 @@ impl AsyncTcpConn {
                 .add(timeout)
                 .as_nanos();
 
+            #[cfg(feature = "wasi_snapshot_preview1")]
             event_loop
                 .io_selector
                 .add_task(PollTask::SocketTimeout(SocketTimeoutTask {
@@ -103,6 +106,7 @@ impl AsyncTcpConn {
                     callback,
                 }));
         } else {
+            #[cfg(feature = "wasi_snapshot_preview1")]
             event_loop
                 .io_selector
                 .add_task(PollTask::Socket(SocketTask {
@@ -254,11 +258,13 @@ enum PollTask {
     SocketTimeout(SocketTimeoutTask),
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 #[derive(Default)]
 struct IoSelector {
     tasks: Vec<Option<PollTask>>,
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 impl IoSelector {
     pub fn add_task(&mut self, task: PollTask) -> usize {
         let mut n = 0;
@@ -396,6 +402,8 @@ impl IoSelector {
 #[derive(Default)]
 pub struct EventLoop {
     next_tick_queue: LinkedList<Box<dyn FnOnce(&mut qjs::Context)>>,
+
+    #[cfg(feature = "wasi_snapshot_preview1")]
     io_selector: IoSelector,
 }
 
@@ -405,7 +413,15 @@ impl EventLoop {
         if n > 0 {
             Ok(n)
         } else {
-            self.io_selector.poll(ctx)
+            #[cfg(feature = "wasi_snapshot_preview1")]
+            {
+                self.io_selector.poll(ctx)
+            }
+
+            #[cfg(not(feature = "wasi_snapshot_preview1"))]
+            {
+                Ok(0)
+            }
         }
     }
 
@@ -418,6 +434,7 @@ impl EventLoop {
         i
     }
 
+    #[cfg(feature = "wasi_snapshot_preview1")]
     pub fn set_timeout(
         &mut self,
         callback: qjs::JsFunction,
@@ -442,6 +459,7 @@ impl EventLoop {
         self.io_selector.add_task(timeout_task)
     }
 
+    #[cfg(feature = "wasi_snapshot_preview1")]
     pub fn clear_timeout(&mut self, timeout_id: usize) {
         if let Some(t) = self.io_selector.tasks.get_mut(timeout_id) {
             if let Some(PollTask::Timeout(_)) = t {
@@ -454,6 +472,7 @@ impl EventLoop {
         self.next_tick_queue.push_back(callback);
     }
 
+    #[cfg(feature = "wasi_snapshot_preview1")]
     pub fn tcp_listen(&mut self, port: u16) -> io::Result<AsyncTcpServer> {
         let addr = format!("0.0.0.0:{}", port)
             .parse()
@@ -469,6 +488,7 @@ impl EventLoop {
         Ok(AsyncTcpServer(s))
     }
 
+    #[cfg(feature = "wasi_snapshot_preview1")]
     pub fn tcp_connect(
         &mut self,
         addr: &SocketAddr,

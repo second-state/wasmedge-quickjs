@@ -3,7 +3,8 @@ pub mod encoding;
 pub mod httpx;
 #[cfg(feature = "img")]
 pub mod img_module;
+pub mod os;
 #[cfg(feature = "tensorflow")]
 pub mod tensorflow_module;
+#[cfg(feature = "wasi_snapshot_preview1")]
 pub mod wasi_net_module;
-pub mod os;

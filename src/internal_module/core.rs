@@ -2,6 +2,7 @@ use crate::quickjs_sys::*;
 use crate::EventLoop;
 use std::string::FromUtf8Error;
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
     let callback = argv.get(0);
     let timeout = argv.get(1);
@@ -20,6 +21,7 @@ fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     }
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 fn set_immediate(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
     let callback = argv.get(0);
     let args = argv.get(1..).map(|v| v.to_vec());
@@ -57,7 +59,9 @@ fn os_exit(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue 
     std::process::exit(code)
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 struct ClearTimeout;
+#[cfg(feature = "wasi_snapshot_preview1")]
 impl JsFn for ClearTimeout {
     fn call(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         let timeout_id = argv.get(0);
@@ -72,18 +76,22 @@ pub fn init_ext_function(_ctx: &mut Context) {}
 
 pub fn init_global_function(ctx: &mut Context) {
     let mut global = ctx.get_global();
-    global.set(
-        "clearTimeout",
-        ctx.new_function::<ClearTimeout>("clearTimeout").into(),
-    );
-    global.set(
-        "setTimeout",
-        ctx.wrap_function("setTimeout", set_timeout).into(),
-    );
-    global.set(
-        "setImmediate",
-        ctx.wrap_function("setImmediate", set_immediate).into(),
-    );
+
+    #[cfg(feature = "wasi_snapshot_preview1")]
+    {
+        global.set(
+            "clearTimeout",
+            ctx.new_function::<ClearTimeout>("clearTimeout").into(),
+        );
+        global.set(
+            "setTimeout",
+            ctx.wrap_function("setTimeout", set_timeout).into(),
+        );
+        global.set(
+            "setImmediate",
+            ctx.wrap_function("setImmediate", set_immediate).into(),
+        );
+    }
     global.set("nextTick", ctx.wrap_function("nextTick", next_tick).into());
     global.set("exit", ctx.wrap_function("exit", os_exit).into());
     global.set("env", env_object(ctx).into());

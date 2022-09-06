@@ -80,6 +80,7 @@ pub struct Subscription {
     pub u: SubscriptionU,
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 mod wasi {
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
@@ -87,6 +88,7 @@ mod wasi {
     }
 }
 
+#[cfg(feature = "wasi_snapshot_preview1")]
 pub unsafe fn poll_oneoff(
     in_: *const Subscription,
     out: *mut Event,
