@@ -2,6 +2,14 @@
 
 Now supporting wasmedge socket for HTTP requests and Tensorflow in JavaScript programs!
 
+## Changes Compared to Upstream Repo
+In general, this version strips down the WASMEdge QuickJS implementation to allow it to run on non-wasi_snapshot_preview1 compatible edge compute contexts, like Fastly.
+
+- Added `wasi_snapshot_preview1` feature. Disabled by default. If enabled, restores the QuickJS implementation back to be feature complete:
+  - Enables functions like `setTimeout`, `setImmediate`.
+  - Enables http support and socket support, among others that require IO access granted by the preview1 WASI snapshot.
+- Added `inherit_env` feature. Disabled by default for security. If enabled, the process env of the `Context`-instantiating Rust code will be passed down to executed JS.
+
 ## Prerequisites
 
 Make sure that you will have GCC installed on Ubuntu 20.04.
@@ -43,7 +51,7 @@ cargo build --target wasm32-wasi --release
 
 ### Run
 ```shell
-$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js 
+$ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js
 
 ReferenceError: could not load module filename 'my_mod_1'
 
@@ -52,7 +60,7 @@ $ ls example_js/module_demo/modules/
 my_mod_1.js  my_mod_2.js
 
 # copy `my_mod_1.js` & `my_mod_2.js` into modules/
-# and wasmedge_quickjs will load it as a core module 
+# and wasmedge_quickjs will load it as a core module
 $ cp example_js/module_demo/modules/* modules/
 $ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js
 
@@ -61,7 +69,7 @@ hello from "my_mod_2.js"
 
 ```
 
-### 
+###
 
 ## Async HTTP Request
 
