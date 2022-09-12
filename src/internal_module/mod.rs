@@ -7,3 +7,4 @@ pub mod img_module;
 pub mod tensorflow_module;
 pub mod wasi_net_module;
 pub mod os;
+pub mod fs;
