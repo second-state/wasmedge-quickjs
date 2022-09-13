@@ -233,7 +233,7 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     }
 }
 
-function access(path, mode = constants.F_OK) {
+function access(path, mode = constants.F_OK, callback) {
     // TODO
 }
 
@@ -252,13 +252,30 @@ function accessSync(path, mode = constants.F_OK) {
     }
 }
 
+function exist(path, callback) {
+    // TODO
+}
+
+function existSync(path) {
+    path = getValidatedPath(path);
+
+    try {
+        accessSync(path);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
 export default {
     stat,
     statSync,
     lstat,
     lstatSync,
     access,
-    accessSync
+    accessSync,
+    exist,
+    existSync
 }
 
 export {
@@ -267,5 +284,7 @@ export {
     lstat,
     lstatSync,
     access,
-    accessSync
+    accessSync,
+    exist,
+    existSync
 }
