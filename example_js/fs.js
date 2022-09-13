@@ -14,7 +14,7 @@ print("\nExisted File with BigInt:");
 try {
     let s = statSync("README.md", { bigint: true });
     for (const [key, val] of Object.entries(s)) {
-        print(key, ": ", val);
+        print(key, ": ", typeof(val) === "function" ? val() : val);
     }
 } catch (err) {
     print(JSON.stringify(err));
@@ -64,7 +64,7 @@ print("\nExisted File with BigInt:");
 try {
     let s = lstatSync("README.md", { bigint: true });
     for (const [key, val] of Object.entries(s)) {
-        print(key, ": ", val);
+        print(key, ": ", typeof(val) === "function" ? val() : val);
     }
 } catch (err) {
     print(JSON.stringify(err));

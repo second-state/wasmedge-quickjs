@@ -1,8 +1,9 @@
 use crate::quickjs_sys::*;
 use std::convert::TryInto;
 use std::fs;
+use std::fs::Permissions;
 use std::io;
-use std::os::wasi::fs::MetadataExt;
+use std::os::wasi::fs::{FileTypeExt, MetadataExt};
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -25,18 +26,33 @@ impl From<u64> for JsValue {
     }
 }
 
+fn permissions_to_mode(permit: Permissions) -> i32 {
+    const F_OK: i32 = 0;
+    const R_OK: i32 = 4;
+    const W_OK: i32 = 2;
+    const X_OK: i32 = 1;
+    if permit.readonly() {
+        F_OK | R_OK | X_OK
+    } else {
+        F_OK | R_OK | W_OK | X_OK
+    }
+}
+
 fn stat_to_js_object(ctx: &mut Context, stat: fs::Metadata) -> JsValue {
     let mut res = ctx.new_object();
     res.set("is_file", stat.is_file().into());
     res.set("is_directory", stat.is_dir().into());
     res.set("is_symlink", stat.is_symlink().into());
+    res.set("is_block_device", stat.file_type().is_block_device().into());
+    res.set("is_char_device", stat.file_type().is_char_device().into());
+    res.set("is_socket", stat.file_type().is_socket().into());
     res.set("size", stat.len().into());
     res.set("mtime", to_msec(stat.modified()));
     res.set("atime", to_msec(stat.accessed()));
     res.set("birthtime", to_msec(stat.created()));
     res.set("dev", stat.dev().into());
     res.set("ino", stat.ino().into());
-    res.set("mode", 0.into());
+    res.set("mode", permissions_to_mode(stat.permissions()).into());
     res.set("nlink", stat.nlink().into());
     res.set("uid", 0.into());
     res.set("gid", 0.into());

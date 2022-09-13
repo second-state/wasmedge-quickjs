@@ -3,6 +3,7 @@ import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
+import { fs as constants } from "./internal_binding/constants"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -114,14 +115,13 @@ function convertRawStatInfoToNodeStats(origin) {
         mtimeMs: origin.mtime,
         atimeMs: origin.atime,
         birthtimeMs: origin.birthtime,
-        isFile: () => origin.isFile,
-        isDirectory: () => origin.isDirectory,
-        isSymbolicLink: () => origin.isSymlink,
-        // not sure about those
-        isBlockDevice: () => false,
+        isFile: () => origin.is_file,
+        isDirectory: () => origin.is_directory,
+        isSymbolicLink: () => origin.is_symlink,
+        isBlockDevice: () => origin.is_block_device,
         isFIFO: () => false,
-        isCharacterDevice: () => false,
-        isSocket: () => false,
+        isCharacterDevice: () => origin.is_char_device,
+        isSocket: () => origin.is_socket,
         ctime: new Date(origin.mtime),
         ctimeMs: origin.mtime,
     };
@@ -165,18 +165,22 @@ function convertRawStatInfoToBigIntNodeStats(
         mtimeNs: toBigInt(origin.mtime) * 1000000n,
         atimeNs: toBigInt(origin.atime) * 1000000n,
         birthtimeNs: toBigInt(origin.birthtime) * 1000000n,
-        isFile: () => origin.isFile,
-        isDirectory: () => origin.isDirectory,
-        isSymbolicLink: () => origin.isSymlink,
-        // not sure about those
-        isBlockDevice: () => false,
+        isFile: () => origin.is_file,
+        isDirectory: () => origin.is_directory,
+        isSymbolicLink: () => origin.is_symlink,
+        isBlockDevice: () => origin.is_block_device,
         isFIFO: () => false,
-        isCharacterDevice: () => false,
-        isSocket: () => false,
+        isCharacterDevice: () => origin.is_char_device,
+        isSocket: () => origin.is_socket,
         ctime: new Date(origin.mtime),
         ctimeMs: toBigInt(origin.mtime),
         ctimeNs: toBigInt(origin.mtime) * 1000000n,
     };
+}
+
+
+function stat() {
+    // TODO
 }
 
 /**
@@ -211,7 +215,6 @@ function lstat() {
     // TODO
 }
 
-
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     path = getValidatedPath(path);
 
@@ -230,21 +233,39 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     }
 }
 
-
-function stat() {
+function access(path, mode = constants.F_OK) {
     // TODO
+}
+
+function accessSync(path, mode = constants.F_OK) {
+    path = getValidatedPath(path);
+
+    try {
+        const stat = statSync(path, { throwIfNoEntry: true });
+        if ((stat.mode & mode) != 0) {
+            return undefined;
+        } else {
+            throw new Error(`EACCES: permission denied, access '${path}'`);
+        }
+    } catch (err) {
+        throw err;
+    }
 }
 
 export default {
     stat,
     statSync,
     lstat,
-    lstatSync
+    lstatSync,
+    access,
+    accessSync
 }
 
 export {
     stat,
     statSync,
     lstat,
-    lstatSync
+    lstatSync,
+    access,
+    accessSync
 }
