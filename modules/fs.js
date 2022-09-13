@@ -1,5 +1,5 @@
 import { validateFunction } from "./internal/validators"
-import { getValidatedPath, getValidMode } from "./internal/fs/utils"
+import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
@@ -210,9 +210,27 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
 function lstat() {
     // TODO
 }
-function lstatSync() {
-    // TODO
+
+
+function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
+    path = getValidatedPath(path);
+
+    try {
+        let stat = binding.lstatSync(path);
+        if (options.bigint === true) {
+            return convertRawStatInfoToBigIntNodeStats(stat);
+        } else {
+            return convertRawStatInfoToNodeStats(stat);
+        }
+    } catch (err) {
+        if (err.kind === "NotFound" && options.throwIfNoEntry === true) {
+            return undefined;
+        }
+        throw new Error(err.message);
+    }
 }
+
+
 function stat() {
     // TODO
 }

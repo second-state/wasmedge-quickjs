@@ -1,4 +1,5 @@
 #![allow(dead_code, unused_imports, unused_must_use)]
+#![feature(wasi_ext)]
 #[macro_use]
 extern crate lazy_static;
 
