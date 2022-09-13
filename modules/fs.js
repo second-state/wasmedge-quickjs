@@ -2,6 +2,7 @@ import { validateFunction } from "./internal/validators"
 import { getValidatedPath, getValidMode } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
+export { fs as constants } from "./internal_binding/constants"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are

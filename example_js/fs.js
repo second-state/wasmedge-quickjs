@@ -39,3 +39,9 @@ try {
     print(err.stack);
     print(err.message);
 }
+
+import { constants } from "fs";
+
+const { F_OK, O_WRONLY } = constants;
+print("F_OK: ", F_OK);
+print("O_WRONLY: ", O_WRONLY);
