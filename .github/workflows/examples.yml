@@ -28,6 +28,8 @@ jobs:
 
     - name: Install Rust target
       run: |
+        rustup toolchain add nightly
+        rustup default nightly
         rustup target add wasm32-wasi
 
     - name: Install WasmEdge

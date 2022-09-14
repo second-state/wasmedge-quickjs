@@ -14,6 +14,14 @@ function makeCallback(cb) {
     return (...args) => Reflect.apply(cb, this, args);
 }
 
+function setDefaultValue(dest, def) {
+    for (const [key, val] of Object.entries(def)) {
+        if (dest[key] === undefined) {
+            dest[key] = val;
+        }
+    }
+}
+
 /**
  * @typedef {Object} Stats
  * @property {number | null} dev
@@ -196,6 +204,8 @@ function stat() {
 function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     path = getValidatedPath(path);
 
+    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+
     try {
         let stat = binding.statSync(path);
         if (options.bigint === true) {
@@ -204,7 +214,7 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
             return convertRawStatInfoToNodeStats(stat);
         }
     } catch (err) {
-        if (err.kind === "NotFound" && options.throwIfNoEntry === true) {
+        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
             return undefined;
         }
         throw new Error(err.message);
@@ -218,6 +228,8 @@ function lstat() {
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     path = getValidatedPath(path);
 
+    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+
     try {
         let stat = binding.lstatSync(path);
         if (options.bigint === true) {
@@ -226,7 +238,7 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
             return convertRawStatInfoToNodeStats(stat);
         }
     } catch (err) {
-        if (err.kind === "NotFound" && options.throwIfNoEntry === true) {
+        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
             return undefined;
         }
         throw new Error(err.message);
@@ -242,7 +254,7 @@ function accessSync(path, mode = constants.F_OK) {
 
     try {
         const stat = statSync(path, { throwIfNoEntry: true });
-        if ((stat.mode & mode) != 0) {
+        if ((stat.mode & mode) === mode) {
             return undefined;
         } else {
             throw new Error(`EACCES: permission denied, access '${path}'`);
@@ -252,11 +264,11 @@ function accessSync(path, mode = constants.F_OK) {
     }
 }
 
-function exist(path, callback) {
+function exists(path, callback) {
     // TODO
 }
 
-function existSync(path) {
+function existsSync(path) {
     path = getValidatedPath(path);
 
     try {
@@ -267,6 +279,84 @@ function existSync(path) {
     }
 }
 
+function mkdir(path, mode, callback) {
+    // TODO
+}
+
+function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
+    path = getValidatedPath(path);
+
+    setDefaultValue(options, { recursive: false, mode: 0o777 });
+
+    try {
+        binding.mkdirSync(path, options.recursive, options.mode);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function fchown(fd, uid, gid, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function fchownSync(fd, uid, gid, callback) {
+    return undefined;
+}
+
+function lchown(fd, uid, gid, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function lchownSync(fd, uid, gid, callback) {
+    return undefined;
+}
+
+function chown(fd, uid, gid, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function chownSync(fd, uid, gid, callback) {
+    return undefined;
+}
+
+function rmdir(path, options, callback) {
+    // TODO
+}
+
+function rmdirSync(path, options = { maxRetries: 0, recursive: false, retryDelay: 100 }) {
+    path = getValidatedPath(path);
+
+    setDefaultValue(options, { maxRetries: 0, recursive: false, retryDelay: 100 });
+
+    try {
+        binding.rmdirSync(path, options.recursive);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function rm(path, options, callback) {
+    // TODO
+}
+
+function rmSync(path, options = { force: false, maxRetries: 0, recursive: false, retryDelay: 100 }) {
+    path = getValidatedPath(path);
+
+    setDefaultValue(options, { force: false, maxRetries: 0, recursive: false, retryDelay: 100 });
+
+    try {
+        binding.rmSync(path, options.recursive, options.force);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 export default {
     stat,
     statSync,
@@ -274,8 +364,20 @@ export default {
     lstatSync,
     access,
     accessSync,
-    exist,
-    existSync
+    exists,
+    existsSync,
+    mkdir,
+    mkdirSync,
+    fchown,
+    fchownSync,
+    chown,
+    chownSync,
+    lchown,
+    lchownSync,
+    rmdir,
+    rmdirSync,
+    rm,
+    rmSync
 }
 
 export {
@@ -285,6 +387,18 @@ export {
     lstatSync,
     access,
     accessSync,
-    exist,
-    existSync
+    exists,
+    existsSync,
+    mkdir,
+    mkdirSync,
+    fchown,
+    fchownSync,
+    chown,
+    chownSync,
+    lchown,
+    lchownSync,
+    rmdir,
+    rmdirSync,
+    rm,
+    rmSync
 }
