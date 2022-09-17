@@ -543,6 +543,57 @@ function mkdtempSync(prefix, options = { encoding: "utf8" }) {
     }
 }
 
+function copyFile() {
+    // TODO
+}
+
+function copyFileSync(src, dest, mode = 0) {
+    src = getValidatedPath(src);
+    dest = getValidatedPath(dest);
+    try {
+        if (mode ^ constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
+            if (existsSync(dest)) {
+                throw new Error(`EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
+            }
+            binding.copyFileSync(src, dest);
+        } else {
+            binding.copyFileSync(src, dest);
+        }
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function link() {
+    // TODO
+}
+
+function linkSync(existingPath, newPath) {
+    existingPath = getValidatedPath(existingPath);
+    newPath = getValidatedPath(newPath);
+
+    try {
+        binding.linkSync(existingPath, newPath);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function symlink() {
+    // TODO
+}
+
+function symlinkSync(target, path) {
+    target = getValidatedPath(target);
+    path = getValidatedPath(path);
+
+    try {
+        binding.symlinkSync(target, path);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 export default {
     stat,
     statSync,
@@ -585,7 +636,13 @@ export default {
     realpath,
     realpathSync,
     mkdtemp,
-    mkdtempSync
+    mkdtempSync,
+    copyFile,
+    copyFileSync,
+    link,
+    linkSync,
+    symlink,
+    symlinkSync
 }
 
 export {
@@ -630,5 +687,11 @@ export {
     realpath,
     realpathSync,
     mkdtemp,
-    mkdtempSync
+    mkdtempSync,
+    copyFile,
+    copyFileSync,
+    link,
+    linkSync,
+    symlink,
+    symlinkSync
 }
