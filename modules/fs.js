@@ -295,33 +295,94 @@ function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
     }
 }
 
+// wasi unspported *chown, *chownSync, *chmod, *chmodSync, *utime, *utimeSync
 function fchown(fd, uid, gid, callback) {
     validateFunction(callback);
 
     callback(undefined);
 }
 
-function fchownSync(fd, uid, gid, callback) {
+function fchownSync(fd, uid, gid) {
     return undefined;
 }
 
-function lchown(fd, uid, gid, callback) {
+function lchown(path, uid, gid, callback) {
     validateFunction(callback);
 
     callback(undefined);
 }
 
-function lchownSync(fd, uid, gid, callback) {
+function lchownSync(path, uid, gid) {
     return undefined;
 }
 
-function chown(fd, uid, gid, callback) {
+function chown(path, uid, gid, callback) {
     validateFunction(callback);
 
     callback(undefined);
 }
 
-function chownSync(fd, uid, gid, callback) {
+function chownSync(path, uid, gid) {
+    return undefined;
+}
+
+function chmod(path, mode, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function chmodSync(path, mode) {
+    return undefined;
+}
+
+function lchmod(path, mode, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function lchmodSync(path, mode) {
+    return undefined;
+}
+
+function fchmod(fd, mode, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function fchmodSync(fd, mode) {
+    return undefined;
+}
+
+function utime(path, atime, mtime, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function utimeSync(path, atime, mtime) {
+    return undefined;
+}
+
+function lutime(path, atime, mtime, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function lutimeSync(path, atime, mtime) {
+    return undefined;
+}
+
+function futime(fd, atime, mtime, callback) {
+    validateFunction(callback);
+
+    callback(undefined);
+}
+
+function futimeSync(fd, atime, mtime) {
     return undefined;
 }
 
@@ -357,6 +418,21 @@ function rmSync(path, options = { force: false, maxRetries: 0, recursive: false,
     }
 }
 
+function rename(oldPath, newPath, callback) {
+    // TODO
+}
+
+function renameSync(oldPath, newPath) {
+    oldPath = getValidatedPath(oldPath);
+    newPath = getValidatedPath(newPath);
+
+    try {
+        binding.renameSync(oldPath, newPath);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 export default {
     stat,
     statSync,
@@ -377,7 +453,21 @@ export default {
     rmdir,
     rmdirSync,
     rm,
-    rmSync
+    rmSync,
+    fchmod,
+    fchmodSync,
+    lchmod,
+    lchmodSync,
+    chmod,
+    chmodSync,
+    futime,
+    futimeSync,
+    lutime,
+    lutimeSync,
+    utime,
+    utimeSync,
+    rename,
+    renameSync
 }
 
 export {
@@ -400,5 +490,19 @@ export {
     rmdir,
     rmdirSync,
     rm,
-    rmSync
+    rmSync,
+    fchmod,
+    fchmodSync,
+    lchmod,
+    lchmodSync,
+    chmod,
+    chmodSync,
+    futime,
+    futimeSync,
+    lutime,
+    lutimeSync,
+    utime,
+    utimeSync,
+    rename,
+    renameSync
 }

@@ -206,6 +206,26 @@ fn rm_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     return JsValue::UnDefined;
 }
 
+fn rename_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let old_path = arg.get(0);
+    let new_path = arg.get(1);
+    if old_path.is_none() || new_path.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::String(from)) = old_path {
+        if let Some(JsValue::String(to)) = new_path {
+            return match fs::rename(from.as_str(), to.as_str()) {
+                Ok(()) => JsValue::UnDefined,
+                Err(e) => {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            };
+        }
+    }
+    return JsValue::UnDefined;
+}
+
 struct FS;
 
 impl ModuleInit for FS {
@@ -215,11 +235,13 @@ impl ModuleInit for FS {
         let mkdir_s = ctx.wrap_function("mkdirSync", mkdir_sync);
         let rmdir_s = ctx.wrap_function("rmdirSync", rmdir_sync);
         let rm_s = ctx.wrap_function("rmSync", rm_sync);
+        let rename_s = ctx.wrap_function("renameSync", rename_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("mkdirSync", mkdir_s.into());
         m.add_export("rmdirSync", rmdir_s.into());
         m.add_export("rmSync", rm_s.into());
+        m.add_export("renameSync", rename_s.into());
     }
 }
 
@@ -233,6 +255,7 @@ pub fn init_module(ctx: &mut Context) {
             "mkdirSync\0",
             "rmdirSync\0",
             "rmSync\0",
+            "renameSync\0",
         ],
     )
 }

@@ -1,4 +1,4 @@
-import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync } from "fs";
+import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync, renameSync } from "fs";
 
 print("\nfs.statSync\nExisted File:");
 
@@ -103,7 +103,13 @@ print("\nmkdir recursive: ./tmpdir/subdir");
 mkdirSync("./tmpdir/subdir", { recursive: true });
 print("access: ./tmpdir/subdir");
 accessSync("./tmpdir/subdir");
-print("rm recursive: ./tmpdir/subdir");
-rmSync("./tmpdir/subdir", { recursive: true });
-print("exist: ./tmpdir/subdir");
-print(existsSync("./tmpdir/subdir"));
+print("rm recursive: ./tmpdir");
+rmSync("./tmpdir", { recursive: true });
+print("exist: ./tmpdir");
+print(existsSync("./tmpdir"));
+
+print("\nrename README.md to test.md")
+renameSync("./README.md", "./test.md");
+print("exist: ./test.md");
+print(existsSync("./test.md"));
+renameSync("./test.md", "./README.md");
