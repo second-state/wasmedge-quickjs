@@ -1,9 +1,10 @@
-import { validateFunction } from "./internal/validators"
+import { validateFunction, validateInteger } from "./internal/validators"
 import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
 import { fs as constants } from "./internal_binding/constants"
+import { Buffer } from 'buffer';
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -433,6 +434,115 @@ function renameSync(oldPath, newPath) {
     }
 }
 
+function unlink(path, callback) {
+    path = getValidatedPath(path);
+
+    rm(path, callback);
+}
+
+function unlinkSync(path) {
+    path = getValidatedPath(path);
+
+    rmSync(path);
+}
+
+function truncate(path, len, callback) {
+    // TODO
+}
+
+function truncateSync(path, len = 0) {
+    validateInteger(len);
+
+    path = getValidatedPath(path);
+
+    try {
+        binding.truncateSync(path, len);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function realpath(path, options = { encoding: "utf8" }, callback) {
+
+}
+
+function realpathSync(path, options = { encoding: "utf8" }) {
+    path = getValidatedPath(path);
+    if (typeof (options) === "string") {
+        options = { encoding: options };
+    } else {
+        setDefaultValue(options, { encoding: "utf8" });
+    }
+    let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
+    try {
+        let res = binding.realpathSync(path);
+        if (!useBuffer) {
+            return res;
+        } else {
+            return Buffer.from(res, "utf8");
+        }
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function genId(len) {
+    let result = '';
+    let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() *
+            charactersLength));
+    }
+    return result;
+}
+
+function mkdtemp(prefix, options = { encoding: "utf8" }, callback) {
+    prefix = getValidatedPath(prefix);
+
+    if (typeof (options) === "string") {
+        options = { encoding: options };
+    } else if (typeof (options) === "function") {
+        callback = options;
+        options = { encoding: "utf8" };
+    } else {
+        setDefaultValue(options, { encoding: "utf8" });
+    }
+
+    let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
+
+    let path = prefix + genId(6);
+    mkdir(path, (err) => {
+        if (err) {
+            callback(err);
+        } else if (useBuffer) {
+            callback(undefined, Buffer.from(path, "utf8"));
+        } else {
+            callback(undefined, path);
+        }
+    })
+}
+
+function mkdtempSync(prefix, options = { encoding: "utf8" }) {
+    prefix = getValidatedPath(prefix);
+
+    if (typeof (options) === "string") {
+        options = { encoding: options };
+    } else {
+        setDefaultValue(options, { encoding: "utf8" });
+    }
+
+    let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
+
+    let path = prefix + genId(6);
+    mkdirSync(path);
+    if (useBuffer) {
+        return Buffer.from(path, "utf8");
+    } else {
+        return path;
+    }
+}
+
 export default {
     stat,
     statSync,
@@ -467,7 +577,15 @@ export default {
     utime,
     utimeSync,
     rename,
-    renameSync
+    renameSync,
+    unlink,
+    unlinkSync,
+    truncate,
+    truncateSync,
+    realpath,
+    realpathSync,
+    mkdtemp,
+    mkdtempSync
 }
 
 export {
@@ -504,5 +622,13 @@ export {
     utime,
     utimeSync,
     rename,
-    renameSync
+    renameSync,
+    unlink,
+    unlinkSync,
+    truncate,
+    truncateSync,
+    realpath,
+    realpathSync,
+    mkdtemp,
+    mkdtempSync
 }

@@ -226,6 +226,46 @@ fn rename_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
     return JsValue::UnDefined;
 }
 
+fn truncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let path = arg.get(0);
+    let len = arg.get(1);
+    if path.is_none() || len.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::String(p)) = path {
+        if let Some(JsValue::Int(l)) = len {
+            let res = fs::File::open(p.as_str())
+                .and_then(|file| file.set_len(*l as u64));
+            return match res {
+                Ok(()) => JsValue::UnDefined,
+                Err(e) => {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            };
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn realpath_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let path = arg.get(0);
+    if path.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::String(p)) = path {
+        let res = fs::canonicalize(p.as_str());
+        return match res {
+            Ok(realpath) => ctx.new_string(realpath.to_str().unwrap()).into(),
+            Err(e) => {
+                let err = err_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
+    }
+    return JsValue::UnDefined;
+}
+
 struct FS;
 
 impl ModuleInit for FS {
@@ -236,12 +276,16 @@ impl ModuleInit for FS {
         let rmdir_s = ctx.wrap_function("rmdirSync", rmdir_sync);
         let rm_s = ctx.wrap_function("rmSync", rm_sync);
         let rename_s = ctx.wrap_function("renameSync", rename_sync);
+        let truncate_s = ctx.wrap_function("truncateSync", truncate_sync);
+        let realpath_s = ctx.wrap_function("realpathSync", realpath_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("mkdirSync", mkdir_s.into());
         m.add_export("rmdirSync", rmdir_s.into());
         m.add_export("rmSync", rm_s.into());
         m.add_export("renameSync", rename_s.into());
+        m.add_export("truncateSync", truncate_s.into());
+        m.add_export("realpathSync", realpath_s.into());
     }
 }
 
@@ -256,6 +300,8 @@ pub fn init_module(ctx: &mut Context) {
             "rmdirSync\0",
             "rmSync\0",
             "renameSync\0",
+            "truncateSync\0",
+            "realpathSync\0",
         ],
     )
 }
