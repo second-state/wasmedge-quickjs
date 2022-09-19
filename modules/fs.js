@@ -188,8 +188,21 @@ function convertRawStatInfoToBigIntNodeStats(
 }
 
 
-function stat() {
-    // TODO
+function stat(path, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            statSync(path, options);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 /**
@@ -222,8 +235,20 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     }
 }
 
-function lstat() {
-    // TODO
+function lstat(path, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+    }
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            lstatSync(path, options);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
 }
 
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
@@ -246,8 +271,58 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     }
 }
 
+function fstat(fd, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+    }
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            fstatSync(fd, options);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
+function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
+    validateInteger(fd, "fd");
+
+    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+
+    try {
+        let stat = binding.fstatSync(fd);
+        if (options.bigint === true) {
+            return convertRawStatInfoToBigIntNodeStats(stat);
+        } else {
+            return convertRawStatInfoToNodeStats(stat);
+        }
+    } catch (err) {
+        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
+            return undefined;
+        }
+        throw new Error(err.message);
+    }
+}
+
 function access(path, mode = constants.F_OK, callback) {
-    // TODO
+    if (typeof (mode) === "function") {
+        callback = mode;
+        mode = constants.F_OK;
+    }
+
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            accessSync(path, mode);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
 }
 
 function accessSync(path, mode = constants.F_OK) {
@@ -266,7 +341,9 @@ function accessSync(path, mode = constants.F_OK) {
 }
 
 function exists(path, callback) {
-    // TODO
+    setTimeout(() => {
+        callback(existsSync(path));
+    }, 0);
 }
 
 function existsSync(path) {
@@ -281,7 +358,20 @@ function existsSync(path) {
 }
 
 function mkdir(path, mode, callback) {
-    // TODO
+    if (typeof (mode) === "function") {
+        callback = mode;
+        mode = {};
+    }
+
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            mkdirSync(path, mode);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
@@ -296,7 +386,7 @@ function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
     }
 }
 
-// wasi unspported *chown, *chownSync, *chmod, *chmodSync, *utime, *utimeSync
+// wasi unspported *chown, *chownSync, *chmod, *chmodSync
 function fchown(fd, uid, gid, callback) {
     validateFunction(callback);
 
@@ -348,7 +438,7 @@ function lchmodSync(path, mode) {
 }
 
 function fchmod(fd, mode, callback) {
-    validateFunction(callback);
+    validateFunction(callback, "callback");
 
     callback(undefined);
 }
@@ -357,38 +447,94 @@ function fchmodSync(fd, mode) {
     return undefined;
 }
 
+function getValidTime(time, name) {
+    if (typeof time === "string") {
+        time = Number(time);
+    }
+
+    if (
+        typeof time === "number" &&
+        (Number.isNaN(time) || !Number.isFinite(time))
+    ) {
+        throw new errors.ERR_INVALID_ARG_TYPE(name, "number | string | Date", time);
+    }
+
+    return time;
+}
+
 function utime(path, atime, mtime, callback) {
     validateFunction(callback);
 
-    callback(undefined);
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            utimeSync(path, atime, mtime);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function utimeSync(path, atime, mtime) {
-    return undefined;
+    path = getValidatedPath(path);
+    atime = getValidTime(atime);
+    mtime = getValidTime(mtime);
+
+    try {
+        binding.utimeSync(path, atime, mtime);
+    } catch (err) {
+        throw new Error(err.message);
+    }
 }
 
 function lutime(path, atime, mtime, callback) {
-    validateFunction(callback);
-
-    callback(undefined);
+    utime(path, atime, mtime, callback);
 }
 
 function lutimeSync(path, atime, mtime) {
-    return undefined;
+    utimeSync(path, atime, mtime);
 }
 
 function futime(fd, atime, mtime, callback) {
-    validateFunction(callback);
+    validateFunction(callback, "callback");
 
-    callback(undefined);
+    setTimeout(() => {
+        try {
+            futimeSync(fd, atime, mtime);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
 }
 
 function futimeSync(fd, atime, mtime) {
-    return undefined;
+    validateInteger(fd, "fd");
+    atime = getValidTime(atime, "atime");
+    mtime = getValidTime(mtime, "mtime");
+
+    try {
+        binding.futimeSync(fd, atime, mtime);
+    } catch (err) {
+        throw new Error(err.message);
+    }
 }
 
 function rmdir(path, options, callback) {
-    // TODO
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            rmdirSync(path, options, callback);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function rmdirSync(path, options = { maxRetries: 0, recursive: false, retryDelay: 100 }) {
@@ -404,7 +550,20 @@ function rmdirSync(path, options = { maxRetries: 0, recursive: false, retryDelay
 }
 
 function rm(path, options, callback) {
-    // TODO
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            rmSync(path, options);
+            callback();
+        }
+        catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function rmSync(path, options = { force: false, maxRetries: 0, recursive: false, retryDelay: 100 }) {
@@ -420,7 +579,15 @@ function rmSync(path, options = { force: false, maxRetries: 0, recursive: false,
 }
 
 function rename(oldPath, newPath, callback) {
-    // TODO
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            renameSync(oldPath, newPath);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
 }
 
 function renameSync(oldPath, newPath) {
@@ -447,7 +614,20 @@ function unlinkSync(path) {
 }
 
 function truncate(path, len, callback) {
-    // TODO
+    if (typeof (len) === "function") {
+        callback = len;
+        len = 0;
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            truncateSync(path, len);
+            callback();
+        }
+        catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function truncateSync(path, len = 0) {
@@ -462,8 +642,48 @@ function truncateSync(path, len = 0) {
     }
 }
 
-function realpath(path, options = { encoding: "utf8" }, callback) {
+function ftruncate(fd, len, callback) {
+    if (typeof (len) === "function") {
+        callback = len;
+        len = 0;
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            ftruncateSync(fd, len);
+            callback();
+        }
+        catch (err) {
+            callback(err);
+        }
+    }, 0);
+}
 
+function ftruncateSync(fd, len = 0) {
+    validateInteger(len);
+
+    validateInteger(fd, "fd");
+
+    try {
+        binding.ftruncateSync(fd, len);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function realpath(path, options = { encoding: "utf8" }, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            callback(null, realpathSync(path, options));
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function realpathSync(path, options = { encoding: "utf8" }) {
@@ -490,7 +710,7 @@ function genId(len) {
     let result = '';
     let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let charactersLength = characters.length;
-    for (let i = 0; i < length; i++) {
+    for (let i = 0; i < len; i++) {
         result += characters.charAt(Math.floor(Math.random() *
             charactersLength));
     }
@@ -508,6 +728,7 @@ function mkdtemp(prefix, options = { encoding: "utf8" }, callback) {
     } else {
         setDefaultValue(options, { encoding: "utf8" });
     }
+    validateFunction(callback, "callback");
 
     let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
 
@@ -543,8 +764,20 @@ function mkdtempSync(prefix, options = { encoding: "utf8" }) {
     }
 }
 
-function copyFile() {
-    // TODO
+function copyFile(src, dest, mode, callback) {
+    if (typeof (mode) === "function") {
+        callback = mode;
+        mode = 0;
+    }
+    validateFunction(callback, "callback");
+    setTimeout(() => {
+        try {
+            copyFileSync(src, dest, mode);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function copyFileSync(src, dest, mode = 0) {
@@ -564,8 +797,17 @@ function copyFileSync(src, dest, mode = 0) {
     }
 }
 
-function link() {
-    // TODO
+function link(existingPath, newPath, callback) {
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            linkSync(existingPath, newPath);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function linkSync(existingPath, newPath) {
@@ -579,8 +821,17 @@ function linkSync(existingPath, newPath) {
     }
 }
 
-function symlink() {
-    // TODO
+function symlink(target, path, callback) {
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            symlinkSync(target, path);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
 }
 
 function symlinkSync(target, path) {
@@ -599,6 +850,8 @@ export default {
     statSync,
     lstat,
     lstatSync,
+    fstat,
+    fstatSync,
     access,
     accessSync,
     exists,
@@ -633,6 +886,8 @@ export default {
     unlinkSync,
     truncate,
     truncateSync,
+    ftruncate,
+    ftruncateSync,
     realpath,
     realpathSync,
     mkdtemp,
@@ -650,6 +905,8 @@ export {
     statSync,
     lstat,
     lstatSync,
+    fstat,
+    fstatSync,
     access,
     accessSync,
     exists,
@@ -684,6 +941,8 @@ export {
     unlinkSync,
     truncate,
     truncateSync,
+    ftruncate,
+    ftruncateSync,
     realpath,
     realpathSync,
     mkdtemp,

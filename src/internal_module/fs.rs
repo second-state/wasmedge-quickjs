@@ -4,6 +4,7 @@ use std::fs;
 use std::fs::Permissions;
 use std::io;
 use std::os::wasi::fs::{FileTypeExt, MetadataExt};
+use std::os::wasi::prelude::FromRawFd;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -79,6 +80,12 @@ fn err_to_js_object(ctx: &mut Context, e: io::Error) -> JsValue {
     JsValue::Object(res)
 }
 
+fn errno_to_js_object(ctx: &mut Context, e: wasi::Errno) -> JsValue {
+    let mut res = ctx.new_object();
+    res.set("message", JsValue::String(ctx.new_string(e.message())));
+    JsValue::Object(res)
+}
+
 fn stat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     let path = arg.get(0);
     if path.is_none() {
@@ -86,6 +93,25 @@ fn stat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
     }
     if let JsValue::String(s) = path.unwrap() {
         return match fs::metadata(s.as_str()) {
+            Ok(stat) => stat_to_js_object(ctx, stat),
+            Err(e) => {
+                let err = err_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
+    } else {
+        return JsValue::UnDefined;
+    }
+}
+
+fn fstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    if fd.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let JsValue::Int(f) = fd.unwrap() {
+        let f = unsafe { fs::File::from_raw_fd(*f) };
+        return match f.metadata() {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = err_to_js_object(ctx, e);
@@ -247,6 +273,27 @@ fn truncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
     return JsValue::UnDefined;
 }
 
+fn ftruncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    let len = arg.get(1);
+    if fd.is_none() || len.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::Int(f)) = fd {
+        if let Some(JsValue::Int(l)) = len {
+            let res = unsafe { wasi::fd_filestat_set_size(*f as u32, *l as u64) };
+            return match res {
+                Ok(()) => JsValue::UnDefined,
+                Err(e) => {
+                    let err = errno_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            };
+        }
+    }
+    return JsValue::UnDefined;
+}
+
 fn realpath_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     let path = arg.get(0);
     if path.is_none() {
@@ -328,32 +375,99 @@ fn symlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVal
     return JsValue::UnDefined;
 }
 
+fn utime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let path = arg.get(0);
+    let atime = arg.get(1);
+    let mtime = arg.get(2);
+    if path.is_none() || atime.is_none() || mtime.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::String(p)) = path {
+        if let Some(JsValue::Float(a)) = atime {
+            if let Some(JsValue::Float(m)) = mtime {
+                let res = unsafe {
+                    wasi::path_filestat_set_times(
+                        3,
+                        wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
+                        p.as_str(),
+                        *a as u64,
+                        *m as u64,
+                        wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM,
+                    )
+                };
+                return match res {
+                    Ok(_) => JsValue::UnDefined,
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                };
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn futime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    let atime = arg.get(1);
+    let mtime = arg.get(2);
+    if fd.is_none() || atime.is_none() || mtime.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::Int(f)) = fd {
+        if let Some(JsValue::Float(a)) = atime {
+            if let Some(JsValue::Float(m)) = mtime {
+                let res = unsafe {
+                    wasi::fd_filestat_set_times(*f as u32, *a as u64, *m as u64, wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM)
+                };
+                return match res {
+                    Ok(_) => JsValue::UnDefined,
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                };
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
 struct FS;
 
 impl ModuleInit for FS {
     fn init_module(ctx: &mut Context, m: &mut JsModuleDef) {
         let stat_s = ctx.wrap_function("statSync", stat_sync);
         let lstat_s = ctx.wrap_function("lstatSync", lstat_sync);
+        let fstat_s = ctx.wrap_function("fstatSync", fstat_sync);
         let mkdir_s = ctx.wrap_function("mkdirSync", mkdir_sync);
         let rmdir_s = ctx.wrap_function("rmdirSync", rmdir_sync);
         let rm_s = ctx.wrap_function("rmSync", rm_sync);
         let rename_s = ctx.wrap_function("renameSync", rename_sync);
         let truncate_s = ctx.wrap_function("truncateSync", truncate_sync);
+        let ftruncate_s = ctx.wrap_function("ftruncateSync", ftruncate_sync);
         let realpath_s = ctx.wrap_function("realpathSync", realpath_sync);
         let copy_file_s = ctx.wrap_function("copyFileSync", copy_file_sync);
         let link_s = ctx.wrap_function("linkSync", link_sync);
         let symlink_s = ctx.wrap_function("symlinkSync", symlink_sync);
+        let utime_s = ctx.wrap_function("utimeSync", utime_sync);
+        let futime_s = ctx.wrap_function("futimeSync", futime_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
+        m.add_export("fstatSync", fstat_s.into());
         m.add_export("mkdirSync", mkdir_s.into());
         m.add_export("rmdirSync", rmdir_s.into());
         m.add_export("rmSync", rm_s.into());
         m.add_export("renameSync", rename_s.into());
         m.add_export("truncateSync", truncate_s.into());
+        m.add_export("ftruncateSync", ftruncate_s.into());
         m.add_export("realpathSync", realpath_s.into());
         m.add_export("copyFileSync", copy_file_s.into());
         m.add_export("linkSync", link_s.into());
         m.add_export("symlinkSync", symlink_s.into());
+        m.add_export("utimeSync", utime_s.into());
+        m.add_export("futimeSync", futime_s.into());
     }
 }
 
@@ -364,6 +478,7 @@ pub fn init_module(ctx: &mut Context) {
         &[
             "statSync\0",
             "lstatSync\0",
+            "fstatSync\0",
             "mkdirSync\0",
             "rmdirSync\0",
             "rmSync\0",
@@ -373,6 +488,8 @@ pub fn init_module(ctx: &mut Context) {
             "copyFileSync\0",
             "linkSync\0",
             "symlinkSync\0",
+            "utimeSync\0",
+            "futimeSync\0",
         ],
     )
 }
