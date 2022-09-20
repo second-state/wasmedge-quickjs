@@ -5,6 +5,7 @@ import * as errors from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
 import { fs as constants } from "./internal_binding/constants"
 import { Buffer } from 'buffer';
+import { promisify } from "./internal/util"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -462,13 +463,13 @@ function getValidTime(time, name) {
     return time;
 }
 
-function utime(path, atime, mtime, callback) {
+function utimes(path, atime, mtime, callback) {
     validateFunction(callback);
 
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
-            utimeSync(path, atime, mtime);
+            utimesSync(path, atime, mtime);
             callback();
         } catch (err) {
             callback(err);
@@ -476,7 +477,7 @@ function utime(path, atime, mtime, callback) {
     }, 0);
 }
 
-function utimeSync(path, atime, mtime) {
+function utimesSync(path, atime, mtime) {
     path = getValidatedPath(path);
     atime = getValidTime(atime);
     mtime = getValidTime(mtime);
@@ -488,20 +489,20 @@ function utimeSync(path, atime, mtime) {
     }
 }
 
-function lutime(path, atime, mtime, callback) {
-    utime(path, atime, mtime, callback);
+function lutimes(path, atime, mtime, callback) {
+    utimes(path, atime, mtime, callback);
 }
 
-function lutimeSync(path, atime, mtime) {
-    utimeSync(path, atime, mtime);
+function lutimesSync(path, atime, mtime) {
+    utimesSync(path, atime, mtime);
 }
 
-function futime(fd, atime, mtime, callback) {
+function futimes(fd, atime, mtime, callback) {
     validateFunction(callback, "callback");
 
     setTimeout(() => {
         try {
-            futimeSync(fd, atime, mtime);
+            futimesSync(fd, atime, mtime);
             callback();
         } catch (err) {
             callback(err);
@@ -509,7 +510,7 @@ function futime(fd, atime, mtime, callback) {
     })
 }
 
-function futimeSync(fd, atime, mtime) {
+function futimesSync(fd, atime, mtime) {
     validateInteger(fd, "fd");
     atime = getValidTime(atime, "atime");
     mtime = getValidTime(mtime, "mtime");
@@ -845,7 +846,41 @@ function symlinkSync(target, path) {
     }
 }
 
+const promises = {
+    access: promisify(access),
+    appendFile: promisify(appendFile),
+    chmod: promisify(chmod),
+    chown: promisify(chown),
+    copyFile: promisify(copyFile),
+    cp: promisify(cp),
+    lchmod: promisify(lchmod),
+    lchown: promisify(lchown),
+    lutimes: promisify(lutimes),
+    link: promisify(link),
+    lstat: promisify(lstat),
+    mkdir: promisify(mkdir),
+    mkdtemp: promisify(mkdtemp),
+    open: promisify(open),
+    opendir: promisify(opendir),
+    readdir: promisify(readdir),
+    readFile: promisify(readFile),
+    readlink: promisify(readlink),
+    realpath: promisify(realpath),
+    rename: promisify(rename),
+    rmdir: promisify(rmdir),
+    rm: promisify(rm),
+    stat: promisify(stat),
+    symlink: promisify(symlink),
+    truncate: promisify(truncate),
+    unlink: promisify(unlink),
+    utimes: promisify(utimes),
+    watch: promisify(watch),
+    writeFile: promisify(writeFile),
+    constants: constants
+}
+
 export default {
+    promises,
     stat,
     statSync,
     lstat,
@@ -874,12 +909,12 @@ export default {
     lchmodSync,
     chmod,
     chmodSync,
-    futime,
-    futimeSync,
-    lutime,
-    lutimeSync,
-    utime,
-    utimeSync,
+    futimes,
+    futimesSync,
+    lutimes,
+    lutimesSync,
+    utimes,
+    utimesSync,
     rename,
     renameSync,
     unlink,
@@ -901,6 +936,7 @@ export default {
 }
 
 export {
+    promises,
     stat,
     statSync,
     lstat,
@@ -929,12 +965,12 @@ export {
     lchmodSync,
     chmod,
     chmodSync,
-    futime,
-    futimeSync,
-    lutime,
-    lutimeSync,
-    utime,
-    utimeSync,
+    futimes,
+    futimesSync,
+    lutimes,
+    lutimesSync,
+    utimes,
+    utimesSync,
     rename,
     renameSync,
     unlink,
