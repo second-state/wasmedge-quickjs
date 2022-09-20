@@ -419,7 +419,12 @@ fn futime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
         if let Some(JsValue::Float(a)) = atime {
             if let Some(JsValue::Float(m)) = mtime {
                 let res = unsafe {
-                    wasi::fd_filestat_set_times(*f as u32, *a as u64, *m as u64, wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM)
+                    wasi::fd_filestat_set_times(
+                        *f as u32,
+                        *a as u64,
+                        *m as u64,
+                        wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM,
+                    )
                 };
                 return match res {
                     Ok(_) => JsValue::UnDefined,
@@ -430,6 +435,60 @@ fn futime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
                 };
             }
         }
+    }
+    return JsValue::UnDefined;
+}
+
+fn fclose_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    if fd.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::Int(f)) = fd {
+        let res = unsafe { wasi::fd_close(*f as u32) };
+        return match res {
+            Ok(_) => JsValue::UnDefined,
+            Err(e) => {
+                let err = errno_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
+    }
+    return JsValue::UnDefined;
+}
+
+fn fdatasync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    if fd.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::Int(f)) = fd {
+        let res = unsafe { wasi::fd_datasync(*f as u32) };
+        return match res {
+            Ok(_) => JsValue::UnDefined,
+            Err(e) => {
+                let err = errno_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
+    }
+    return JsValue::UnDefined;
+}
+
+fn fsync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    let fd = arg.get(0);
+    if fd.is_none() {
+        return JsValue::UnDefined;
+    }
+    if let Some(JsValue::Int(f)) = fd {
+        let res = unsafe { wasi::fd_sync(*f as u32) };
+        return match res {
+            Ok(_) => JsValue::UnDefined,
+            Err(e) => {
+                let err = errno_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
     }
     return JsValue::UnDefined;
 }
@@ -453,6 +512,9 @@ impl ModuleInit for FS {
         let symlink_s = ctx.wrap_function("symlinkSync", symlink_sync);
         let utime_s = ctx.wrap_function("utimeSync", utime_sync);
         let futime_s = ctx.wrap_function("futimeSync", futime_sync);
+        let fclose_s = ctx.wrap_function("fcloseSync", fclose_sync);
+        let fsync_s = ctx.wrap_function("fsyncSync", fsync_sync);
+        let fdatasync_s = ctx.wrap_function("fdatasyncSync", fdatasync_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -468,6 +530,9 @@ impl ModuleInit for FS {
         m.add_export("symlinkSync", symlink_s.into());
         m.add_export("utimeSync", utime_s.into());
         m.add_export("futimeSync", futime_s.into());
+        m.add_export("fcloseSync", fclose_s.into());
+        m.add_export("fsyncSync", fsync_s.into());
+        m.add_export("fdatasyncSync", fdatasync_s.into());
     }
 }
 

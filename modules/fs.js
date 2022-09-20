@@ -846,6 +846,72 @@ function symlinkSync(target, path) {
     }
 }
 
+function close(fd, callback) {
+    setTimeout(() => {
+        try {
+            closeSync(fd);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
+function closeSync(fd) {
+    validateInteger(fd, "fd");
+    validateFunction(callback, "callback");
+
+    try {
+        binding.fcloseSync(fd);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function fsync(fd, callback) {
+    setTimeout(() => {
+        try {
+            fsyncSync(fd);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
+function fsyncSync(fd) {
+    validateInteger(fd, "fd");
+    validateFunction(callback, "callback");
+
+    try {
+        binding.fsyncSync(fd);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function fdatasync(fd, callback) {
+    setTimeout(() => {
+        try {
+            fdatasyncSync(fd);
+            callback();
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
+function fdatasyncSync(fd) {
+    validateInteger(fd, "fd");
+    validateFunction(callback, "callback");
+
+    try {
+        binding.fdatasyncSync(fd);
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
@@ -932,7 +998,13 @@ export default {
     link,
     linkSync,
     symlink,
-    symlinkSync
+    symlinkSync,
+    close,
+    closeSync,
+    fdatasync,
+    fdatasyncSync,
+    fsync,
+    fsyncSync
 }
 
 export {
@@ -988,5 +1060,11 @@ export {
     link,
     linkSync,
     symlink,
-    symlinkSync
+    symlinkSync,
+    close,
+    closeSync,
+    fdatasync,
+    fdatasyncSync,
+    fsync,
+    fsyncSync
 }
