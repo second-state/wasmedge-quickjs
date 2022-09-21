@@ -912,6 +912,128 @@ function fdatasyncSync(fd) {
     }
 }
 
+function fread(fd, buffer, offset, length, position, callback) {
+    if (typeof (buffer) === "function") {
+        callback = buffer;
+        buffer = Buffer.alloc(16384);
+        offset = 0;
+        length = buffer.byteLength - offset;
+        position = 0;
+    } else if (typeof (offset) === "object") {
+        let option = offset;
+        offset = option.offset || 0;
+        length = buffer.byteLength - offset;
+        position = option.position || 0;
+    } else if (typeof (offset) === "function") {
+        callback = offset;
+        offset = 0;
+        length = buffer.byteLength - offset;
+        position = 0;
+    }
+
+    validateFunction(callback, "callback");
+    validateInteger(offset, "offset");
+    validateInteger(position, "position");
+
+    binding.fread(fd, position, length).then((data) => {
+        buffer.writeUInt8(data, offset);
+        callback(null, data.byteLength, buffer)
+    }).catch((e) => {
+        callback(e)
+    })
+}
+
+function freadSync(fd, buffer, offset, length, position) {
+    if (typeof (offset) === "object") {
+        let option = offset;
+        offset = option.offset || 0;
+        length = buffer.byteLength - offset;
+        position = option.position || 0;
+    }
+
+    position = position || 0;
+
+    validateFunction(callback, "callback");
+    validateInteger(offset, "offset");
+    validateInteger(position, "position");
+
+    try {
+        let data = binding.freadSync(fd, position, length);
+        buffer.writeUInt8(data, offset);
+        return data.byteLength;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function stringToFlags(flags) {
+    if (typeof flags === 'number') {
+        return flags;
+    }
+
+    switch (flags) {
+        case 'r': return constants.O_RDONLY;
+        case 'rs': // Fall through.
+        case 'sr': return constants.O_RDONLY | constants.O_SYNC;
+        case 'r+': return constants.O_RDWR;
+        case 'rs+': // Fall through.
+        case 'sr+': return constants.O_RDWR | constants.O_SYNC;
+
+        case 'w': return constants.O_TRUNC | constants.O_CREAT | constants.O_WRONLY;
+        case 'wx': // Fall through.
+        case 'xw': return constants.O_TRUNC | constants.O_CREAT | constants.O_WRONLY | constants.O_EXCL;
+
+        case 'w+': return constants.O_TRUNC | constants.O_CREAT | constants.O_RDWR;
+        case 'wx+': // Fall through.
+        case 'xw+': return constants.O_TRUNC | constants.O_CREAT | constants.O_RDWR | constants.O_EXCL;
+
+        case 'a': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY;
+        case 'ax': // Fall through.
+        case 'xa': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_EXCL;
+        case 'as': // Fall through.
+        case 'sa': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_SYNC;
+
+        case 'a+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR;
+        case 'ax+': // Fall through.
+        case 'xa+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR | constants.O_EXCL;
+        case 'as+': // Fall through.
+        case 'sa+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR | constants.O_SYNC;
+    }
+
+    throw new errors.ERR_INVALID_ARG_VALUE('flags', flags);
+}
+
+function openSync(path, flag = "r", mode = 0o666) {
+    path = getValidatedPath(path);
+    flag = stringToFlags(flag);
+
+    try {
+        let fd = binding.openSync(path, flag, mode);
+        return fd;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function open(path, flag = "r", mode = 0o666, callback) {
+    if (typeof (flag) === "function") {
+        callback = flag;
+        flag = "r";
+        mode = 0o666;
+    } else if (typeof (mode) === "function") {
+        callback = mode;
+        mode = 0o666;
+    }
+    setTimeout(() => {
+        try {
+            fd = openSync(path.flag, mode);
+            callback(null, fd);
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
@@ -1004,7 +1126,11 @@ export default {
     fdatasync,
     fdatasyncSync,
     fsync,
-    fsyncSync
+    fsyncSync,
+    fread,
+    freadSync,
+    open,
+    openSync
 }
 
 export {
@@ -1066,5 +1192,9 @@ export {
     fdatasync,
     fdatasyncSync,
     fsync,
-    fsyncSync
+    fsyncSync,
+    fread,
+    freadSync,
+    open,
+    openSync
 }

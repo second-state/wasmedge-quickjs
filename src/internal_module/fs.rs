@@ -1,3 +1,4 @@
+use crate::event_loop::PollResult;
 use crate::quickjs_sys::*;
 use std::convert::TryInto;
 use std::fs;
@@ -493,6 +494,141 @@ fn fsync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
     return JsValue::UnDefined;
 }
 
+fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::Int(fd)) = arg.get(0) {
+        if let Some(JsValue::Int(position)) = arg.get(1) {
+            if let Some(JsValue::Int(length)) = arg.get(2) {
+                let (promise, ok, error) = ctx.new_promise();
+                if let Some(event_loop) = ctx.event_loop() {
+                    if *position != 0 {
+                        let res = unsafe {
+                            wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR)
+                        };
+                        if let Err(e) = res {
+                            let err = errno_to_js_object(ctx, e);
+                            return JsValue::Exception(ctx.throw_error(err));
+                        }
+                    }
+                    event_loop.fd_read(
+                        *fd,
+                        *length as u64,
+                        Box::new(move |ctx, res| match res {
+                            PollResult::Read(data) => {
+                                let buf = ctx.new_array_buffer(&data);
+                                if let JsValue::Function(resolve) = ok {
+                                    resolve.call(&[JsValue::ArrayBuffer(buf)]);
+                                }
+                            }
+                            PollResult::Error(e) => {
+                                if let JsValue::Function(reject) = error {
+                                    reject.call(&[err_to_js_object(ctx, e)]);
+                                }
+                            }
+                            _ => {}
+                        }),
+                    );
+                    return promise;
+                }
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::Int(fd)) = arg.get(0) {
+        if let Some(JsValue::Int(position)) = arg.get(1) {
+            if let Some(JsValue::Int(length)) = arg.get(2) {
+                if *position != 0 {
+                    let res =
+                        unsafe { wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR) };
+                    if let Err(e) = res {
+                        let err = errno_to_js_object(ctx, e);
+                        return JsValue::Exception(ctx.throw_error(err));
+                    }
+                }
+                let len = *length as usize;
+                let mut buf = vec![0; len];
+                let res = unsafe {
+                    wasi::fd_read(
+                        *fd as u32,
+                        &[wasi::Iovec {
+                            buf: buf.as_mut_ptr(),
+                            buf_len: len,
+                        }],
+                    )
+                };
+                return match res {
+                    Ok(_) => {
+                        let data = ctx.new_array_buffer(&buf);
+                        JsValue::ArrayBuffer(data)
+                    }
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                };
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::String(path)) = arg.get(0) {
+        if let Some(JsValue::Int(flag)) = arg.get(1) {
+            if let Some(JsValue::Int(mode)) = arg.get(2) {
+                let fdflag = if flag | 128 == 128 {
+                    wasi::FDFLAGS_NONBLOCK
+                } else {
+                    wasi::FDFLAGS_SYNC
+                } | if flag | 8 == 8 {
+                    wasi::FDFLAGS_APPEND
+                } else {
+                    0
+                };
+                let oflag = if flag | 512 == 512 {
+                    wasi::OFLAGS_CREAT
+                } else {
+                    0
+                } | if flag | 2048 == 2048 {
+                    wasi::OFLAGS_EXCL
+                } else {
+                    0
+                } | if flag | 1024 == 1024 {
+                    wasi::OFLAGS_TRUNC
+                } else {
+                    0
+                };
+                let right = if flag | 1 == 1 || flag | 2 == 2 {
+                    wasi::RIGHTS_FD_WRITE
+                        | wasi::RIGHTS_FD_ADVISE
+                        | wasi::RIGHTS_FD_ALLOCATE
+                        | wasi::RIGHTS_FD_DATASYNC
+                        | wasi::RIGHTS_FD_FDSTAT_SET_FLAGS
+                        | wasi::RIGHTS_FD_FILESTAT_SET_SIZE
+                        | wasi::RIGHTS_FD_FILESTAT_SET_TIMES
+                        | wasi::RIGHTS_FD_SYNC
+                        | wasi::RIGHTS_FD_WRITE
+                } else {
+                    0
+                } | wasi::RIGHTS_FD_FILESTAT_GET
+                    | wasi::RIGHTS_FD_SEEK
+                    | wasi::RIGHTS_POLL_FD_READWRITE;
+                let res = unsafe { wasi::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
+                return match res {
+                    Ok(fd) => JsValue::Int(fd as i32),
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                };
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
 struct FS;
 
 impl ModuleInit for FS {
@@ -515,6 +651,8 @@ impl ModuleInit for FS {
         let fclose_s = ctx.wrap_function("fcloseSync", fclose_sync);
         let fsync_s = ctx.wrap_function("fsyncSync", fsync_sync);
         let fdatasync_s = ctx.wrap_function("fdatasyncSync", fdatasync_sync);
+        let fread_s = ctx.wrap_function("freadSync", fread_sync);
+        let fread_a = ctx.wrap_function("fread", fread);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -533,6 +671,8 @@ impl ModuleInit for FS {
         m.add_export("fcloseSync", fclose_s.into());
         m.add_export("fsyncSync", fsync_s.into());
         m.add_export("fdatasyncSync", fdatasync_s.into());
+        m.add_export("freadSync", fread_s.into());
+        m.add_export("fread", fread_a.into());
     }
 }
 

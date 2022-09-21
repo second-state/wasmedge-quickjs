@@ -248,10 +248,56 @@ impl SocketTimeoutTask {
     }
 }
 
+struct FdReadTask {
+    fd: std::os::wasi::io::RawFd,
+    len: u64,
+    callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+}
+
+impl FdReadTask {
+    fn as_subscription(&self, index: usize) -> Subscription {
+        poll::Subscription {
+            userdata: index as u64,
+            u: poll::SubscriptionU {
+                tag: poll::EVENTTYPE_FD_READ,
+                u: poll::SubscriptionUU {
+                    fd_read: poll::SubscriptionFdReadwrite {
+                        file_descriptor: self.fd as u32,
+                    },
+                },
+            },
+        }
+    }
+}
+
+struct FdWriteTask {
+    fd: std::os::wasi::io::RawFd,
+    len: u64,
+    callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+}
+
+impl FdWriteTask {
+    fn as_subscription(&self, index: usize) -> Subscription {
+        poll::Subscription {
+            userdata: index as u64,
+            u: poll::SubscriptionU {
+                tag: poll::EVENTTYPE_FD_WRITE,
+                u: poll::SubscriptionUU {
+                    fd_write: poll::SubscriptionFdReadwrite {
+                        file_descriptor: self.fd as u32,
+                    },
+                },
+            },
+        }
+    }
+}
+
 enum PollTask {
     Timeout(TimeoutTask),
     Socket(SocketTask),
     SocketTimeout(SocketTimeoutTask),
+    FdRead(FdReadTask),
+    FdWrite(FdWriteTask),
 }
 
 #[derive(Default)]
@@ -292,6 +338,12 @@ impl IoSelector {
                         let (task1, task2) = task.as_subscription(i);
                         subscription_vec.push(task1);
                         subscription_vec.push(task2);
+                    }
+                    PollTask::FdRead(task) => {
+                        subscription_vec.push(task.as_subscription(i));
+                    }
+                    PollTask::FdWrite(task) => {
+                        subscription_vec.push(task.as_subscription(i));
                     }
                 }
             }
@@ -385,6 +437,40 @@ impl IoSelector {
                             }
                         };
                     }
+                    (
+                        PollTask::FdRead(FdReadTask { fd, len, callback }),
+                        poll::EVENTTYPE_FD_READ,
+                    ) => {
+                        if event.error > 0 {
+                            let e = io::Error::from_raw_os_error(event.error as i32);
+                            callback(ctx, PollResult::Error(e));
+                            continue;
+                        }
+                        let len = len.min(event.fd_readwrite.nbytes) as usize;
+                        let mut buf = vec![0u8; len];
+                        let res = unsafe {
+                            wasi::fd_read(
+                                fd as u32,
+                                &[wasi::Iovec {
+                                    buf: buf.as_mut_ptr(),
+                                    buf_len: len,
+                                }],
+                            )
+                        };
+                        callback(
+                            ctx,
+                            match res {
+                                Ok(_) => PollResult::Read(buf),
+                                Err(e) => PollResult::Error(io::Error::from_raw_os_error(
+                                    e.raw() as i32,
+                                )),
+                            },
+                        );
+                    }
+                    (
+                        PollTask::FdWrite(FdWriteTask { fd, len, callback }),
+                        poll::EVENTTYPE_FD_WRITE,
+                    ) => {}
                     (_, _) => {}
                 }
             }
@@ -510,5 +596,25 @@ impl EventLoop {
         }
         std::mem::forget(s);
         Ok(())
+    }
+
+    pub fn fd_read(
+        &mut self,
+        fd: std::os::wasi::io::RawFd,
+        len: u64,
+        callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+    ) {
+        self.io_selector
+            .add_task(PollTask::FdRead(FdReadTask { fd, len, callback }));
+    }
+
+    pub fn fd_write(
+        &mut self,
+        fd: std::os::wasi::io::RawFd,
+        len: u64,
+        callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+    ) {
+        self.io_selector
+            .add_task(PollTask::FdWrite(FdWriteTask { fd, len, callback }));
     }
 }
