@@ -446,7 +446,7 @@ impl IoSelector {
                             callback(ctx, PollResult::Error(e));
                             continue;
                         }
-                        let len = len.min(event.fd_readwrite.nbytes) as usize;
+                        let len = len as usize; // len.min(event.fd_readwrite.nbytes) as usize;
                         let mut buf = vec![0u8; len];
                         let res = unsafe {
                             wasi::fd_read(

@@ -153,13 +153,13 @@ export const validateInteger = hideStackFrames(
         max = Number.MAX_SAFE_INTEGER,
     ) => {
         if (typeof value !== "number") {
-            throw new codes.ERR_INVALID_ARG_TYPE(name, "number", value);
+            throw new ERR_INVALID_ARG_TYPE(name, "number", value);
         }
         if (!Number.isInteger(value)) {
-            throw new codes.ERR_OUT_OF_RANGE(name, "an integer", value);
+            throw new ERR_OUT_OF_RANGE(name, "an integer", value);
         }
         if (value < min || value > max) {
-            throw new codes.ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
+            throw new ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
         }
     },
 );

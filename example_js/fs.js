@@ -1,4 +1,5 @@
-import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync, renameSync } from "fs";
+import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync, renameSync, openSync, read } from "fs";
+
 
 print("\nfs.statSync\nExisted File:");
 
@@ -113,3 +114,11 @@ renameSync("./README.md", "./test.md");
 print("exist: ./test.md");
 print(existsSync("./test.md"));
 renameSync("./test.md", "./README.md");
+
+let fd = openSync("./README.md");
+print(fd);
+read(fd, (err, len, buf) => {
+    print(err);
+    print(len);
+    print(buf.toString())
+});

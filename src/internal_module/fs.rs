@@ -578,29 +578,29 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
     if let Some(JsValue::String(path)) = arg.get(0) {
         if let Some(JsValue::Int(flag)) = arg.get(1) {
             if let Some(JsValue::Int(mode)) = arg.get(2) {
-                let fdflag = if flag | 128 == 128 {
+                let fdflag = if flag & 128 == 128 {
                     wasi::FDFLAGS_NONBLOCK
                 } else {
                     wasi::FDFLAGS_SYNC
-                } | if flag | 8 == 8 {
+                } | if flag & 8 == 8 {
                     wasi::FDFLAGS_APPEND
                 } else {
                     0
                 };
-                let oflag = if flag | 512 == 512 {
+                let oflag = if flag & 512 == 512 {
                     wasi::OFLAGS_CREAT
                 } else {
                     0
-                } | if flag | 2048 == 2048 {
+                } | if flag & 2048 == 2048 {
                     wasi::OFLAGS_EXCL
                 } else {
                     0
-                } | if flag | 1024 == 1024 {
+                } | if flag & 1024 == 1024 {
                     wasi::OFLAGS_TRUNC
                 } else {
                     0
                 };
-                let right = if flag | 1 == 1 || flag | 2 == 2 {
+                let right = if flag & 1 == 1 || flag & 2 == 2 {
                     wasi::RIGHTS_FD_WRITE
                         | wasi::RIGHTS_FD_ADVISE
                         | wasi::RIGHTS_FD_ALLOCATE
@@ -614,7 +614,8 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
                     0
                 } | wasi::RIGHTS_FD_FILESTAT_GET
                     | wasi::RIGHTS_FD_SEEK
-                    | wasi::RIGHTS_POLL_FD_READWRITE;
+                    | wasi::RIGHTS_POLL_FD_READWRITE
+                    | wasi::RIGHTS_FD_READ;
                 let res = unsafe { wasi::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
                 return match res {
                     Ok(fd) => JsValue::Int(fd as i32),
@@ -653,6 +654,7 @@ impl ModuleInit for FS {
         let fdatasync_s = ctx.wrap_function("fdatasyncSync", fdatasync_sync);
         let fread_s = ctx.wrap_function("freadSync", fread_sync);
         let fread_a = ctx.wrap_function("fread", fread);
+        let open_s = ctx.wrap_function("openSync", open_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -673,6 +675,7 @@ impl ModuleInit for FS {
         m.add_export("fdatasyncSync", fdatasync_s.into());
         m.add_export("freadSync", fread_s.into());
         m.add_export("fread", fread_a.into());
+        m.add_export("openSync", open_s.into());
     }
 }
 
@@ -695,6 +698,12 @@ pub fn init_module(ctx: &mut Context) {
             "symlinkSync\0",
             "utimeSync\0",
             "futimeSync\0",
+            "fcloseSync\0",
+            "fsyncSync\0",
+            "fdatasyncSync\0",
+            "freadSync\0",
+            "fread\0",
+            "openSync\0",
         ],
     )
 }

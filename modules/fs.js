@@ -912,7 +912,7 @@ function fdatasyncSync(fd) {
     }
 }
 
-function fread(fd, buffer, offset, length, position, callback) {
+function read(fd, buffer, offset, length, position, callback) {
     if (typeof (buffer) === "function") {
         callback = buffer;
         buffer = Buffer.alloc(16384);
@@ -936,14 +936,14 @@ function fread(fd, buffer, offset, length, position, callback) {
     validateInteger(position, "position");
 
     binding.fread(fd, position, length).then((data) => {
-        buffer.writeUInt8(data, offset);
+        buffer.fill(data, offset, data.byteLength);
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
         callback(e)
     })
 }
 
-function freadSync(fd, buffer, offset, length, position) {
+function readSync(fd, buffer, offset, length, position) {
     if (typeof (offset) === "object") {
         let option = offset;
         offset = option.offset || 0;
@@ -951,15 +951,16 @@ function freadSync(fd, buffer, offset, length, position) {
         position = option.position || 0;
     }
 
+    offset = offset || 0;
+    length = length || buffer.byteLength - offset;
     position = position || 0;
 
-    validateFunction(callback, "callback");
     validateInteger(offset, "offset");
     validateInteger(position, "position");
 
     try {
         let data = binding.freadSync(fd, position, length);
-        buffer.writeUInt8(data, offset);
+        buffer.fill(data, offset, offset + data.byteLength);
         return data.byteLength;
     } catch (err) {
         throw new Error(err.message);
@@ -1026,7 +1027,7 @@ function open(path, flag = "r", mode = 0o666, callback) {
     }
     setTimeout(() => {
         try {
-            fd = openSync(path.flag, mode);
+            fd = openSync(path, flag, mode);
             callback(null, fd);
         } catch (err) {
             callback(err);
@@ -1036,11 +1037,11 @@ function open(path, flag = "r", mode = 0o666, callback) {
 
 const promises = {
     access: promisify(access),
-    appendFile: promisify(appendFile),
+    // appendFile: promisify(appendFile),
     chmod: promisify(chmod),
     chown: promisify(chown),
     copyFile: promisify(copyFile),
-    cp: promisify(cp),
+    // cp: promisify(cp),
     lchmod: promisify(lchmod),
     lchown: promisify(lchown),
     lutimes: promisify(lutimes),
@@ -1049,10 +1050,10 @@ const promises = {
     mkdir: promisify(mkdir),
     mkdtemp: promisify(mkdtemp),
     open: promisify(open),
-    opendir: promisify(opendir),
-    readdir: promisify(readdir),
-    readFile: promisify(readFile),
-    readlink: promisify(readlink),
+    // opendir: promisify(opendir),
+    // readdir: promisify(readdir),
+    // readFile: promisify(readFile),
+    // readlink: promisify(readlink),
     realpath: promisify(realpath),
     rename: promisify(rename),
     rmdir: promisify(rmdir),
@@ -1062,8 +1063,8 @@ const promises = {
     truncate: promisify(truncate),
     unlink: promisify(unlink),
     utimes: promisify(utimes),
-    watch: promisify(watch),
-    writeFile: promisify(writeFile),
+    // watch: promisify(watch),
+    // writeFile: promisify(writeFile),
     constants: constants
 }
 
@@ -1127,8 +1128,8 @@ export default {
     fdatasyncSync,
     fsync,
     fsyncSync,
-    fread,
-    freadSync,
+    read,
+    readSync,
     open,
     openSync
 }
@@ -1193,8 +1194,8 @@ export {
     fdatasyncSync,
     fsync,
     fsyncSync,
-    fread,
-    freadSync,
+    read,
+    readSync,
     open,
     openSync
 }
