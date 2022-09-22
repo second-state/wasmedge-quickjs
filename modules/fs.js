@@ -919,10 +919,18 @@ function read(fd, buffer, offset, length, position, callback) {
         offset = 0;
         length = buffer.byteLength - offset;
         position = 0;
+    } else if (!(buffer instanceof Buffer)) {
+        callback = offset;
+        let option = buffer;
+        buffer = Buffer.alloc(16384);
+        offset = option.offset || 0;
+        length = option.length || buffer.byteLength - offset;
+        position = option.position || 0;
     } else if (typeof (offset) === "object") {
+        callback = length;
         let option = offset;
         offset = option.offset || 0;
-        length = buffer.byteLength - offset;
+        length = option.length || buffer.byteLength - offset;
         position = option.position || 0;
     } else if (typeof (offset) === "function") {
         callback = offset;
@@ -934,6 +942,7 @@ function read(fd, buffer, offset, length, position, callback) {
     validateFunction(callback, "callback");
     validateInteger(offset, "offset");
     validateInteger(position, "position");
+    validateInteger(length, "length");
 
     binding.fread(fd, position, length).then((data) => {
         buffer.fill(data, offset, data.byteLength);
@@ -947,7 +956,7 @@ function readSync(fd, buffer, offset, length, position) {
     if (typeof (offset) === "object") {
         let option = offset;
         offset = option.offset || 0;
-        length = buffer.byteLength - offset;
+        length = option.length || buffer.byteLength - offset;
         position = option.position || 0;
     }
 
@@ -957,6 +966,7 @@ function readSync(fd, buffer, offset, length, position) {
 
     validateInteger(offset, "offset");
     validateInteger(position, "position");
+    validateInteger(length, "length");
 
     try {
         let data = binding.freadSync(fd, position, length);
@@ -1035,6 +1045,63 @@ function open(path, flag = "r", mode = 0o666, callback) {
     })
 }
 
+function readFile(path, option, callback) {
+    if (typeof (option) === "function") {
+        callback = option;
+    }
+    let encoding = undefined;
+    if (typeof (option) === "string") {
+        encoding = option;
+    }
+    option = {};
+    setDefaultValue(option, {
+        encoding: encoding || null,
+        flag: "r",
+        signal: undefined
+    })
+
+    validateFunction(callback, "callback");
+
+    let fd = openSync(path, flag);
+    let stat = statSync(path);
+    let len = stat.size;
+    let buf = Buffer.alloc(len)
+    read(fd, buf, (err, rlen, obuf) => {
+        if (err) {
+            callback(err);
+        } else if (option.encoding !== null) {
+            callback(err, obuf.toString(option.encoding));
+        } else {
+            callback(err, obuf);
+        }
+    })
+}
+
+
+function readFileSync(path, option) {
+    let encoding = undefined;
+    if (typeof (option) === "string") {
+        encoding = option;
+    }
+    option = {};
+    setDefaultValue(option, {
+        encoding: encoding || null,
+        flag: "r",
+        signal: undefined
+    })
+
+    let fd = openSync(path, option.flag);
+    let stat = statSync(path);
+    let len = stat.size;
+    let buf = Buffer.alloc(len)
+    let rlen = readSync(fd, buf);
+    if (option.encoding !== null) {
+        return buf.toString(option.encoding);
+    } else {
+        return buf;
+    }
+}
+
 const promises = {
     access: promisify(access),
     // appendFile: promisify(appendFile),
@@ -1052,7 +1119,7 @@ const promises = {
     open: promisify(open),
     // opendir: promisify(opendir),
     // readdir: promisify(readdir),
-    // readFile: promisify(readFile),
+    readFile: promisify(readFile),
     // readlink: promisify(readlink),
     realpath: promisify(realpath),
     rename: promisify(rename),
@@ -1131,7 +1198,9 @@ export default {
     read,
     readSync,
     open,
-    openSync
+    openSync,
+    readFile,
+    readFileSync
 }
 
 export {
@@ -1197,5 +1266,7 @@ export {
     read,
     readSync,
     open,
-    openSync
+    openSync,
+    readFile,
+    readFileSync
 }

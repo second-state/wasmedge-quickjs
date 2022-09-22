@@ -1,4 +1,4 @@
-import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync, renameSync, openSync, read } from "fs";
+import { mkdirSync, statSync, lstatSync, rmdirSync, accessSync, existsSync, rmSync, renameSync, openSync, read, readFile, readFileSync } from "fs";
 
 
 print("\nfs.statSync\nExisted File:");
@@ -117,8 +117,10 @@ renameSync("./test.md", "./README.md");
 
 let fd = openSync("./README.md");
 print(fd);
-read(fd, (err, len, buf) => {
+read(fd, { length: 20 }, (err, len, buf) => {
     print(err);
     print(len);
     print(buf.toString())
 });
+
+print(readFileSync("./Cargo.toml", "utf-8"))
