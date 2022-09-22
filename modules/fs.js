@@ -1102,6 +1102,40 @@ function readFileSync(path, option) {
     }
 }
 
+function readlinkSync(path, option) {
+    path = getValidatedPath(path);
+    setDefaultValue(option, {
+        encoding: "utf8"
+    });
+    try {
+        let res = binding.readlinkSync(path);
+        if (option.encoding === "buffer" || option.encoding === "Buffer") {
+            return Buffer.from(res);
+        }
+        return res;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function readlink(path, option, callback) {
+    if (typeof (option) === "function") {
+        callback = option;
+        option = {};
+    }
+    setDefaultValue(option, {
+        encoding: "utf8"
+    });
+    setTimeout(() => {
+        try {
+            let res = readlinkSync(path, option);
+            callback(null, res);
+        } catch (err) {
+            callback(err);
+        }
+    })
+}
+
 const promises = {
     access: promisify(access),
     // appendFile: promisify(appendFile),
@@ -1120,7 +1154,7 @@ const promises = {
     // opendir: promisify(opendir),
     // readdir: promisify(readdir),
     readFile: promisify(readFile),
-    // readlink: promisify(readlink),
+    readlink: promisify(readlink),
     realpath: promisify(realpath),
     rename: promisify(rename),
     rmdir: promisify(rmdir),
@@ -1200,7 +1234,9 @@ export default {
     open,
     openSync,
     readFile,
-    readFileSync
+    readFileSync,
+    readlink,
+    readlinkSync
 }
 
 export {
@@ -1268,5 +1304,7 @@ export {
     open,
     openSync,
     readFile,
-    readFileSync
+    readFileSync,
+    readlink,
+    readlinkSync
 }

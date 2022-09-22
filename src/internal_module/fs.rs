@@ -577,7 +577,7 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
 fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::String(path)) = arg.get(0) {
         if let Some(JsValue::Int(flag)) = arg.get(1) {
-            if let Some(JsValue::Int(mode)) = arg.get(2) {
+            if let Some(JsValue::Int(_mode)) = arg.get(2) {
                 let fdflag = if flag & 128 == 128 {
                     wasi::FDFLAGS_NONBLOCK
                 } else {
@@ -630,6 +630,25 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
     return JsValue::UnDefined;
 }
 
+fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::String(path)) = arg.get(0) {
+        let mut buf = vec![0; 1024];
+        let res = unsafe { wasi::path_readlink(3, path.as_str(), buf.as_mut_ptr(), buf.len()) };
+        return match res {
+            Ok(_len) => {
+                match String::from_utf8(buf) {
+                    Ok(s) => ctx.new_string(s.as_str()).into(),
+                    Err(e) => ctx.new_error(e.to_string().as_str())
+                }
+            }
+            Err(e) => {
+                let err = errno_to_js_object(ctx, e);
+                JsValue::Exception(ctx.throw_error(err))
+            }
+        };
+    }
+    return JsValue::UnDefined;
+}
 struct FS;
 
 impl ModuleInit for FS {
@@ -655,6 +674,7 @@ impl ModuleInit for FS {
         let fread_s = ctx.wrap_function("freadSync", fread_sync);
         let fread_a = ctx.wrap_function("fread", fread);
         let open_s = ctx.wrap_function("openSync", open_sync);
+        let readlink_s = ctx.wrap_function("readlinkSync", readlink_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -676,6 +696,7 @@ impl ModuleInit for FS {
         m.add_export("freadSync", fread_s.into());
         m.add_export("fread", fread_a.into());
         m.add_export("openSync", open_s.into());
+        m.add_export("readlinkSync", readlink_s.into());
     }
 }
 
@@ -704,6 +725,7 @@ pub fn init_module(ctx: &mut Context) {
             "freadSync\0",
             "fread\0",
             "openSync\0",
+            "readlinkSync\0",
         ],
     )
 }
