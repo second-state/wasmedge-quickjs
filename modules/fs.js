@@ -1364,6 +1364,47 @@ function appendFileSync(file, data, options = {}) {
     }
 }
 
+function writev(fd, buffer, position, callback) {
+    if (typeof (position) === "function") {
+        callback = position;
+        position = 0;
+    }
+
+    validateFunction(callback, "callback");
+    validateInteger(position, "position");
+
+    let length = 0;
+    for (const buf of buffer) {
+        length += buf.byteLength;
+    }
+
+    let buf = new Blob([...buffer])
+
+    binding.fwrite(fd, position, buf.arrayBuffer()).then((len) => {
+        callback(null, len, buffer)
+    }).catch((e) => {
+        callback(e)
+    })
+}
+
+function writevSync(fd, buffer, position = 0) {
+    validateInteger(position, "position");
+
+    let length = 0;
+    for (const buf of buffer) {
+        length += buf.byteLength;
+    }
+
+    let buf = new Blob([...buffer])
+
+    try {
+        let len = binding.fwriteSync(fd, position, buf.arrayBuffer());
+        return len;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
@@ -1472,7 +1513,9 @@ export default {
     writeFile,
     writeFileSync,
     appendFile,
-    appendFileSync
+    appendFileSync,
+    writev,
+    writevSync
 }
 
 export {
@@ -1550,5 +1593,7 @@ export {
     writeFile,
     writeFileSync,
     appendFile,
-    appendFileSync
+    appendFileSync,
+    writev,
+    writevSync
 }
