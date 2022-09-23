@@ -1067,6 +1067,7 @@ function readFile(path, option, callback) {
     let len = stat.size;
     let buf = Buffer.alloc(len)
     read(fd, buf, (err, rlen, obuf) => {
+        closeSync(fd);
         if (err) {
             callback(err);
         } else if (option.encoding !== null) {
@@ -1095,6 +1096,7 @@ function readFileSync(path, option) {
     let len = stat.size;
     let buf = Buffer.alloc(len)
     let rlen = readSync(fd, buf);
+    closeSync(fd);
     if (option.encoding !== null) {
         return buf.toString(option.encoding);
     } else {
@@ -1260,9 +1262,111 @@ function writeSync(fd, buffer, offset, length, position) {
     }
 }
 
+function writeFile(file, data, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    setDefaultValue(options, {
+        encoding: "utf8",
+        mode: 0o666,
+        flag: "w",
+        signal: null
+    });
+    validateFunction(callback, "callback");
+    file = getValidatedPath(file);
+    let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
+    try {
+        let fd = openSync(file, options.flag, options.mode);
+        write(fd, buffer, (err, _, _) => {
+            closeSync(fd);
+            if (err) {
+                callback(err);
+            } else {
+                callback();
+            }
+        })
+    } catch (err) {
+        closeSync(fd);
+        callback(err);
+    }
+}
+
+function writeFileSync(file, data, options = {}) {
+    setDefaultValue(options, {
+        encoding: "utf8",
+        mode: 0o666,
+        flag: "w",
+        signal: null
+    });
+    validateFunction(callback, "callback");
+    file = getValidatedPath(file);
+    let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
+    try {
+        let fd = openSync(file, options.flag, options.mode);
+        closeSync(fd);
+        writeSync(fd, buffer);
+        callback();
+    } catch (err) {
+        closeSync(fd);
+        callback(err);
+    }
+}
+
+function appendFile(file, data, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+    setDefaultValue(options, {
+        encoding: "utf8",
+        mode: 0o666,
+        flag: "a",
+        signal: null
+    });
+    validateFunction(callback, "callback");
+    file = getValidatedPath(file);
+    let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
+    try {
+        let fd = openSync(file, options.flag, options.mode);
+        write(fd, buffer, (err, _, _) => {
+            closeSync(fd);
+            if (err) {
+                callback(err);
+            } else {
+                callback();
+            }
+        })
+    } catch (err) {
+        closeSync(fd);
+        callback(err);
+    }
+}
+
+function appendFileSync(file, data, options = {}) {
+    setDefaultValue(options, {
+        encoding: "utf8",
+        mode: 0o666,
+        flag: "a",
+        signal: null
+    });
+    validateFunction(callback, "callback");
+    file = getValidatedPath(file);
+    let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
+    try {
+        let fd = openSync(file, options.flag, options.mode);
+        writeSync(fd, buffer);
+        closeSync(fd);
+        callback();
+    } catch (err) {
+        closeSync(fd);
+        callback(err);
+    }
+}
+
 const promises = {
     access: promisify(access),
-    // appendFile: promisify(appendFile),
+    appendFile: promisify(appendFile),
     chmod: promisify(chmod),
     chown: promisify(chown),
     copyFile: promisify(copyFile),
@@ -1289,7 +1393,7 @@ const promises = {
     unlink: promisify(unlink),
     utimes: promisify(utimes),
     // watch: promisify(watch),
-    // writeFile: promisify(writeFile),
+    writeFile: promisify(writeFile),
     constants: constants
 }
 
@@ -1364,7 +1468,11 @@ export default {
     readv,
     readvSync,
     write,
-    writeSync
+    writeSync,
+    writeFile,
+    writeFileSync,
+    appendFile,
+    appendFileSync
 }
 
 export {
@@ -1438,5 +1546,9 @@ export {
     readv,
     readvSync,
     write,
-    writeSync
+    writeSync,
+    writeFile,
+    writeFileSync,
+    appendFile,
+    appendFileSync
 }
