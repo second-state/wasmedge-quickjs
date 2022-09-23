@@ -649,6 +649,84 @@ fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
     }
     return JsValue::UnDefined;
 }
+
+fn fwrite(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::Int(fd)) = arg.get(0) {
+        if let Some(JsValue::Int(position)) = arg.get(1) {
+            if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
+                let (promise, ok, error) = ctx.new_promise();
+                if let Some(event_loop) = ctx.event_loop() {
+                    if *position != 0 {
+                        let res = unsafe {
+                            wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR)
+                        };
+                        if let Err(e) = res {
+                            let err = errno_to_js_object(ctx, e);
+                            return JsValue::Exception(ctx.throw_error(err));
+                        }
+                    }
+                    event_loop.fd_write(
+                        *fd,
+                        buf.to_vec(),
+                        Box::new(move |ctx, res| match res {
+                            PollResult::Write(len) => {
+                                if let JsValue::Function(resolve) = ok {
+                                    resolve.call(&[JsValue::Int(len as i32)]);
+                                }
+                            }
+                            PollResult::Error(e) => {
+                                if let JsValue::Function(reject) = error {
+                                    reject.call(&[err_to_js_object(ctx, e)]);
+                                }
+                            }
+                            _ => {}
+                        }),
+                    );
+                    return promise;
+                }
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::Int(fd)) = arg.get(0) {
+        if let Some(JsValue::Int(position)) = arg.get(1) {
+            if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
+                if *position != 0 {
+                    let res =
+                        unsafe { wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR) };
+                    if let Err(e) = res {
+                        let err = errno_to_js_object(ctx, e);
+                        return JsValue::Exception(ctx.throw_error(err));
+                    }
+                }
+                let data = buf.to_vec();
+                let res = unsafe {
+                    wasi::fd_write(
+                        *fd as u32,
+                        &[wasi::Ciovec {
+                            buf: data.as_ptr(),
+                            buf_len: data.len(),
+                        }],
+                    )
+                };
+                return match res {
+                    Ok(len) => {
+                        JsValue::Int(len as i32)
+                    }
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                };
+            }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
 struct FS;
 
 impl ModuleInit for FS {
@@ -675,6 +753,8 @@ impl ModuleInit for FS {
         let fread_a = ctx.wrap_function("fread", fread);
         let open_s = ctx.wrap_function("openSync", open_sync);
         let readlink_s = ctx.wrap_function("readlinkSync", readlink_sync);
+        let fwrite_s = ctx.wrap_function("fwriteSync", fwrite_sync);
+        let fwrite_a = ctx.wrap_function("fwrite", fwrite);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -697,6 +777,8 @@ impl ModuleInit for FS {
         m.add_export("fread", fread_a.into());
         m.add_export("openSync", open_s.into());
         m.add_export("readlinkSync", readlink_s.into());
+        m.add_export("fwriteSync", fwrite_s.into());
+        m.add_export("fwrite", fwrite_a.into());
     }
 }
 
@@ -726,6 +808,8 @@ pub fn init_module(ctx: &mut Context) {
             "fread\0",
             "openSync\0",
             "readlinkSync\0",
+            "fwriteSync\0",
+            "fwrite\0",
         ],
     )
 }

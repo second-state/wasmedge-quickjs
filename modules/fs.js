@@ -1144,7 +1144,7 @@ function readv(fd, buffer, position, callback) {
 
     validateFunction(callback, "callback");
     validateInteger(position, "position");
-    
+
     let length = 0;
     for (const buf of buffer) {
         length += buf.byteLength;
@@ -1178,6 +1178,83 @@ function readvSync(fd, buffer, position = 0) {
             off += buf.byteLength;
         }
         return data.byteLength;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
+function write(fd, buffer, offset, length, position, callback) {
+    let oriStr = null;
+    if (typeof (buffer) === "string") {
+        oriStr = buffer;
+        if (typeof (offset) === "function") {
+            callback = offset;
+            position = 0;
+            buffer = Buffer.from(buffer);
+        } else if (typeof (length) === "function") {
+            callback = length;
+            position = offset;
+            buffer = Buffer.from(buffer);
+        } else {
+            buffer = Buffer.from(buffer, position);
+        }
+        offset = 0;
+        length = buffer.byteLength - offset;
+    } else if (typeof (offset) === "object") {
+        callback = length;
+        let option = offset;
+        offset = option.offset || 0;
+        length = option.length || buffer.byteLength - offset;
+        position = option.position || 0;
+    } else if (typeof (offset) === "function") {
+        callback = offset;
+        offset = 0;
+        length = buffer.byteLength - offset;
+        position = 0;
+    }
+
+    validateFunction(callback, "callback");
+    validateInteger(offset, "offset");
+    validateInteger(position, "position");
+    validateInteger(length, "length");
+
+    binding.fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
+        if (oriStr !== null) {
+            callback(null, len, buffer.slice(offset, offset + len));
+        } else {
+            callback(null, len, oriStr.slice(offset, offset + len));
+        }
+    }).catch((e) => {
+        callback(e);
+    })
+}
+
+function writeSync(fd, buffer, offset, length, position) {
+    let oriStr = null;
+    if (typeof (buffer) === "string") {
+        oriStr = buffer;
+        let encoding = length || "utf8";
+        buffer = Buffer.from(buffer, encoding);
+        position = offset || 0;
+        offset = 0;
+        length = buffer.byteLength - offset;
+    } else if (typeof (offset) === "object") {
+        let option = offset;
+        offset = option.offset || 0;
+        length = option.length || buffer.byteLength - offset;
+        position = option.position || 0;
+    } else if (typeof (offset) === "number") {
+        length = buffer.byteLength - offset;
+        position = 0;
+    }
+
+    validateInteger(offset, "offset");
+    validateInteger(position, "position");
+    validateInteger(length, "length");
+
+    try {
+        let len = binding.fwriteSync(fd, position, buffer.buffer.slice(offset, offset + length));
+        return len;
     } catch (err) {
         throw new Error(err.message);
     }
@@ -1285,7 +1362,9 @@ export default {
     readlink,
     readlinkSync,
     readv,
-    readvSync
+    readvSync,
+    write,
+    writeSync
 }
 
 export {
@@ -1357,5 +1436,7 @@ export {
     readlink,
     readlinkSync,
     readv,
-    readvSync
+    readvSync,
+    write,
+    writeSync
 }

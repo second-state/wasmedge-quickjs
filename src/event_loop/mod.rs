@@ -132,6 +132,7 @@ pub enum PollResult {
     Read(Vec<u8>),
     Connect(AsyncTcpConn),
     Error(io::Error),
+    Write(usize)
 }
 
 struct TimeoutTask {
@@ -272,7 +273,7 @@ impl FdReadTask {
 
 struct FdWriteTask {
     fd: std::os::wasi::io::RawFd,
-    len: u64,
+    buf: Vec<u8>,
     callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
 }
 
@@ -461,16 +462,40 @@ impl IoSelector {
                             ctx,
                             match res {
                                 Ok(_) => PollResult::Read(buf),
-                                Err(e) => PollResult::Error(io::Error::from_raw_os_error(
-                                    e.raw() as i32,
-                                )),
+                                Err(e) => {
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                }
                             },
                         );
                     }
                     (
-                        PollTask::FdWrite(FdWriteTask { fd, len, callback }),
+                        PollTask::FdWrite(FdWriteTask { fd, buf, callback }),
                         poll::EVENTTYPE_FD_WRITE,
-                    ) => {}
+                    ) => {
+                        if event.error > 0 {
+                            let e = io::Error::from_raw_os_error(event.error as i32);
+                            callback(ctx, PollResult::Error(e));
+                            continue;
+                        }
+                        let res = unsafe {
+                            wasi::fd_write(
+                                fd as u32,
+                                &[wasi::Ciovec {
+                                    buf: buf.as_ptr(),
+                                    buf_len: buf.len(),
+                                }],
+                            )
+                        };
+                        callback(
+                            ctx,
+                            match res {
+                                Ok(len) => PollResult::Write(len),
+                                Err(e) => {
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                }
+                            },
+                        );
+                    }
                     (_, _) => {}
                 }
             }
@@ -611,10 +636,10 @@ impl EventLoop {
     pub fn fd_write(
         &mut self,
         fd: std::os::wasi::io::RawFd,
-        len: u64,
+        buf: Vec<u8>,
         callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
     ) {
         self.io_selector
-            .add_task(PollTask::FdWrite(FdWriteTask { fd, len, callback }));
+            .add_task(PollTask::FdWrite(FdWriteTask { fd, buf, callback }));
     }
 }
