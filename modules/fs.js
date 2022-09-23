@@ -1136,6 +1136,53 @@ function readlink(path, option, callback) {
     })
 }
 
+function readv(fd, buffer, position, callback) {
+    if (typeof (position) === "function") {
+        callback = position;
+        position = 0;
+    }
+
+    validateFunction(callback, "callback");
+    validateInteger(position, "position");
+    
+    let length = 0;
+    for (const buf of buffer) {
+        length += buf.byteLength;
+    }
+
+    binding.fread(fd, position, length).then((data) => {
+        let off = 0;
+        for (const buf of buffer) {
+            buf.fill(data.slice(off, off + buf.byteLength));
+            off += buf.byteLength;
+        }
+        callback(null, data.byteLength, buffer)
+    }).catch((e) => {
+        callback(e)
+    })
+}
+
+function readvSync(fd, buffer, position = 0) {
+    validateInteger(position, "position");
+
+    let length = 0;
+    for (const buf of buffer) {
+        length += buf.byteLength;
+    }
+
+    try {
+        let data = binding.freadSync(fd, position, length);
+        let off = 0;
+        for (const buf of buffer) {
+            buf.fill(data.slice(off, off + buf.byteLength));
+            off += buf.byteLength;
+        }
+        return data.byteLength;
+    } catch (err) {
+        throw new Error(err.message);
+    }
+}
+
 const promises = {
     access: promisify(access),
     // appendFile: promisify(appendFile),
@@ -1236,7 +1283,9 @@ export default {
     readFile,
     readFileSync,
     readlink,
-    readlinkSync
+    readlinkSync,
+    readv,
+    readvSync
 }
 
 export {
@@ -1306,5 +1355,7 @@ export {
     readFile,
     readFileSync,
     readlink,
-    readlinkSync
+    readlinkSync,
+    readv,
+    readvSync
 }
