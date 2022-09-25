@@ -615,7 +615,8 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
                 } | wasi::RIGHTS_FD_FILESTAT_GET
                     | wasi::RIGHTS_FD_SEEK
                     | wasi::RIGHTS_POLL_FD_READWRITE
-                    | wasi::RIGHTS_FD_READ;
+                    | wasi::RIGHTS_FD_READ
+                    | wasi::RIGHTS_FD_READDIR;
                 let res = unsafe { wasi::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
                 return match res {
                     Ok(fd) => JsValue::Int(fd as i32),
@@ -635,12 +636,10 @@ fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
         let mut buf = vec![0; 1024];
         let res = unsafe { wasi::path_readlink(3, path.as_str(), buf.as_mut_ptr(), buf.len()) };
         return match res {
-            Ok(_len) => {
-                match String::from_utf8(buf) {
-                    Ok(s) => ctx.new_string(s.as_str()).into(),
-                    Err(e) => ctx.new_error(e.to_string().as_str())
-                }
-            }
+            Ok(_len) => match String::from_utf8(buf) {
+                Ok(s) => ctx.new_string(s.as_str()).into(),
+                Err(e) => ctx.new_error(e.to_string().as_str()),
+            },
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
@@ -713,15 +712,60 @@ fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
                     )
                 };
                 return match res {
-                    Ok(len) => {
-                        JsValue::Int(len as i32)
-                    }
+                    Ok(len) => JsValue::Int(len as i32),
                     Err(e) => {
                         let err = errno_to_js_object(ctx, e);
                         JsValue::Exception(ctx.throw_error(err))
                     }
                 };
             }
+        }
+    }
+    return JsValue::UnDefined;
+}
+
+fn freaddir_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    if let Some(JsValue::Int(fd)) = arg.get(0) {
+        if let Some(JsValue::Int(cookie)) = arg.get(1) {
+            let mut buf = vec![0; 4096];
+            let res = unsafe {
+                wasi::fd_readdir(*fd as u32, buf.as_mut_ptr(), buf.len(), *cookie as u64)
+            };
+            return match res {
+                Ok(len) => {
+                    let s = std::mem::size_of::<wasi::Dirent>();
+                    let mut idx = 0;
+                    let mut data_pack = ctx.new_array();
+                    let mut aidx = 0;
+                    let mut dir_next = 0;
+                    while idx < len {
+                        let dir = unsafe {
+                            *(&buf[idx..(idx + s)] as *const [u8] as *const wasi::Dirent)
+                        };
+                        idx += s;
+                        let name =
+                            String::from_utf8_lossy(&buf[idx..(idx + dir.d_namlen as usize)])
+                                .to_string();
+                        idx += dir.d_namlen as usize;
+                        let mut dirent = ctx.new_object();
+
+                        dirent.set("filetype", JsValue::Int(dir.d_type.raw() as i32));
+                        dirent.set("name", ctx.new_string(name.as_str()).into());
+                        data_pack.put(aidx, dirent.into());
+                        dir_next = dir.d_next;
+                        aidx += 1;
+                    }
+                    let mut data = ctx.new_object();
+                    data.set("res", data_pack.into());
+                    data.set("fin", (len < buf.len()).into());
+                    data.set("cookie", JsValue::Int(dir_next as i32));
+                    data.into()
+                }
+                Err(e) => {
+                    let err = errno_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            };
         }
     }
     return JsValue::UnDefined;
@@ -755,6 +799,7 @@ impl ModuleInit for FS {
         let readlink_s = ctx.wrap_function("readlinkSync", readlink_sync);
         let fwrite_s = ctx.wrap_function("fwriteSync", fwrite_sync);
         let fwrite_a = ctx.wrap_function("fwrite", fwrite);
+        let freaddir_s = ctx.wrap_function("freaddirSync", freaddir_sync);
         m.add_export("statSync", stat_s.into());
         m.add_export("lstatSync", lstat_s.into());
         m.add_export("fstatSync", fstat_s.into());
@@ -779,6 +824,7 @@ impl ModuleInit for FS {
         m.add_export("readlinkSync", readlink_s.into());
         m.add_export("fwriteSync", fwrite_s.into());
         m.add_export("fwrite", fwrite_a.into());
+        m.add_export("freaddirSync", freaddir_s.into());
     }
 }
 
@@ -810,6 +856,7 @@ pub fn init_module(ctx: &mut Context) {
             "readlinkSync\0",
             "fwriteSync\0",
             "fwrite\0",
+            "freaddirSync\0",
         ],
     )
 }

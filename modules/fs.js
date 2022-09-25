@@ -3,7 +3,7 @@ import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
-import { fs as constants } from "./internal_binding/constants"
+import { fs as constants, fs } from "./internal_binding/constants"
 import { Buffer } from 'buffer';
 import { promisify } from "./internal/util"
 
@@ -1278,8 +1278,7 @@ function writeFile(file, data, options, callback) {
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
         let fd = openSync(file, options.flag, options.mode);
-        write(fd, buffer, (err, _, _) => {
-            closeSync(fd);
+        write(fd, buffer, (err) => {
             if (err) {
                 callback(err);
             } else {
@@ -1287,8 +1286,9 @@ function writeFile(file, data, options, callback) {
             }
         })
     } catch (err) {
-        closeSync(fd);
         callback(err);
+    } finally {
+        closeSync(fd);
     }
 }
 
@@ -1304,12 +1304,12 @@ function writeFileSync(file, data, options = {}) {
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
         let fd = openSync(file, options.flag, options.mode);
-        closeSync(fd);
         writeSync(fd, buffer);
         callback();
     } catch (err) {
-        closeSync(fd);
         callback(err);
+    } finally {
+        closeSync(fd);
     }
 }
 
@@ -1329,8 +1329,7 @@ function appendFile(file, data, options, callback) {
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
         let fd = openSync(file, options.flag, options.mode);
-        write(fd, buffer, (err, _, _) => {
-            closeSync(fd);
+        write(fd, buffer, (err) => {
             if (err) {
                 callback(err);
             } else {
@@ -1338,8 +1337,9 @@ function appendFile(file, data, options, callback) {
             }
         })
     } catch (err) {
-        closeSync(fd);
         callback(err);
+    } finally {
+        closeSync(fd);
     }
 }
 
@@ -1356,11 +1356,11 @@ function appendFileSync(file, data, options = {}) {
     try {
         let fd = openSync(file, options.flag, options.mode);
         writeSync(fd, buffer);
-        closeSync(fd);
         callback();
     } catch (err) {
-        closeSync(fd);
         callback(err);
+    } finally {
+        closeSync(fd);
     }
 }
 
@@ -1405,6 +1405,188 @@ function writevSync(fd, buffer, position = 0) {
     }
 }
 
+/// The type of the file descriptor or file is unknown or is different from any of the other types specified.
+const FILETYPE_UNKNOWN = 0;
+/// The file descriptor or file refers to a block device inode.
+const FILETYPE_BLOCK_DEVICE = 1;
+/// The file descriptor or file refers to a character device inode.
+const FILETYPE_CHARACTER_DEVICE = 2;
+/// The file descriptor or file refers to a directory inode.
+const FILETYPE_DIRECTORY = 3;
+/// The file descriptor or file refers to a regular file inode.
+const FILETYPE_REGULAR_FILE = 4;
+/// The file descriptor or file refers to a datagram socket.
+const FILETYPE_SOCKET_DGRAM = 5;
+/// The file descriptor or file refers to a byte-stream socket.
+const FILETYPE_SOCKET_STREAM = 6;
+/// The file refers to a symbolic link inode.
+const FILETYPE_SYMBOLIC_LINK = 7;
+
+class Dirent {
+    constructor(innerData) {
+        this.filetype = innerData.filetype;
+        this.name = innerData.name;
+    }
+
+    isFile = () => this.filetype === FILETYPE_REGULAR_FILE;
+    isDirectory = () => this.filetype === FILETYPE_DIRECTORY;
+    isSymbolicLink = () => this.filetype === FILETYPE_SYMBOLIC_LINK;
+    isBlockDevice = () => this.filetype === FILETYPE_BLOCK_DEVICE;
+    isFIFO = () => false;
+    isCharacterDevice = () => this.filetype === FILETYPE_CHARACTER_DEVICE;
+    isSocket = () => this.filetype === FILETYPE_SOCKET_DGRAM || this.filetype === FILETYPE_SOCKET_STREAM;
+}
+
+class Dir {
+    #fd = 0;
+
+    constructor(fd, path) {
+        this.#fd = fd;
+        this.path = path;
+    }
+
+    #dataBuf = []
+    #idx = 0;
+    #fin = false;
+    #cookie = 0;
+
+    #fetch() {
+        if (this.#idx === this.#dataBuf.length && !this.#fin) {
+            let data = binding.freaddirSync(this.#fd, this.#cookie);
+            this.#dataBuf.push(...data.res);
+            this.#fin = data.fin;
+            this.#cookie = data.cookie;
+        }
+        return !(this.#idx === this.#dataBuf.length && this.#fin);
+    }
+
+    close(callback) {
+        if (callback) {
+            close(fd, callback);
+        } else {
+            return fs.promises.close(fd);
+        }
+    }
+
+    closeSync() {
+        closeSync(fd);
+    }
+
+    read(callback) {
+        if (callback) {
+            try {
+                if (!this.#fetch()) {
+                    callback(null, null);
+                }
+                callback(null, new Dirent(this.#dataBuf[this.#idx++]));
+            } catch (err) {
+                callback(err);
+            }
+        } else {
+            return new Promise((resolve, reject) => {
+                try {
+                    if (!this.#fetch()) {
+                        resolve(null);
+                    }
+                    resolve(new Dirent(this.#dataBuf[this.#idx++]));
+                } catch (err) {
+                    reject(err);
+                }
+            })
+        }
+    }
+
+    readSync() {
+        if (!this.#fetch()) {
+            return null;
+        }
+        return new Dirent(this.#dataBuf[this.#idx++]);
+    }
+
+    async *[Symbol.asyncIterator]() {
+        try {
+            let p = this.read();
+            while (p) {
+                yield p;
+                p = this.read();
+            }
+        } finally {
+            await this.close();
+        }
+    }
+}
+
+function opendir(path, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+    }
+
+    path = getValidatedPath(path);
+    validateFunction(callback, "callback");
+
+    setTimeout(() => {
+        try {
+            let fd = openSync(path);
+            callback(null, new Dir(fd, path));
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
+}
+
+function opendirSync(path, options) {
+    path = getValidatedPath(path);
+
+    let fd = openSync(path);
+    return new Dir(fd, path);
+}
+
+function readdir(path, options, callback) {
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
+    }
+
+    setDefaultValue(options, {
+        encoding: "utf8",
+        withFileTypes: false
+    });
+
+    path = getValidatedPath(path);
+    validateFunction(callback, "callback");
+
+    setTimeout(async () => {
+        try {
+            let data = [];
+            let dir = opendirSync(path);
+            for await (const p of dir) {
+                data.push(options.withFileTypes ? p : p.name);
+            }
+            callback(null, data);
+        } catch (err) {
+            callback(err);
+        }
+    }, 0);
+}
+
+function readdirSync(path, options) {
+    path = getValidatedPath(path);
+
+    setDefaultValue(options, {
+        encoding: "utf8",
+        withFileTypes: false
+    });
+
+    let data = [];
+    let dir = opendirSync(path);
+    let p = dir.readSync();
+    while (p) {
+        data.push(options.withFileTypes ? p : p.name);
+        p = dir.readSync();
+    }
+    return data;
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
@@ -1420,8 +1602,8 @@ const promises = {
     mkdir: promisify(mkdir),
     mkdtemp: promisify(mkdtemp),
     open: promisify(open),
-    // opendir: promisify(opendir),
-    // readdir: promisify(readdir),
+    opendir: promisify(opendir),
+    readdir: promisify(readdir),
     readFile: promisify(readFile),
     readlink: promisify(readlink),
     realpath: promisify(realpath),
@@ -1515,7 +1697,13 @@ export default {
     appendFile,
     appendFileSync,
     writev,
-    writevSync
+    writevSync,
+    opendir,
+    opendirSync,
+    Dir,
+    Dirent,
+    readdir,
+    readdirSync
 }
 
 export {
@@ -1595,5 +1783,11 @@ export {
     appendFile,
     appendFileSync,
     writev,
-    writevSync
+    writevSync,
+    opendir,
+    opendirSync,
+    Dir,
+    Dirent,
+    readdir,
+    readdirSync
 }
