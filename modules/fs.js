@@ -9,6 +9,7 @@ import { promisify } from "./internal/util"
 import { cpFn } from "./internal/fs/cp/cp";
 import { cpSyncFn } from "./internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./internal/fs/stream"
+import EventEmitter from "./events"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -1698,6 +1699,79 @@ function cp(src, dest, options, callback) {
     cpFn(src, dest, options, callback);
 }
 
+class FileHandle extends EventEmitter {
+    fd = 0;
+    #path = "";
+    constructor(fd, path) {
+        this.fd = fd;
+        this.#path = path;
+    }
+    appendFile(data, options) {
+        let encoding = options.encoding || "utf8";
+        return promisify(write)(this.fd, typeof (data) === "string" ? data : data.toString(encoding));
+    }
+    chown() {
+        return new Promise((res, rej) => { res(undefined); });
+    }
+
+    close() {
+        this.emit("close");
+        return promisify(close)(this.fd);
+    }
+
+    createReadStream(options) {
+        return createReadStream(this.#path, options);
+    }
+
+    createWriteStream(options) {
+        return createWriteStream(this.#path, options);
+    }
+
+    dataSync() {
+        return promisify(fdatasync)(this.fd);
+    }
+
+    read(...args) {
+        return promisify(read)(this.fd, ...args);
+    }
+
+    readFile(options) {
+        return promisify(readFile)(this.#path, options)
+    }
+
+    readv(buffers, position) {
+        return promisify(readv)(this.fd, buffers, position);
+    }
+
+    stat(options) {
+        return promisify(fstat)(this.fd, options);
+    }
+
+    sync() {
+        return promisify(fsync)(this.fd);
+    }
+
+    truncate(len) {
+        return promisify(ftruncate)(this.fd, len);
+    }
+
+    utimes(atime, mtime) {
+        return promisify(futimes)(this.fd, atime, mtime);
+    }
+
+    write(...args) {
+        return promisify(write)(this.fd, ...args);
+    }
+
+    writeFile(data, options) {
+        return promisify(writeFile)(this.#path, data, options);
+    }
+
+    writev(buffers, position) {
+        return promisify(writev)(this.fd, buffers, position);
+    }
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
@@ -1712,7 +1786,16 @@ const promises = {
     lstat: promisify(lstat),
     mkdir: promisify(mkdir),
     mkdtemp: promisify(mkdtemp),
-    open: promisify(open),
+    open: (path, flag, mode) => {
+        return new Promise((res, rej) => {
+            open(path, flag, mode, (err, fd) => {
+                if (!err) {
+                    return rej(err);
+                }
+                res(new FileHandle(fd, path));
+            })
+        })
+    },
     opendir: promisify(opendir),
     readdir: promisify(readdir),
     readFile: promisify(readFile),
@@ -1823,7 +1906,8 @@ export default {
     createWriteStream,
     WriteStream,
     createReadStream,
-    ReadStream
+    ReadStream,
+    FileHandle
 }
 
 export {
@@ -1918,5 +2002,6 @@ export {
     createWriteStream,
     WriteStream,
     createReadStream,
-    ReadStream
+    ReadStream,
+    FileHandle
 }
