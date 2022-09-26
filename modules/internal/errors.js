@@ -458,6 +458,15 @@ export class ERR_INVALID_RETURN_VALUE extends TypeError {
     }
 }
 
+export class ERR_INCOMPATIBLE_OPTION_PAIR extends TypeError {
+    constructor(input, name) {
+        super(
+            "ERR_INCOMPATIBLE_OPTION_PAIR",
+            `Option "${input}" cannot be used in combination with option "${name}"`,
+        );
+    }
+}
+
 export const captureStackTrace = hideStackFrames(
     function captureStackTrace(err) {
         // Error.captureStackTrace is only available in V8
@@ -632,6 +641,18 @@ export const ERR_FS_EISDIR = makeSystemErrorWithCode(
     "ERR_FS_EISDIR",
     "Path is a directory",
 );
+
+export const ERR_FS_CP_DIR_TO_NON_DIR = makeSystemErrorWithCode('ERR_FS_CP_DIR_TO_NON_DIR',
+    'Cannot overwrite directory with non-directory');
+export const ERR_FS_CP_EEXIST = makeSystemErrorWithCode('ERR_FS_CP_EEXIST', 'Target already exists');
+export const ERR_FS_CP_EINVAL = makeSystemErrorWithCode('ERR_FS_CP_EINVAL', 'Invalid src or dest');
+export const ERR_FS_CP_FIFO_PIPE = makeSystemErrorWithCode('ERR_FS_CP_FIFO_PIPE', 'Cannot copy a FIFO pipe');
+export const ERR_FS_CP_NON_DIR_TO_DIR = makeSystemErrorWithCode('ERR_FS_CP_NON_DIR_TO_DIR',
+    'Cannot overwrite non-directory with directory');
+export const ERR_FS_CP_SOCKET = makeSystemErrorWithCode('ERR_FS_CP_SOCKET', 'Cannot copy a socket file');
+export const ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY = makeSystemErrorWithCode('ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY',
+    'Cannot overwrite symlink in subdirectory of self');
+export const ERR_FS_CP_UNKNOWN = makeSystemErrorWithCode('ERR_FS_CP_UNKNOWN', 'Cannot copy an unknown file type');
 
 export class ERR_FS_INVALID_SYMLINK_TYPE extends Error {
     /**

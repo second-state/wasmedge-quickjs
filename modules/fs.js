@@ -6,6 +6,9 @@ export { fs as constants } from "./internal_binding/constants"
 import { fs as constants, fs } from "./internal_binding/constants"
 import { Buffer } from 'buffer';
 import { promisify } from "./internal/util"
+import { cpFn } from "./internal/fs/cp/cp";
+import { cpSyncFn } from "./internal/fs/cp/cp-sync";
+import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./internal/fs/stream"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -847,6 +850,8 @@ function symlinkSync(target, path) {
 }
 
 function close(fd, callback) {
+    validateFunction(callback, "callback");
+
     setTimeout(() => {
         try {
             closeSync(fd);
@@ -859,7 +864,6 @@ function close(fd, callback) {
 
 function closeSync(fd) {
     validateInteger(fd, "fd");
-    validateFunction(callback, "callback");
 
     try {
         binding.fcloseSync(fd);
@@ -869,6 +873,8 @@ function closeSync(fd) {
 }
 
 function fsync(fd, callback) {
+    validateFunction(callback, "callback");
+
     setTimeout(() => {
         try {
             fsyncSync(fd);
@@ -881,7 +887,7 @@ function fsync(fd, callback) {
 
 function fsyncSync(fd) {
     validateInteger(fd, "fd");
-    validateFunction(callback, "callback");
+
 
     try {
         binding.fsyncSync(fd);
@@ -891,6 +897,8 @@ function fsyncSync(fd) {
 }
 
 function fdatasync(fd, callback) {
+    validateFunction(callback, "callback");
+
     setTimeout(() => {
         try {
             fdatasyncSync(fd);
@@ -903,7 +911,6 @@ function fdatasync(fd, callback) {
 
 function fdatasyncSync(fd) {
     validateInteger(fd, "fd");
-    validateFunction(callback, "callback");
 
     try {
         binding.fdatasyncSync(fd);
@@ -1062,12 +1069,14 @@ function readFile(path, option, callback) {
 
     validateFunction(callback, "callback");
 
-    let fd = openSync(path, flag);
+    let fd = openSync(path, option.flag);
     let stat = statSync(path);
     let len = stat.size;
     let buf = Buffer.alloc(len)
+
+    print("read");
+
     read(fd, buf, (err, rlen, obuf) => {
-        closeSync(fd);
         if (err) {
             callback(err);
         } else if (option.encoding !== null) {
@@ -1075,6 +1084,7 @@ function readFile(path, option, callback) {
         } else {
             callback(err, obuf);
         }
+        closeSync(fd);
     })
 }
 
@@ -1587,13 +1597,114 @@ function readdirSync(path, options) {
     return data;
 }
 
+function watch() {
+    throw new Error(`'watch' is unsupported`);
+}
+
+function unwatch() {
+    throw new Error(`'unwatch' is unsupported`);
+}
+
+function watchFile() {
+    throw new Error(`'watchFile' is unsupported`);
+}
+
+function getOwnPropertyValueOrDefault(options, key, defaultValue) {
+    return options == null || !Object.prototype.hasOwnProperty(options, key) ?
+        defaultValue :
+        options[key];
+}
+
+/**
+ * @callback validateObject
+ * @param {*} value
+ * @param {string} name
+ * @param {{
+ *   allowArray?: boolean,
+ *   allowFunction?: boolean,
+ *   nullable?: boolean
+ * }} [options]
+ */
+
+/** @type {validateObject} */
+const validateObject = hideStackFrames(
+    (value, name, options = null) => {
+        const allowArray = getOwnPropertyValueOrDefault(options, 'allowArray', false);
+        const allowFunction = getOwnPropertyValueOrDefault(options, 'allowFunction', false);
+        const nullable = getOwnPropertyValueOrDefault(options, 'nullable', false);
+        if ((!nullable && value === null) ||
+            (!allowArray && Array.isArray(value)) ||
+            (typeof value !== 'object' && (
+                !allowFunction || typeof value !== 'function'
+            ))) {
+            throw new errors.ERR_INVALID_ARG_TYPE(name, 'Object', value);
+        }
+    });
+
+
+const validateCpOptions = hideStackFrames((options) => {
+    if (options === undefined)
+        return { ...defaultCpOptions };
+    validateObject(options, 'options');
+    options = { ...defaultCpOptions, ...options };
+    validateBoolean(options.dereference, 'options.dereference');
+    validateBoolean(options.errorOnExist, 'options.errorOnExist');
+    validateBoolean(options.force, 'options.force');
+    validateBoolean(options.preserveTimestamps, 'options.preserveTimestamps');
+    validateBoolean(options.recursive, 'options.recursive');
+    validateBoolean(options.verbatimSymlinks, 'options.verbatimSymlinks');
+    if (options.dereference === true && options.verbatimSymlinks === true) {
+        throw new errors.ERR_INCOMPATIBLE_OPTION_PAIR('dereference', 'verbatimSymlinks');
+    }
+    if (options.filter !== undefined) {
+        validateFunction(options.filter, 'options.filter');
+    }
+    return options;
+});
+
+/**
+ * Synchronously copies `src` to `dest`. `src` can be a file, directory, or
+ * symlink. The contents of directories will be copied recursively.
+ * @param {string | URL} src
+ * @param {string | URL} dest
+ * @param {object} [options]
+ * @returns {void}
+ */
+function cpSync(src, dest, options) {
+    options = validateCpOptions(options);
+    src = getValidatedPath(src, 'src');
+    dest = getValidatedPath(dest, 'dest');
+    cpSyncFn(src, dest, options);
+}
+
+/**
+ * Asynchronously copies `src` to `dest`. `src` can be a file, directory, or
+ * symlink. The contents of directories will be copied recursively.
+ * @param {string | URL} src
+ * @param {string | URL} dest
+ * @param {object} [options]
+ * @param {() => any} callback
+ * @returns {void}
+ */
+function cp(src, dest, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = undefined;
+    }
+    callback = makeCallback(callback);
+    options = validateCpOptions(options);
+    src = getValidatedPath(src, 'src');
+    dest = getValidatedPath(dest, 'dest');
+    cpFn(src, dest, options, callback);
+}
+
 const promises = {
     access: promisify(access),
     appendFile: promisify(appendFile),
     chmod: promisify(chmod),
     chown: promisify(chown),
     copyFile: promisify(copyFile),
-    // cp: promisify(cp),
+    cp: promisify(cp),
     lchmod: promisify(lchmod),
     lchown: promisify(lchown),
     lutimes: promisify(lutimes),
@@ -1615,7 +1726,7 @@ const promises = {
     truncate: promisify(truncate),
     unlink: promisify(unlink),
     utimes: promisify(utimes),
-    // watch: promisify(watch),
+    watch: promisify(watch),
     writeFile: promisify(writeFile),
     constants: constants
 }
@@ -1703,7 +1814,16 @@ export default {
     Dir,
     Dirent,
     readdir,
-    readdirSync
+    readdirSync,
+    watch,
+    watchFile,
+    unwatch,
+    cp,
+    cpSync,
+    createWriteStream,
+    WriteStream,
+    createReadStream,
+    ReadStream
 }
 
 export {
@@ -1789,5 +1909,14 @@ export {
     Dir,
     Dirent,
     readdir,
-    readdirSync
+    readdirSync,
+    watch,
+    watchFile,
+    unwatch,
+    cp,
+    cpSync,
+    createWriteStream,
+    WriteStream,
+    createReadStream,
+    ReadStream
 }
