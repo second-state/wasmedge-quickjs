@@ -1,3 +1,5 @@
+// Copyright Joyent, Inc. and Node.js contributors. All rights reserved. MIT license.
+
 'use strict';
 
 // This file is a modified version of the fs-extra's copySync method.

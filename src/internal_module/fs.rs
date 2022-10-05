@@ -1,26 +1,13 @@
+use crate::event_loop::wasi_fs;
 use crate::event_loop::PollResult;
 use crate::quickjs_sys::*;
 use std::convert::TryInto;
 use std::fs;
 use std::fs::Permissions;
 use std::io;
-use std::os::wasi::fs::{FileTypeExt, MetadataExt};
 use std::os::wasi::prelude::FromRawFd;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
-
-fn to_msec(maybe_time: Result<SystemTime, io::Error>) -> JsValue {
-    match maybe_time {
-        Ok(time) => {
-            let msec = time
-                .duration_since(UNIX_EPOCH)
-                .map(|t| t.as_millis())
-                .unwrap_or_else(|err| err.duration().as_millis());
-            JsValue::Float(msec as f64)
-        }
-        Err(_) => JsValue::Null,
-    }
-}
 
 impl From<u64> for JsValue {
     fn from(val: u64) -> Self {
@@ -41,22 +28,42 @@ fn permissions_to_mode(permit: Permissions) -> i32 {
     p | p << 3 | p << 6
 }
 
-fn stat_to_js_object(ctx: &mut Context, stat: fs::Metadata) -> JsValue {
+fn stat_to_js_object(ctx: &mut Context, stat: wasi_fs::Filestat) -> JsValue {
     let mut res = ctx.new_object();
-    res.set("is_file", stat.is_file().into());
-    res.set("is_directory", stat.is_dir().into());
-    res.set("is_symlink", stat.is_symlink().into());
-    res.set("is_block_device", stat.file_type().is_block_device().into());
-    res.set("is_char_device", stat.file_type().is_char_device().into());
-    res.set("is_socket", stat.file_type().is_socket().into());
-    res.set("size", stat.len().into());
-    res.set("mtime", to_msec(stat.modified()));
-    res.set("atime", to_msec(stat.accessed()));
-    res.set("birthtime", to_msec(stat.created()));
-    res.set("dev", stat.dev().into());
-    res.set("ino", stat.ino().into());
-    res.set("mode", permissions_to_mode(stat.permissions()).into());
-    res.set("nlink", stat.nlink().into());
+    res.set(
+        "is_file",
+        (stat.filetype == wasi_fs::FILETYPE_REGULAR_FILE).into(),
+    );
+    res.set(
+        "is_directory",
+        (stat.filetype == wasi_fs::FILETYPE_DIRECTORY).into(),
+    );
+    res.set(
+        "is_symlink",
+        (stat.filetype == wasi_fs::FILETYPE_SYMBOLIC_LINK).into(),
+    );
+    res.set(
+        "is_block_device",
+        (stat.filetype == wasi_fs::FILETYPE_BLOCK_DEVICE).into(),
+    );
+    res.set(
+        "is_char_device",
+        (stat.filetype == wasi_fs::FILETYPE_CHARACTER_DEVICE).into(),
+    );
+    res.set(
+        "is_socket",
+        (stat.filetype == wasi_fs::FILETYPE_SOCKET_DGRAM
+            || stat.filetype == wasi_fs::FILETYPE_SOCKET_STREAM)
+            .into(),
+    );
+    res.set("size", stat.size.into());
+    res.set("mtime", stat.mtim.into());
+    res.set("atime", stat.atim.into());
+    res.set("birthtime", stat.ctim.into());
+    res.set("dev", stat.dev.into());
+    res.set("ino", stat.ino.into());
+    res.set("mode", 0o666.into());
+    res.set("nlink", stat.nlink.into());
     res.set("uid", 0.into());
     res.set("gid", 0.into());
     res.set("rdev", 0.into());
@@ -81,7 +88,7 @@ fn err_to_js_object(ctx: &mut Context, e: io::Error) -> JsValue {
     JsValue::Object(res)
 }
 
-fn errno_to_js_object(ctx: &mut Context, e: wasi::Errno) -> JsValue {
+fn errno_to_js_object(ctx: &mut Context, e: wasi_fs::Errno) -> JsValue {
     let mut res = ctx.new_object();
     res.set("message", JsValue::String(ctx.new_string(e.message())));
     JsValue::Object(res)
@@ -93,10 +100,10 @@ fn stat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
         return JsValue::UnDefined;
     }
     if let JsValue::String(s) = path.unwrap() {
-        return match fs::metadata(s.as_str()) {
+        return match unsafe { wasi_fs::path_filestat_get(3, 0, s.as_str()) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
-                let err = err_to_js_object(ctx, e);
+                let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
             }
         };
@@ -111,11 +118,10 @@ fn fstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         return JsValue::UnDefined;
     }
     if let JsValue::Int(f) = fd.unwrap() {
-        let f = unsafe { fs::File::from_raw_fd(*f) };
-        return match f.metadata() {
+        return match unsafe { wasi_fs::fd_filestat_get(*f as u32) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
-                let err = err_to_js_object(ctx, e);
+                let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
             }
         };
@@ -130,10 +136,10 @@ fn lstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         return JsValue::UnDefined;
     }
     if let JsValue::String(s) = path.unwrap() {
-        return match fs::symlink_metadata(s.as_str()) {
+        return match unsafe { wasi_fs::path_filestat_get(3, 0, s.as_str()) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
-                let err = err_to_js_object(ctx, e);
+                let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
             }
         };
@@ -282,7 +288,7 @@ fn ftruncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsV
     }
     if let Some(JsValue::Int(f)) = fd {
         if let Some(JsValue::Int(l)) = len {
-            let res = unsafe { wasi::fd_filestat_set_size(*f as u32, *l as u64) };
+            let res = unsafe { wasi_fs::fd_filestat_set_size(*f as u32, *l as u64) };
             return match res {
                 Ok(()) => JsValue::UnDefined,
                 Err(e) => {
@@ -363,11 +369,11 @@ fn symlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVal
     }
     if let Some(JsValue::String(from)) = from_path {
         if let Some(JsValue::String(to)) = to_path {
-            let res = std::os::wasi::fs::symlink_path(from.as_str(), to.as_str());
+            let res = unsafe { wasi_fs::path_symlink(from.as_str(), 3, to.as_str()) };
             return match res {
                 Ok(_) => JsValue::UnDefined,
                 Err(e) => {
-                    let err = err_to_js_object(ctx, e);
+                    let err = errno_to_js_object(ctx, e);
                     JsValue::Exception(ctx.throw_error(err))
                 }
             };
@@ -387,13 +393,13 @@ fn utime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         if let Some(JsValue::Float(a)) = atime {
             if let Some(JsValue::Float(m)) = mtime {
                 let res = unsafe {
-                    wasi::path_filestat_set_times(
+                    wasi_fs::path_filestat_set_times(
                         3,
-                        wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
+                        wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW,
                         p.as_str(),
                         *a as u64,
                         *m as u64,
-                        wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM,
+                        wasi_fs::FSTFLAGS_ATIM | wasi_fs::FSTFLAGS_MTIM,
                     )
                 };
                 return match res {
@@ -420,11 +426,11 @@ fn futime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
         if let Some(JsValue::Float(a)) = atime {
             if let Some(JsValue::Float(m)) = mtime {
                 let res = unsafe {
-                    wasi::fd_filestat_set_times(
+                    wasi_fs::fd_filestat_set_times(
                         *f as u32,
                         *a as u64,
                         *m as u64,
-                        wasi::FSTFLAGS_ATIM | wasi::FSTFLAGS_MTIM,
+                        wasi_fs::FSTFLAGS_ATIM | wasi_fs::FSTFLAGS_MTIM,
                     )
                 };
                 return match res {
@@ -446,7 +452,7 @@ fn fclose_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
         return JsValue::UnDefined;
     }
     if let Some(JsValue::Int(f)) = fd {
-        let res = unsafe { wasi::fd_close(*f as u32) };
+        let res = unsafe { wasi_fs::fd_close(*f as u32) };
         return match res {
             Ok(_) => JsValue::UnDefined,
             Err(e) => {
@@ -464,7 +470,7 @@ fn fdatasync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsV
         return JsValue::UnDefined;
     }
     if let Some(JsValue::Int(f)) = fd {
-        let res = unsafe { wasi::fd_datasync(*f as u32) };
+        let res = unsafe { wasi_fs::fd_datasync(*f as u32) };
         return match res {
             Ok(_) => JsValue::UnDefined,
             Err(e) => {
@@ -482,7 +488,7 @@ fn fsync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         return JsValue::UnDefined;
     }
     if let Some(JsValue::Int(f)) = fd {
-        let res = unsafe { wasi::fd_sync(*f as u32) };
+        let res = unsafe { wasi_fs::fd_sync(*f as u32) };
         return match res {
             Ok(_) => JsValue::UnDefined,
             Err(e) => {
@@ -502,7 +508,7 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
                 if let Some(event_loop) = ctx.event_loop() {
                     if *position != 0 {
                         let res = unsafe {
-                            wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR)
+                            wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
                         };
                         if let Err(e) = res {
                             let err = errno_to_js_object(ctx, e);
@@ -540,8 +546,9 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         if let Some(JsValue::Int(position)) = arg.get(1) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 if *position != 0 {
-                    let res =
-                        unsafe { wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR) };
+                    let res = unsafe {
+                        wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
+                    };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);
                         return JsValue::Exception(ctx.throw_error(err));
@@ -550,9 +557,9 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
                 let len = *length as usize;
                 let mut buf = vec![0; len];
                 let res = unsafe {
-                    wasi::fd_read(
+                    wasi_fs::fd_read(
                         *fd as u32,
-                        &[wasi::Iovec {
+                        &[wasi_fs::Iovec {
                             buf: buf.as_mut_ptr(),
                             buf_len: len,
                         }],
@@ -579,45 +586,46 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
         if let Some(JsValue::Int(flag)) = arg.get(1) {
             if let Some(JsValue::Int(_mode)) = arg.get(2) {
                 let fdflag = if flag & 128 == 128 {
-                    wasi::FDFLAGS_NONBLOCK
+                    wasi_fs::FDFLAGS_NONBLOCK
                 } else {
-                    wasi::FDFLAGS_SYNC
+                    wasi_fs::FDFLAGS_SYNC
                 } | if flag & 8 == 8 {
-                    wasi::FDFLAGS_APPEND
+                    wasi_fs::FDFLAGS_APPEND
                 } else {
                     0
                 };
                 let oflag = if flag & 512 == 512 {
-                    wasi::OFLAGS_CREAT
+                    wasi_fs::OFLAGS_CREAT
                 } else {
                     0
                 } | if flag & 2048 == 2048 {
-                    wasi::OFLAGS_EXCL
+                    wasi_fs::OFLAGS_EXCL
                 } else {
                     0
                 } | if flag & 1024 == 1024 {
-                    wasi::OFLAGS_TRUNC
+                    wasi_fs::OFLAGS_TRUNC
                 } else {
                     0
                 };
                 let right = if flag & 1 == 1 || flag & 2 == 2 {
-                    wasi::RIGHTS_FD_WRITE
-                        | wasi::RIGHTS_FD_ADVISE
-                        | wasi::RIGHTS_FD_ALLOCATE
-                        | wasi::RIGHTS_FD_DATASYNC
-                        | wasi::RIGHTS_FD_FDSTAT_SET_FLAGS
-                        | wasi::RIGHTS_FD_FILESTAT_SET_SIZE
-                        | wasi::RIGHTS_FD_FILESTAT_SET_TIMES
-                        | wasi::RIGHTS_FD_SYNC
-                        | wasi::RIGHTS_FD_WRITE
+                    wasi_fs::RIGHTS_FD_WRITE
+                        | wasi_fs::RIGHTS_FD_ADVISE
+                        | wasi_fs::RIGHTS_FD_ALLOCATE
+                        | wasi_fs::RIGHTS_FD_DATASYNC
+                        | wasi_fs::RIGHTS_FD_FDSTAT_SET_FLAGS
+                        | wasi_fs::RIGHTS_FD_FILESTAT_SET_SIZE
+                        | wasi_fs::RIGHTS_FD_FILESTAT_SET_TIMES
+                        | wasi_fs::RIGHTS_FD_SYNC
+                        | wasi_fs::RIGHTS_FD_WRITE
                 } else {
                     0
-                } | wasi::RIGHTS_FD_FILESTAT_GET
-                    | wasi::RIGHTS_FD_SEEK
-                    | wasi::RIGHTS_POLL_FD_READWRITE
-                    | wasi::RIGHTS_FD_READ
-                    | wasi::RIGHTS_FD_READDIR;
-                let res = unsafe { wasi::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
+                } | wasi_fs::RIGHTS_FD_FILESTAT_GET
+                    | wasi_fs::RIGHTS_FD_SEEK
+                    | wasi_fs::RIGHTS_POLL_FD_READWRITE
+                    | wasi_fs::RIGHTS_FD_READ
+                    | wasi_fs::RIGHTS_FD_READDIR;
+                let res =
+                    unsafe { wasi_fs::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
                 return match res {
                     Ok(fd) => JsValue::Int(fd as i32),
                     Err(e) => {
@@ -634,7 +642,7 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
 fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::String(path)) = arg.get(0) {
         let mut buf = vec![0; 1024];
-        let res = unsafe { wasi::path_readlink(3, path.as_str(), buf.as_mut_ptr(), buf.len()) };
+        let res = unsafe { wasi_fs::path_readlink(3, path.as_str(), buf.as_mut_ptr(), buf.len()) };
         return match res {
             Ok(_len) => match String::from_utf8(buf) {
                 Ok(s) => ctx.new_string(s.as_str()).into(),
@@ -657,7 +665,7 @@ fn fwrite(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
                 if let Some(event_loop) = ctx.event_loop() {
                     if *position != 0 {
                         let res = unsafe {
-                            wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR)
+                            wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
                         };
                         if let Err(e) = res {
                             let err = errno_to_js_object(ctx, e);
@@ -694,8 +702,9 @@ fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
         if let Some(JsValue::Int(position)) = arg.get(1) {
             if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
                 if *position != 0 {
-                    let res =
-                        unsafe { wasi::fd_seek(*fd as u32, *position as i64, wasi::WHENCE_CUR) };
+                    let res = unsafe {
+                        wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
+                    };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);
                         return JsValue::Exception(ctx.throw_error(err));
@@ -703,9 +712,9 @@ fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
                 }
                 let data = buf.to_vec();
                 let res = unsafe {
-                    wasi::fd_write(
+                    wasi_fs::fd_write(
                         *fd as u32,
-                        &[wasi::Ciovec {
+                        &[wasi_fs::Ciovec {
                             buf: data.as_ptr(),
                             buf_len: data.len(),
                         }],
@@ -729,18 +738,18 @@ fn freaddir_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
         if let Some(JsValue::Int(cookie)) = arg.get(1) {
             let mut buf = vec![0; 4096];
             let res = unsafe {
-                wasi::fd_readdir(*fd as u32, buf.as_mut_ptr(), buf.len(), *cookie as u64)
+                wasi_fs::fd_readdir(*fd as u32, buf.as_mut_ptr(), buf.len(), *cookie as u64)
             };
             return match res {
                 Ok(len) => {
-                    let s = std::mem::size_of::<wasi::Dirent>();
+                    let s = std::mem::size_of::<wasi_fs::Dirent>();
                     let mut idx = 0;
                     let mut data_pack = ctx.new_array();
                     let mut aidx = 0;
                     let mut dir_next = 0;
                     while idx < len {
                         let dir = unsafe {
-                            *(&buf[idx..(idx + s)] as *const [u8] as *const wasi::Dirent)
+                            *(&buf[idx..(idx + s)] as *const [u8] as *const wasi_fs::Dirent)
                         };
                         idx += s;
                         let name =

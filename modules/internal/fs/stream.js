@@ -1,4 +1,11 @@
-import { Writable } from "stream";
+// Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
+// Copyright Joyent, Inc. and Node.js contributors. All rights reserved. MIT license.
+
+import { Writable, Readable } from "stream";
+
+const kIsPerformingIO = Symbol('kIsPerformingIO');
+
+const kFs = Symbol('kFs');
 
 export class WriteStreamClass extends Writable {
     fd = null;
@@ -111,7 +118,7 @@ export function createWriteStream(
     return new WriteStreamClass(path, opts);
 }
 
-export class ReadStream extends NodeReadable {
+export class ReadStream extends Readable {
     constructor(path, opts) {
         path = path instanceof URL ? fromFileUrl(path) : path;
         const hasBadOptions = opts && (

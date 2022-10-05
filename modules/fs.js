@@ -2,12 +2,13 @@ import { validateFunction, validateInteger } from "./internal/validators"
 import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
+import { hideStackFrames } from "./internal/errors"
 export { fs as constants } from "./internal_binding/constants"
 import { fs as constants, fs } from "./internal_binding/constants"
 import { Buffer } from 'buffer';
 import { promisify } from "./internal/util"
 import { cpFn } from "./internal/fs/cp/cp";
-import { cpSyncFn } from "./internal/fs/cp/cp-sync";
+import cpSyncFn from "./internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./internal/fs/stream"
 import EventEmitter from "./events"
 

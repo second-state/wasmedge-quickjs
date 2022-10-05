@@ -1,5 +1,6 @@
 mod poll;
 mod wasi_sock;
+pub mod wasi_fs;
 
 use crate::event_loop::poll::{Eventtype, Subscription};
 use crate::{quickjs_sys as qjs, Context, JsValue};
@@ -450,9 +451,9 @@ impl IoSelector {
                         let len = len as usize; // len.min(event.fd_readwrite.nbytes) as usize;
                         let mut buf = vec![0u8; len];
                         let res = unsafe {
-                            wasi::fd_read(
+                            wasi_fs::fd_read(
                                 fd as u32,
-                                &[wasi::Iovec {
+                                &[wasi_fs::Iovec {
                                     buf: buf.as_mut_ptr(),
                                     buf_len: len,
                                 }],
@@ -478,9 +479,9 @@ impl IoSelector {
                             continue;
                         }
                         let res = unsafe {
-                            wasi::fd_write(
+                            wasi_fs::fd_write(
                                 fd as u32,
-                                &[wasi::Ciovec {
+                                &[wasi_fs::Ciovec {
                                     buf: buf.as_ptr(),
                                     buf_len: buf.len(),
                                 }],
