@@ -11,6 +11,7 @@ import { cpFn } from "./internal/fs/cp/cp";
 import cpSyncFn from "./internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./internal/fs/stream"
 import EventEmitter from "./events"
+import { normalize } from "path"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -700,8 +701,20 @@ function realpathSync(path, options = { encoding: "utf8" }) {
         setDefaultValue(options, { encoding: "utf8" });
     }
     let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
+    let stat = lstatSync(path, { throwIfNoEntry: false });
+    if (stat != null) {
+        if (!stat.isSymbolicLink()) {
+            let res = normalize(path);
+            if (!useBuffer) {
+                return res;
+            } else {
+                return Buffer.from(res, "utf8");
+            }
+        }
+    }
     try {
         let res = binding.realpathSync(path);
+        res = normalize(res);
         if (!useBuffer) {
             return res;
         } else {

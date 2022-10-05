@@ -1,6 +1,12 @@
 use crate::event_loop::poll::*;
-use core::mem::MaybeUninit;
 use core::fmt;
+use core::mem::{ManuallyDrop, MaybeUninit};
+use std::ffi::{CStr, CString, OsStr, OsString};
+use std::io;
+use std::ptr;
+use std::os::raw::c_int;
+use std::os::wasi::ffi::{OsStrExt, OsStringExt};
+use std::path::{Path, PathBuf};
 
 pub type Size = usize;
 
@@ -849,8 +855,7 @@ pub unsafe fn fd_advise(
     len: Filesize,
     advice: Advice,
 ) -> Result<(), Errno> {
-    let ret =
-        wasi::fd_advise(fd as i32, offset as i64, len as i64, advice.0 as i32);
+    let ret = wasi::fd_advise(fd as i32, offset as i64, len as i64, advice.0 as i32);
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),
@@ -985,12 +990,7 @@ pub unsafe fn fd_filestat_set_times(
     mtim: Timestamp,
     fst_flags: Fstflags,
 ) -> Result<(), Errno> {
-    let ret = wasi::fd_filestat_set_times(
-        fd as i32,
-        atim as i64,
-        mtim as i64,
-        fst_flags as i32,
-    );
+    let ret = wasi::fd_filestat_set_times(fd as i32, atim as i64, mtim as i64, fst_flags as i32);
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),
@@ -1171,12 +1171,7 @@ pub unsafe fn fd_renumber(fd: Fd, to: Fd) -> Result<(), Errno> {
 /// The new offset of the file descriptor, relative to the start of the file.
 pub unsafe fn fd_seek(fd: Fd, offset: Filedelta, whence: Whence) -> Result<Filesize, Errno> {
     let mut rp0 = MaybeUninit::<Filesize>::uninit();
-    let ret = wasi::fd_seek(
-        fd as i32,
-        offset,
-        whence.0 as i32,
-        rp0.as_mut_ptr() as i32,
-    );
+    let ret = wasi::fd_seek(fd as i32, offset, whence.0 as i32, rp0.as_mut_ptr() as i32);
     match ret {
         0 => Ok(core::ptr::read(rp0.as_mut_ptr() as i32 as *const Filesize)),
         _ => Err(Errno(ret as u16)),
@@ -1235,11 +1230,7 @@ pub unsafe fn fd_write(fd: Fd, iovs: CiovecArray<'_>) -> Result<Size, Errno> {
 ///
 /// * `path` - The path at which to create the directory.
 pub unsafe fn path_create_directory(fd: Fd, path: &str) -> Result<(), Errno> {
-    let ret = wasi::path_create_directory(
-        fd as i32,
-        path.as_ptr() as i32,
-        path.len() as i32,
-    );
+    let ret = wasi::path_create_directory(fd as i32, path.as_ptr() as i32, path.len() as i32);
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),
@@ -1428,11 +1419,7 @@ pub unsafe fn path_readlink(
 ///
 /// * `path` - The path to a directory to remove.
 pub unsafe fn path_remove_directory(fd: Fd, path: &str) -> Result<(), Errno> {
-    let ret = wasi::path_remove_directory(
-        fd as i32,
-        path.as_ptr() as i32,
-        path.len() as i32,
-    );
+    let ret = wasi::path_remove_directory(fd as i32, path.as_ptr() as i32, path.len() as i32);
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),
@@ -1491,13 +1478,83 @@ pub unsafe fn path_symlink(old_path: &str, fd: Fd, new_path: &str) -> Result<(),
 ///
 /// * `path` - The path to a file to unlink.
 pub unsafe fn path_unlink_file(fd: Fd, path: &str) -> Result<(), Errno> {
-    let ret = wasi::path_unlink_file(
-        fd as i32,
-        path.as_ptr() as i32,
-        path.len() as i32,
-    );
+    let ret = wasi::path_unlink_file(fd as i32, path.as_ptr() as i32, path.len() as i32);
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),
+    }
+}
+
+/// Attempts to open a bare path `p`.
+///
+/// WASI has no fundamental capability to do this. All syscalls and operations
+/// are relative to already-open file descriptors. The C library, however,
+/// manages a map of pre-opened file descriptors to their path, and then the C
+/// library provides an API to look at this. In other words, when you want to
+/// open a path `p`, you have to find a previously opened file descriptor in a
+/// global table and then see if `p` is relative to that file descriptor.
+///
+/// This function, if successful, will return two items:
+///
+/// * The first is a `ManuallyDrop<WasiFd>`. This represents a pre-opened file
+///   descriptor which we don't have ownership of, but we can use. You shouldn't
+///   actually drop the `fd`.
+///
+/// * The second is a path that should be a part of `p` and represents a
+///   relative traversal from the file descriptor specified to the desired
+///   location `p`.
+///
+/// If successful you can use the returned file descriptor to perform
+/// file-descriptor-relative operations on the path returned as well. The
+/// `rights` argument indicates what operations are desired on the returned file
+/// descriptor, and if successful the returned file descriptor should have the
+/// appropriate rights for performing `rights` actions.
+///
+/// Note that this can fail if `p` doesn't look like it can be opened relative
+/// to any pre-opened file descriptor.
+pub fn open_parent(p: &str) -> io::Result<(Fd, String)> {
+    let p = CString::new(p.as_bytes())?;
+    let mut buf = Vec::<u8>::with_capacity(512);
+    loop {
+        unsafe {
+            let mut relative_path = buf.as_ptr().cast();
+            let mut abs_prefix = ptr::null();
+            let fd = __wasilibc_find_relpath(
+                p.as_ptr(),
+                &mut abs_prefix,
+                &mut relative_path,
+                buf.capacity(),
+            );
+            if fd == -1 {
+                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                    // Trigger the internal buffer resizing logic of `Vec` by requiring
+                    // more space than the current capacity.
+                    let cap = buf.capacity();
+                    buf.set_len(cap);
+                    buf.reserve(1);
+                    continue;
+                }
+                let msg = format!(
+                    "failed to find a pre-opened file descriptor \
+                     through which {:?} could be opened",
+                    p
+                );
+                // io::ErrorKind::Uncategorized is unstable
+                // return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
+                return Err(io::Error::new(io::ErrorKind::Other, msg));
+            }
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+
+            return Ok((fd as Fd, String::from_utf8(relative).unwrap()));
+        }
+    }
+
+    extern "C" {
+        pub fn __wasilibc_find_relpath(
+            path: *const libc::c_char,
+            abs_prefix: *mut *const libc::c_char,
+            relative_path: *mut *const libc::c_char,
+            relative_path_len: libc::size_t,
+        ) -> libc::c_int;
     }
 }

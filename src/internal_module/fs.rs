@@ -100,7 +100,16 @@ fn stat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
         return JsValue::UnDefined;
     }
     if let JsValue::String(s) = path.unwrap() {
-        return match unsafe { wasi_fs::path_filestat_get(3, 0, s.as_str()) } {
+        let (dir, file) = match wasi_fs::open_parent(s.as_str()) {
+            Ok(ok) => (ok),
+            Err(e) => {
+                return {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            }
+        };
+        return match unsafe { wasi_fs::path_filestat_get(dir, 0, file.as_str()) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
@@ -136,7 +145,18 @@ fn lstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         return JsValue::UnDefined;
     }
     if let JsValue::String(s) = path.unwrap() {
-        return match unsafe { wasi_fs::path_filestat_get(3, 0, s.as_str()) } {
+        let (dir, file) = match wasi_fs::open_parent(s.as_str()) {
+            Ok(ok) => (ok),
+            Err(e) => {
+                return {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            }
+        };
+        return match unsafe {
+            wasi_fs::path_filestat_get(dir, wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW, file.as_str())
+        } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
@@ -307,11 +327,21 @@ fn realpath_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
         return JsValue::UnDefined;
     }
     if let Some(JsValue::String(p)) = path {
-        let res = fs::canonicalize(p.as_str());
-        return match res {
-            Ok(realpath) => ctx.new_string(realpath.to_str().unwrap()).into(),
+        let (dir, file) = match wasi_fs::open_parent(p.as_str()) {
+            Ok(ok) => (ok),
             Err(e) => {
-                let err = err_to_js_object(ctx, e);
+                return {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            }
+        };
+        let mut buf = vec![0; 1024];
+        let res = unsafe { wasi_fs::path_readlink(dir, file.as_str(), buf.as_mut_ptr(), buf.len()) };
+        return match res {
+            Ok(size) => ctx.new_string(std::str::from_utf8(&buf[0..size]).unwrap()).into(),
+            Err(e) => {
+                let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
             }
         };
@@ -369,7 +399,18 @@ fn symlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVal
     }
     if let Some(JsValue::String(from)) = from_path {
         if let Some(JsValue::String(to)) = to_path {
-            let res = unsafe { wasi_fs::path_symlink(from.as_str(), 3, to.as_str()) };
+            let (dir, file) = match wasi_fs::open_parent(to.as_str()) {
+                Ok(ok) => (ok),
+                Err(e) => {
+                    return {
+                        let err = err_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                }
+            };
+            let res = unsafe {
+                wasi_fs::path_symlink(from.as_str(), dir, file.as_str())
+            };
             return match res {
                 Ok(_) => JsValue::UnDefined,
                 Err(e) => {
@@ -392,11 +433,20 @@ fn utime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
     if let Some(JsValue::String(p)) = path {
         if let Some(JsValue::Float(a)) = atime {
             if let Some(JsValue::Float(m)) = mtime {
+                let (dir, file) = match wasi_fs::open_parent(p.as_str()) {
+                    Ok(ok) => (ok),
+                    Err(e) => {
+                        return {
+                            let err = err_to_js_object(ctx, e);
+                            JsValue::Exception(ctx.throw_error(err))
+                        }
+                    }
+                };
                 let res = unsafe {
                     wasi_fs::path_filestat_set_times(
-                        3,
+                        dir,
                         wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW,
-                        p.as_str(),
+                        file.as_str(),
                         *a as u64,
                         *m as u64,
                         wasi_fs::FSTFLAGS_ATIM | wasi_fs::FSTFLAGS_MTIM,
@@ -624,8 +674,17 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
                     | wasi_fs::RIGHTS_POLL_FD_READWRITE
                     | wasi_fs::RIGHTS_FD_READ
                     | wasi_fs::RIGHTS_FD_READDIR;
+                let (dir, file) = match wasi_fs::open_parent(path.as_str()) {
+                    Ok(ok) => (ok),
+                    Err(e) => {
+                        return {
+                            let err = err_to_js_object(ctx, e);
+                            JsValue::Exception(ctx.throw_error(err))
+                        }
+                    }
+                };
                 let res =
-                    unsafe { wasi_fs::path_open(3, 0, path.as_str(), oflag, right, 0, fdflag) };
+                    unsafe { wasi_fs::path_open(dir, 0, file.as_str(), oflag, right, 0, fdflag) };
                 return match res {
                     Ok(fd) => JsValue::Int(fd as i32),
                     Err(e) => {
@@ -642,7 +701,17 @@ fn open_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
 fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::String(path)) = arg.get(0) {
         let mut buf = vec![0; 1024];
-        let res = unsafe { wasi_fs::path_readlink(3, path.as_str(), buf.as_mut_ptr(), buf.len()) };
+        let (dir, file) = match wasi_fs::open_parent(path.as_str().into()) {
+            Ok(ok) => (ok),
+            Err(e) => {
+                return {
+                    let err = err_to_js_object(ctx, e);
+                    JsValue::Exception(ctx.throw_error(err))
+                }
+            }
+        };
+        let res =
+            unsafe { wasi_fs::path_readlink(dir, file.as_str(), buf.as_mut_ptr(), buf.len()) };
         return match res {
             Ok(_len) => match String::from_utf8(buf) {
                 Ok(s) => ctx.new_string(s.as_str()).into(),
