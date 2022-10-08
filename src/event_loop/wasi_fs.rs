@@ -3,10 +3,10 @@ use core::fmt;
 use core::mem::{ManuallyDrop, MaybeUninit};
 use std::ffi::{CStr, CString, OsStr, OsString};
 use std::io;
-use std::ptr;
 use std::os::raw::c_int;
 use std::os::wasi::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
+use std::ptr;
 
 pub type Size = usize;
 

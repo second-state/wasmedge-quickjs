@@ -1,6 +1,6 @@
 mod poll;
-mod wasi_sock;
 pub mod wasi_fs;
+mod wasi_sock;
 
 use crate::event_loop::poll::{Eventtype, Subscription};
 use crate::{quickjs_sys as qjs, Context, JsValue};
@@ -133,7 +133,7 @@ pub enum PollResult {
     Read(Vec<u8>),
     Connect(AsyncTcpConn),
     Error(io::Error),
-    Write(usize)
+    Write(usize),
 }
 
 struct TimeoutTask {

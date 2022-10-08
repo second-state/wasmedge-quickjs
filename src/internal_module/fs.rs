@@ -337,9 +337,12 @@ fn realpath_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
             }
         };
         let mut buf = vec![0; 1024];
-        let res = unsafe { wasi_fs::path_readlink(dir, file.as_str(), buf.as_mut_ptr(), buf.len()) };
+        let res =
+            unsafe { wasi_fs::path_readlink(dir, file.as_str(), buf.as_mut_ptr(), buf.len()) };
         return match res {
-            Ok(size) => ctx.new_string(std::str::from_utf8(&buf[0..size]).unwrap()).into(),
+            Ok(size) => ctx
+                .new_string(std::str::from_utf8(&buf[0..size]).unwrap())
+                .into(),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
                 JsValue::Exception(ctx.throw_error(err))
@@ -408,9 +411,7 @@ fn symlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVal
                     }
                 }
             };
-            let res = unsafe {
-                wasi_fs::path_symlink(from.as_str(), dir, file.as_str())
-            };
+            let res = unsafe { wasi_fs::path_symlink(from.as_str(), dir, file.as_str()) };
             return match res {
                 Ok(_) => JsValue::UnDefined,
                 Err(e) => {
