@@ -12,6 +12,7 @@ import cpSyncFn from "./internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./internal/fs/stream"
 import EventEmitter from "./events"
 import { normalize } from "path"
+import uv from "./internal_binding/uv"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -320,6 +321,9 @@ function access(path, mode = constants.F_OK, callback) {
         mode = constants.F_OK;
     }
 
+    mode = getValidMode(mode, "access");
+
+    path = getValidatedPath(path);
     validateFunction(callback, "callback");
 
     setTimeout(() => {
@@ -327,13 +331,22 @@ function access(path, mode = constants.F_OK, callback) {
             accessSync(path, mode);
             callback();
         } catch (err) {
-            callback(err);
+            let e = new Error();
+            e.stack += err.stack;
+            e.code = "ENOENT";
+            e.path = path.toString();
+            e.message = `ENOENT: no such file or directory, access '${path}'`;
+            e.syscall = "access";
+            e.errno = uv.UV_ENOENT;
+            callback(e);
         }
     })
 }
 
 function accessSync(path, mode = constants.F_OK) {
     path = getValidatedPath(path);
+
+    mode = getValidMode(mode, "access");
 
     try {
         const stat = statSync(path, { throwIfNoEntry: true });
@@ -343,7 +356,14 @@ function accessSync(path, mode = constants.F_OK) {
             throw new Error(`EACCES: permission denied, access '${path}'`);
         }
     } catch (err) {
-        throw err;
+        let e = new Error();
+        e.stack += err.stack;
+        e.code = "ENOENT";
+        e.path = path.toString();
+        e.message = `ENOENT: no such file or directory, access '${path}'`;
+        e.syscall = "access";
+        e.errno = uv.UV_ENOENT;
+        throw e;
     }
 }
 
@@ -1089,8 +1109,6 @@ function readFile(path, option, callback) {
     let len = stat.size;
     let buf = Buffer.alloc(len)
 
-    print("read");
-
     read(fd, buf, (err, rlen, obuf) => {
         if (err) {
             callback(err);
@@ -1273,6 +1291,10 @@ function writeSync(fd, buffer, offset, length, position) {
     } else if (typeof (offset) === "number") {
         length = buffer.byteLength - offset;
         position = 0;
+    } else {
+        offset = offset || 0;
+        length = length || buffer.byteLength - offset
+        position = position || 0;
     }
 
     validateInteger(offset, "offset");
@@ -1309,11 +1331,10 @@ function writeFile(file, data, options, callback) {
             } else {
                 callback();
             }
+            closeSync(fd);
         })
     } catch (err) {
         callback(err);
-    } finally {
-        closeSync(fd);
     }
 }
 
@@ -1324,18 +1345,11 @@ function writeFileSync(file, data, options = {}) {
         flag: "w",
         signal: null
     });
-    validateFunction(callback, "callback");
     file = getValidatedPath(file);
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
-    try {
-        let fd = openSync(file, options.flag, options.mode);
-        writeSync(fd, buffer);
-        callback();
-    } catch (err) {
-        callback(err);
-    } finally {
-        closeSync(fd);
-    }
+    let fd = openSync(file, options.flag, options.mode);
+    writeSync(fd, buffer);
+    closeSync(fd);
 }
 
 function appendFile(file, data, options, callback) {
@@ -1829,6 +1843,10 @@ const promises = {
 }
 
 export default {
+    F_OK: constants.F_OK,
+    R_OK: constants.R_OK,
+    W_OK: constants.W_OK,
+    X_OK: constants.X_OK,
     promises,
     stat,
     statSync,
@@ -1924,7 +1942,16 @@ export default {
     FileHandle
 }
 
+const F_OK = constants.F_OK;
+const R_OK = constants.R_OK;
+const W_OK = constants.W_OK;
+const X_OK = constants.X_OK;
+
 export {
+    F_OK,
+    R_OK,
+    W_OK,
+    X_OK,
     promises,
     stat,
     statSync,

@@ -143,6 +143,20 @@ export function promisify(
 
 promisify.custom = kCustomPromisifiedSymbol;
 
+const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
+
+export function removeColors(str) {
+    return String.prototype.replace(str, colorRegExp, '');
+}
+
+export function isError(e) {
+    // An error could be an instance of Error while not being a native error
+    // or could be from a different realm and not be instance of Error but still
+    // be a native error.
+    return e instanceof Error;
+}
+
+
 export default {
     createDeferredPromise,
     customInspectSymbol,
@@ -151,4 +165,6 @@ export default {
     once,
     deprecate,
     promisify,
+    removeColors,
+    isError
 };

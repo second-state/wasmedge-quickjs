@@ -189,7 +189,7 @@ export class ERR_OUT_OF_RANGE extends RangeError {
         input,
         replaceDefaultBoolean = false,
     ) {
-        assert(range, 'Missing "range" argument');
+        // assert(range, 'Missing "range" argument');
         let msg = replaceDefaultBoolean
             ? str
             : `The value of "${str}" is out of range.`;
@@ -237,7 +237,9 @@ export class ERR_INVALID_ARG_TYPE extends TypeError {
     constructor(name, expected, actual) {
         const msg = createInvalidArgType(name, expected);
 
-        super("ERR_INVALID_ARG_TYPE", `${msg}.${invalidArgTypeHelper(actual)}`);
+        super(`${msg}.${invalidArgTypeHelper(actual)}`);
+
+        this.code = "ERR_INVALID_ARG_TYPE";
     }
 
     static RangeError = ERR_INVALID_ARG_TYPE_RANGE;
@@ -248,10 +250,9 @@ export class ERR_INVALID_ARG_VALUE_RANGE extends RangeError {
         const type = name.includes(".") ? "property" : "argument";
         const inspected = JSON.stringify(value);
 
-        super(
-            "ERR_INVALID_ARG_VALUE",
-            `The ${type} '${name}' ${reason}. Received ${inspected}`,
-        );
+        super(`The ${type} '${name}' ${reason}. Received ${inspected}`,);
+
+        this.code = "ERR_INVALID_ARG_VALUE"
     }
 }
 
@@ -260,27 +261,26 @@ export class ERR_INVALID_ARG_VALUE extends TypeError {
         const type = name.includes(".") ? "property" : "argument";
         const inspected = JSON.stringify(value);
 
-        super(
-            "ERR_INVALID_ARG_VALUE",
-            `The ${type} '${name}' ${reason}. Received ${inspected}`,
-        );
+        super(`The ${type} '${name}' ${reason}. Received ${inspected}`,);
+
+        this.code = "ERR_INVALID_ARG_VALUE"
     }
 }
 
 export class ERR_INVALID_CHAR extends TypeError {
     constructor(name, field) {
-        super(
-            "ERR_INVALID_CHAR",
-            field
-                ? `Invalid character in ${name}`
-                : `Invalid character in ${name} ["${field}"]`,
+        super(field
+            ? `Invalid character in ${name}`
+            : `Invalid character in ${name} ["${field}"]`,
         );
+        this.code = "ERR_INVALID_CHAR";
     }
 }
 
 export class ERR_METHOD_NOT_IMPLEMENTED extends Error {
     constructor(x) {
-        super("ERR_METHOD_NOT_IMPLEMENTED", `The ${x} method is not implemented`);
+        super(`The ${x} method is not implemented`);
+        this.code = "ERR_METHOD_NOT_IMPLEMENTED";
     }
 }
 
@@ -731,3 +731,47 @@ export const uvException = hideStackFrames(
         return captureLargerStackTrace(err);
     }
 );
+
+export function isErrorStackTraceLimitWritable() {
+    // Do no touch Error.stackTraceLimit as V8 would attempt to install
+    // it again during deserialization.
+    if (false && import('v8').startupSnapshot.isBuildingSnapshot()) {
+        return false;
+    }
+
+    const desc = Object.getOwnPropertyDescriptor(Error, 'stackTraceLimit');
+    if (desc === undefined) {
+        return Object.isExtensible(Error);
+    }
+
+    return Object.prototype.hasOwnProperty(desc, 'writable') ?
+        desc.writable :
+        desc.set !== undefined;
+}
+
+export class ERR_UNAVAILABLE_DURING_EXIT extends Error {
+    constructor() {
+        super(
+            "ERR_UNAVAILABLE_DURING_EXIT",
+            `Cannot call function in process exit handler`,
+        );
+    }
+}
+
+export class ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED extends TypeError {
+    constructor() {
+        super(
+            "ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED",
+            `Snapshot is not supported in this context`,
+        );
+    }
+}
+
+export class ERR_AMBIGUOUS_ARGUMENT extends TypeError {
+    constructor(arg, msg) {
+        super(
+            "ERR_AMBIGUOUS_ARGUMENT",
+            `The ${arg} argument is ambiguous. ${msg}`,
+        );
+    }
+}

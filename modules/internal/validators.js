@@ -164,13 +164,41 @@ export const validateInteger = hideStackFrames(
     },
 );
 
+export const getValidMode = hideStackFrames((mode, type) => {
+    let min = kMinimumAccessMode;
+    let max = kMaximumAccessMode;
+    let def = F_OK;
+    if (type === "copyFile") {
+        min = kMinimumCopyMode;
+        max = kMaximumCopyMode;
+        def = mode || kDefaultCopyMode;
+    } else {
+        // assert(type === "access");
+    }
+    if (mode == null) {
+        return def;
+    }
+    if (Number.isInteger(mode) && mode >= min && mode <= max) {
+        return mode;
+    }
+    if (typeof mode !== "number") {
+        throw new ERR_INVALID_ARG_TYPE("mode", "integer", mode);
+    }
+    throw new ERR_OUT_OF_RANGE(
+        "mode",
+        `an integer >= ${min} && <= ${max}`,
+        mode,
+    );
+});
+
 export default {
-    validatePort, 
-    validateFunction, 
-    validateString, 
-    validateBoolean, 
-    validateObject, 
-    validateAbortSignal, 
+    validatePort,
+    validateFunction,
+    validateString,
+    validateBoolean,
+    validateObject,
+    validateAbortSignal,
     validateCallback,
-    validateInteger
+    validateInteger,
+    getValidMode
 }

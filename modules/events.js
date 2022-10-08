@@ -481,3 +481,51 @@ function unwrapListeners(arr) {
   }
   return ret;
 }
+
+/**
+ * Creates a `Promise` that is fulfilled when the emitter
+ * emits the given event.
+ * @param {EventEmitter} emitter
+ * @param {string} name
+ * @param {{ signal: AbortSignal; }} [options]
+ * @returns {Promise}
+ */
+export async function once(emitter, name, options = kEmptyObject) {
+  const signal = options?.signal;
+  validateAbortSignal(signal, 'options.signal');
+  if (signal?.aborted)
+    throw new AbortError(undefined, { cause: signal?.reason });
+  return new Promise((resolve, reject) => {
+    const errorListener = (err) => {
+      emitter.removeListener(name, resolver);
+      if (signal != null) {
+        eventTargetAgnosticRemoveListener(signal, 'abort', abortListener);
+      }
+      reject(err);
+    };
+    const resolver = (...args) => {
+      if (typeof emitter.removeListener === 'function') {
+        emitter.removeListener('error', errorListener);
+      }
+      if (signal != null) {
+        eventTargetAgnosticRemoveListener(signal, 'abort', abortListener);
+      }
+      resolve(args);
+    };
+    eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
+    if (name !== 'error' && typeof emitter.once === 'function') {
+      // EventTarget does not have `error` event semantics like Node
+      // EventEmitters, we listen to `error` events only on EventEmitters.
+      emitter.once('error', errorListener);
+    }
+    function abortListener() {
+      eventTargetAgnosticRemoveListener(emitter, name, resolver);
+      eventTargetAgnosticRemoveListener(emitter, 'error', errorListener);
+      reject(new AbortError(undefined, { cause: signal?.reason }));
+    }
+    if (signal != null) {
+      eventTargetAgnosticAddListener(
+        signal, 'abort', abortListener, { once: true });
+    }
+  });
+}
