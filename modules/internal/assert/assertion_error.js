@@ -305,6 +305,10 @@ function addEllipsis(string) {
 
 class AssertionError extends Error {
   constructor(options) {
+
+    // let quickjs context know assertion has failed
+    globalThis.assertPass = false;
+
     validateObject(options, 'options');
     const {
       message,

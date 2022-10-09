@@ -175,3 +175,7 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --release --example=js_extend
         wasmedge --dir .:. target/wasm32-wasi/release/examples/js_extend.wasm
+
+    - name: Node fs module test
+      run: |
+        cargo test --target=wasm32-wasi test_fs
