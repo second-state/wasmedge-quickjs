@@ -223,7 +223,8 @@ export class ERR_INVALID_ARG_TYPE_RANGE extends RangeError {
     constructor(name, expected, actual) {
         const msg = createInvalidArgType(name, expected);
 
-        super("ERR_INVALID_ARG_TYPE", `${msg}.${invalidArgTypeHelper(actual)}`);
+        super(`${msg}.${invalidArgTypeHelper(actual)}`);
+        this.code = "ERR_INVALID_ARG_TYPE";
     }
 }
 
@@ -238,7 +239,6 @@ export class ERR_INVALID_ARG_TYPE extends TypeError {
         const msg = createInvalidArgType(name, expected);
 
         super(`${msg}.${invalidArgTypeHelper(actual)}`);
-
         this.code = "ERR_INVALID_ARG_TYPE";
     }
 

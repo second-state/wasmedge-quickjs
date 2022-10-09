@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports, unused_must_use)]
+
 use std::borrow::{Borrow, BorrowMut};
 use wasmedge_quickjs::*;
 
@@ -16,7 +18,7 @@ fn test_js_file(file_path: &str) {
             }
             Err(e) => {
                 eprintln!("{}", e.to_string());
-                unreachable!();
+                panic!("open js test file fail");
             }
         }
         ctx.js_loop().unwrap();
@@ -26,4 +28,14 @@ fn test_js_file(file_path: &str) {
 #[test]
 fn test_fs_access() {
     test_js_file("test/fs/test-fs-access.js");
+}
+
+#[test]
+fn test_fs_append_file() {
+    test_js_file("test/fs/test-fs-append-file.js");
+}
+
+#[test]
+fn test_fs_append_file_sync() {
+    test_js_file("test/fs/test-fs-append-file-sync.js");
 }

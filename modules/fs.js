@@ -1,5 +1,5 @@
 import { validateFunction, validateInteger } from "./internal/validators"
-import { getValidatedPath, getValidMode, Stats } from "./internal/fs/utils"
+import { getValidatedPath, getValidMode, Stats, validateBufferArray } from "./internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "./internal/errors"
 import { hideStackFrames } from "./internal/errors"
@@ -239,7 +239,9 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
         if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        throw new Error(err.message);
+        let e = new Error("no such file or directory");
+        e.code = "ENOENT";
+        throw e;
     }
 }
 
@@ -598,10 +600,16 @@ function rmSync(path, options = { force: false, maxRetries: 0, recursive: false,
 
     setDefaultValue(options, { force: false, maxRetries: 0, recursive: false, retryDelay: 100 });
 
-    try {
-        binding.rmSync(path, options.recursive, options.force);
-    } catch (err) {
-        throw new Error(err.message);
+    for (let i = 0; i < options.maxRetries; i++) {
+        try {
+            binding.rmSync(path, options.recursive, options.force);
+        } catch (err) {
+            if (i === options.maxRetries - 1) {
+                throw new Error(err.message);
+            }
+            continue;
+        }
+        break;
     }
 }
 
@@ -1059,7 +1067,6 @@ function stringToFlags(flags) {
 function openSync(path, flag = "r", mode = 0o666) {
     path = getValidatedPath(path);
     flag = stringToFlags(flag);
-
     try {
         let fd = binding.openSync(path, flag, mode);
         return fd;
@@ -1357,14 +1364,22 @@ function appendFile(file, data, options, callback) {
         callback = options;
         options = {};
     }
+
+    validateFunction(callback, "callback");
+    validateObject(options, "options");
+    file = getValidatedPath(file);
+
     setDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
         signal: null
     });
-    validateFunction(callback, "callback");
-    file = getValidatedPath(file);
+
+    if (typeof (data) !== "string" && !(data instanceof Buffer)) {
+        throw new errors.ERR_INVALID_ARG_TYPE("data", ["string", "buffer"]);
+    }
+
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
         let fd = openSync(file, options.flag, options.mode);
@@ -1374,31 +1389,37 @@ function appendFile(file, data, options, callback) {
             } else {
                 callback();
             }
+            closeSync(fd);
         })
     } catch (err) {
         callback(err);
-    } finally {
-        closeSync(fd);
     }
 }
 
 function appendFileSync(file, data, options = {}) {
+    validateObject(options, "options");
     setDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
         signal: null
     });
-    validateFunction(callback, "callback");
-    file = getValidatedPath(file);
+
+    if (typeof (data) !== "string" && !(data instanceof Buffer)) {
+        throw new errors.ERR_INVALID_ARG_TYPE("data", ["string", "buffer"]);
+    }
+
+    let fd = -1;
+    if (typeof (file) === "number") {
+        fd = file;
+    } else {
+        file = getValidatedPath(file);
+        fd = openSync(file, options.flag, options.mode);
+    }
+
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
-    try {
-        let fd = openSync(file, options.flag, options.mode);
-        writeSync(fd, buffer);
-        callback();
-    } catch (err) {
-        callback(err);
-    } finally {
+    writeSync(fd, buffer);
+    if (typeof (file) !== "number") {
         closeSync(fd);
     }
 }

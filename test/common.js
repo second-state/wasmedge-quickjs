@@ -22,6 +22,7 @@
 /* eslint-disable node-core/crypto-check */
 'use strict';
 
+import assert from "assert";
 import process from "process";
 
 const isWindows = process.platform === 'win32';
@@ -51,6 +52,13 @@ export function mustNotMutateObjectDeep() {
   return {};
 }
 
+export function mustSucceed(fn) {
+  return (err, ...args) => {
+    assert.equal(err, null);
+    fn(args)
+  };
+}
+
 export function skip(msg) {
   print("skip, ", msg);
 }
@@ -70,6 +78,7 @@ const common = {
   mustNotCall,
   mustNotMutateObjectDeep,
   skip,
+  mustSucceed
 };
 
 export default common;
