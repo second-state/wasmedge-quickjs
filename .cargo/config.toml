@@ -3,4 +3,4 @@ target="wasm32-wasi"
 rustflags="-C target-feature=+bulk-memory"
 
 [target.wasm32-wasi]
-runner="wasmedge --dir=.:. "
+runner="timeout 60s wasmedge --dir=.:. "

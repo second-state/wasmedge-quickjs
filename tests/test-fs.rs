@@ -31,6 +31,7 @@ fn test_fs_access() {
 }
 
 #[test]
+#[ignore] // this test will timeout on github action
 fn test_fs_append_file() {
     test_js_file("test/fs/test-fs-append-file.js");
 }
@@ -38,4 +39,9 @@ fn test_fs_append_file() {
 #[test]
 fn test_fs_append_file_sync() {
     test_js_file("test/fs/test-fs-append-file-sync.js");
+}
+
+#[test]
+fn test_fs_close_errors() {
+    test_js_file("test/fs/test-fs-close-errors.js");
 }

@@ -22,6 +22,8 @@
 /* eslint-disable node-core/crypto-check */
 'use strict';
 
+import { inspect } from "internal/util/inspect";
+
 import assert from "assert";
 import process from "process";
 
@@ -59,6 +61,26 @@ export function mustSucceed(fn) {
   };
 }
 
+export function invalidArgTypeHelper(input) {
+  if (input == null) {
+    return ` Received ${input}`;
+  }
+  if (typeof input === 'function' && input.name) {
+    return ` Received function ${input.name}`;
+  }
+  if (typeof input === 'object') {
+    if (input.constructor?.name) {
+      return ` Received an instance of ${input.constructor.name}`;
+    }
+    return ` Received ${inspect(input, { depth: -1 })}`;
+  }
+
+  let inspected = inspect(input, { colors: false });
+  if (inspected.length > 28) { inspected = `${inspected.slice(inspected, 0, 25)}...`; }
+
+  return ` Received type ${typeof input} (${inspected})`;
+}
+
 export function skip(msg) {
   print("skip, ", msg);
 }
@@ -78,7 +100,8 @@ const common = {
   mustNotCall,
   mustNotMutateObjectDeep,
   skip,
-  mustSucceed
+  mustSucceed,
+  invalidArgTypeHelper
 };
 
 export default common;

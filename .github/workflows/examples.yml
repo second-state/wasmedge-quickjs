@@ -178,4 +178,4 @@ jobs:
 
     - name: Node fs module test
       run: |
-        cargo test --target=wasm32-wasi test_fs
+        cargo test test_fs --target=wasm32-wasi --release

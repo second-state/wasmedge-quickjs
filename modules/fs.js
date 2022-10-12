@@ -893,6 +893,7 @@ function symlinkSync(target, path) {
 }
 
 function close(fd, callback) {
+    validateInteger(fd, "fd");
     validateFunction(callback, "callback");
 
     setTimeout(() => {

@@ -64,8 +64,8 @@ function createErrDiff(actual, expected, operator) {
   let end = '';
   let skipped = false;
   const actualInspected = inspectValue(actual);
-  const actualLines = String.prototype.split(actualInspected, '\n');
-  const expectedLines = String.prototype.split(inspectValue(expected), '\n');
+  const actualLines = String.prototype.split.call(actualInspected, '\n');
+  const expectedLines = String.prototype.split.call(inspectValue(expected), '\n');
 
   let i = 0;
   let indicator = '';
@@ -103,7 +103,7 @@ function createErrDiff(actual, expected, operator) {
       // If the stderr is a tty and the input length is lower than the current
       // columns per line, add a mismatch indicator below the output. If it is
       // not a tty, use a default value of 80 characters.
-      const maxLength = process.stderr.isTTY ? process.stderr.columns : 80;
+      const maxLength = /*process.stderr.isTTY ? process.stderr.columns :*/ 80;
       if (inputLength < maxLength) {
         while (actualRaw[i] === expectedRaw[i]) {
           i++;
@@ -112,7 +112,7 @@ function createErrDiff(actual, expected, operator) {
         if (i > 2) {
           // Add position indicator for the first mismatch in case it is a
           // single line and the input length is less than the column length.
-          indicator = `\n  ${String.prototype.repeat(' ', i)}^`;
+          indicator = `\n  ${String.prototype.repeat.call(' ', i)}^`;
           i = 0;
         }
       }
