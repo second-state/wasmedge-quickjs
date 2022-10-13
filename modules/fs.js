@@ -202,6 +202,7 @@ function stat(path, options, callback) {
         options = {};
     }
     validateFunction(callback, "callback");
+    path = getValidatedPath(path);
 
     setTimeout(() => {
         try {
@@ -250,6 +251,7 @@ function lstat(path, options, callback) {
         callback = options;
     }
     validateFunction(callback, "callback");
+    path = getValidatedPath(path);
 
     setTimeout(() => {
         try {

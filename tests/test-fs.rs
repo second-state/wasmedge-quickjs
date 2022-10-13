@@ -45,3 +45,8 @@ fn test_fs_append_file_sync() {
 fn test_fs_close_errors() {
     test_js_file("test/fs/test-fs-close-errors.js");
 }
+
+#[test]
+fn test_fs_stat() {
+    test_js_file("test/fs/test-fs-stat.js");
+}
