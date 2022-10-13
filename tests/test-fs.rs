@@ -50,3 +50,28 @@ fn test_fs_close_errors() {
 fn test_fs_stat() {
     test_js_file("test/fs/test-fs-stat.js");
 }
+
+#[test]
+fn test_fs_constants() {
+    test_js_file("test/fs/test-fs-constants.js");
+}
+
+#[test]
+fn test_fs_stat_date() {
+    test_js_file("test/fs/test-fs-stat-date.js");
+}
+
+#[test]
+fn test_fs_close() {
+    test_js_file("test/fs/test-fs-close.js");
+}
+
+#[test]
+fn test_fs_exists() {
+    test_js_file("test/fs/test-fs-exists.js");
+}
+
+#[test]
+fn test_fs_link() {
+    test_js_file("test/fs/test-fs-link.js");
+}

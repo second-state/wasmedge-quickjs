@@ -13,6 +13,7 @@ import { createWriteStream, WriteStream, createReadStream, ReadStream } from "./
 import EventEmitter from "./events"
 import { normalize } from "path"
 import uv from "./internal_binding/uv"
+import { URL } from "./url"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -372,15 +373,23 @@ function accessSync(path, mode = constants.F_OK) {
 }
 
 function exists(path, callback) {
+    
+    validateFunction(callback, "callback")
+    try {
+        path = getValidatedPath(path);
+    } catch (err) {
+        callback(false);
+        return;
+    }
+
     setTimeout(() => {
         callback(existsSync(path));
     }, 0);
 }
 
 function existsSync(path) {
-    path = getValidatedPath(path);
-
     try {
+        path = getValidatedPath(path);
         accessSync(path);
         return true;
     } catch (err) {
@@ -847,6 +856,8 @@ function copyFileSync(src, dest, mode = 0) {
 }
 
 function link(existingPath, newPath, callback) {
+    existingPath = getValidatedPath(existingPath);
+    newPath = getValidatedPath(newPath);
     validateFunction(callback, "callback");
 
     setTimeout(() => {
@@ -1963,7 +1974,8 @@ export default {
     WriteStream,
     createReadStream,
     ReadStream,
-    FileHandle
+    FileHandle,
+    constants
 }
 
 const F_OK = constants.F_OK;

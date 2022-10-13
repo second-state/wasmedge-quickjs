@@ -1,3 +1,5 @@
+// Copyright Joyent and Node contributors. All rights reserved. MIT license.
+
 'use strict';
 
 // This tests that the errors thrown from fs.close and fs.closeSync
