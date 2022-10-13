@@ -74,7 +74,11 @@ let warned = false;
 // AssertionError's when particular conditions are not met. The
 // assert module must conform to the following interface.
 
-const assert = {};
+const assert = function (obj) {
+  if (!obj) {
+    throw new AssertionError(obj);
+  }
+};
 
 const NO_EXCEPTION_SENTINEL = {};
 

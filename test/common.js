@@ -50,8 +50,8 @@ export function mustNotCall() {
   return () => {};
 }
 
-export function mustNotMutateObjectDeep() {
-  return {};
+export function mustNotMutateObjectDeep(obj = {}) {
+  return obj;
 }
 
 export function mustSucceed(fn) {

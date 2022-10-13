@@ -75,3 +75,18 @@ fn test_fs_exists() {
 fn test_fs_link() {
     test_js_file("test/fs/test-fs-link.js");
 }
+
+#[test]
+fn test_fs_promises_file_handle_stat() {
+    test_js_file("test/fs/test-fs-promises-file-handle-stat.js");
+}
+
+#[test]
+fn test_fs_promises_file_handle_close() {
+    test_js_file("test/fs/test-fs-promises-file-handle-close.js");
+}
+
+#[test]
+fn test_fs_promises_file_handle_close_errors() {
+    test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
+}

@@ -44,7 +44,7 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
 // Test that empty file will be created and have content added (callback API).
 {
   const filename = join(tmpdir.path, 'append.txt');
-
+  print("Test that empty file will be created and have content added (callback API).");
   fs.appendFile(filename, s, common.mustSucceed(() => {
     fs.readFile(filename, common.mustSucceed((buffer) => {
       assert.strictEqual(Buffer.byteLength(s), buffer.length);
@@ -55,7 +55,7 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
 // Test that empty file will be created and have content added (promise API).
 {
   const filename = join(tmpdir.path, 'append-promise.txt');
-
+  print("Test that empty file will be created and have content added (promise API).");
   fs.promises.appendFile(filename, s)
     .then(common.mustCall(() => fs.promises.readFile(filename)))
     .then((buffer) => {
@@ -68,7 +68,7 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
 {
   const filename = join(tmpdir.path, 'append-non-empty.txt');
   fs.writeFileSync(filename, currentFileData);
-
+  print("Test that appends data to a non-empty file (callback API).");
   fs.appendFile(filename, s, common.mustSucceed(() => {
     fs.readFile(filename, common.mustSucceed((buffer) => {
       assert.strictEqual(Buffer.byteLength(s) + currentFileData.length,
@@ -76,7 +76,8 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
     }));
   }));
 }
-
+/*
+try first quarter of test to find where causes timeout
 // Test that appends data to a non-empty file (promise API).
 {
   const filename = join(tmpdir.path, 'append-non-empty-promise.txt');
@@ -119,8 +120,7 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
     })
     .catch(throwNextTick);
 }
-/*
-try first half of test to find where causes timeout
+
 // Test that appendFile does not accept invalid data type (callback API).
 [false, 5, {}, null, undefined].forEach(async (data) => {
   const errObj = {
