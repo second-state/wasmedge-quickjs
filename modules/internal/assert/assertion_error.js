@@ -37,7 +37,7 @@ function copyError(source) {
 }
 
 function inspectValue(val) {
-  return JSON.stringify(val);
+  return JSON.stringify(val) || "undefined";
   // The util.inspect default values could be changed. This makes sure the
   // error messages contain the necessary information nevertheless.
   return inspect(

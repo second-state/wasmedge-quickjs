@@ -373,7 +373,7 @@ function accessSync(path, mode = constants.F_OK) {
 }
 
 function exists(path, callback) {
-    
+
     validateFunction(callback, "callback")
     try {
         path = getValidatedPath(path);
@@ -1081,11 +1081,27 @@ function stringToFlags(flags) {
 function openSync(path, flag = "r", mode = 0o666) {
     path = getValidatedPath(path);
     flag = stringToFlags(flag);
+
+    if (mode === null || mode === undefined) {
+        mode = 0o666;
+    }
+    
+    try {
+        validateInteger(mode, "mode", 0, 0o777);
+    } catch (err) {
+        if (typeof (mode) === "string") {
+            err.code = "ERR_INVALID_ARG_VALUE";
+        }
+        throw err;
+    }
+
     try {
         let fd = binding.openSync(path, flag, mode);
         return fd;
     } catch (err) {
-        throw new Error(err.message);
+        let e = new Error(err.message);
+        e.code = "ENOENT";
+        throw e;
     }
 }
 
@@ -1098,6 +1114,24 @@ function open(path, flag = "r", mode = 0o666, callback) {
         callback = mode;
         mode = 0o666;
     }
+
+    path = getValidatedPath(path);
+
+    validateFunction(callback, "callback");
+    if (mode === null || mode === undefined) {
+        mode = 0o666;
+    }
+
+    try {
+        validateInteger(mode, "mode", 0, 0o777);
+    } catch (err) {
+        if (typeof (mode) === "string") {
+            err.code = "ERR_INVALID_ARG_VALUE";
+        }
+        throw err;
+    }
+
+
     setTimeout(() => {
         try {
             fd = openSync(path, flag, mode);

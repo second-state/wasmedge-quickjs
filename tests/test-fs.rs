@@ -87,6 +87,12 @@ fn test_fs_promises_file_handle_close() {
 }
 
 #[test]
+#[ignore]
 fn test_fs_promises_file_handle_close_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
+}
+
+#[test]
+fn test_fs_open() {
+    test_js_file("test/fs/test-fs-open.js");
 }
