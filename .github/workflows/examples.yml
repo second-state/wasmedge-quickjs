@@ -178,7 +178,6 @@ jobs:
 
     - name: Node fs module test
       timeout-minutes: 5
-      continue-on-error: true
       run: |
         cargo test test_fs --target=wasm32-wasi --release
 

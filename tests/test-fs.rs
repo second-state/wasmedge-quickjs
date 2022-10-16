@@ -13,12 +13,12 @@ fn test_js_file(file_path: &str) {
                 ctx.put_args(vec![file_path.clone()]);
                 ctx.eval_module_str(code, &file_path);
                 if let JsValue::Bool(false) = ctx.get_global().get("assertPass") {
-                    panic!("assert fail");
+                    assert!(false, "js assert fail");
                 }
             }
             Err(e) => {
                 eprintln!("{}", e.to_string());
-                panic!("open js test file fail");
+                assert!(false, "run js test file fail");
             }
         }
         ctx.js_loop().unwrap();
@@ -31,7 +31,7 @@ fn test_fs_access() {
 }
 
 #[test]
-#[ignore] // this test will timeout on github action
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_append_file() {
     test_js_file("test/fs/test-fs-append-file.js");
 }
@@ -87,7 +87,7 @@ fn test_fs_promises_file_handle_close() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_promises_file_handle_close_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
 }
@@ -95,4 +95,25 @@ fn test_fs_promises_file_handle_close_errors() {
 #[test]
 fn test_fs_open() {
     test_js_file("test/fs/test-fs-open.js");
+}
+
+#[test]
+fn test_fs_readv() {
+    test_js_file("test/fs/test-fs-readv.js");
+}
+
+#[test]
+fn test_fs_readv_sync() {
+    test_js_file("test/fs/test-fs-readv-sync.js");
+}
+
+#[test]
+fn test_fs_readv_promisify() {
+    test_js_file("test/fs/test-fs-readv-promisify.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readv_promises() {
+    test_js_file("test/fs/test-fs-readv-promises.js");
 }

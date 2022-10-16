@@ -1085,7 +1085,7 @@ function openSync(path, flag = "r", mode = 0o666) {
     if (mode === null || mode === undefined) {
         mode = 0o666;
     }
-    
+
     try {
         validateInteger(mode, "mode", 0, 0o777);
     } catch (err) {
@@ -1253,8 +1253,10 @@ function readv(fd, buffer, position, callback) {
     binding.fread(fd, position, length).then((data) => {
         let off = 0;
         for (const buf of buffer) {
-            buf.fill(data.slice(off, off + buf.byteLength));
-            off += buf.byteLength;
+            if (buf.byteLength !== 0) {
+                buf.fill(data.slice(off, off + buf.byteLength));
+                off += buf.byteLength;
+            }
         }
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
@@ -1263,6 +1265,7 @@ function readv(fd, buffer, position, callback) {
 }
 
 function readvSync(fd, buffer, position = 0) {
+    validateInteger(fd, "fd");
     validateInteger(position, "position");
 
     let length = 0;
@@ -1270,17 +1273,15 @@ function readvSync(fd, buffer, position = 0) {
         length += buf.byteLength;
     }
 
-    try {
-        let data = binding.freadSync(fd, position, length);
-        let off = 0;
-        for (const buf of buffer) {
+    let data = binding.freadSync(fd, position, length);
+    let off = 0;
+    for (const buf of buffer) {
+        if (buf.byteLength !== 0) {
             buf.fill(data.slice(off, off + buf.byteLength));
             off += buf.byteLength;
         }
-        return data.byteLength;
-    } catch (err) {
-        throw new Error(err.message);
     }
+    return data.byteLength;
 }
 
 function write(fd, buffer, offset, length, position, callback) {

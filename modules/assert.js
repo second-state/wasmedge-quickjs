@@ -46,7 +46,7 @@ import {
   validateFunction,
 } from 'internal/validators';
 
-import {isDeepEqual, isDeepStrictEqual} from 'internal/util/comparisons'
+import { isDeepEqual, isDeepStrictEqual } from 'internal/util/comparisons'
 
 let parseExpressionAt;
 let findNodeAround;
@@ -76,7 +76,7 @@ let warned = false;
 
 const assert = function (obj) {
   if (!obj) {
-    throw new AssertionError(obj);
+    throw new AssertionError({ message: 'assert fail' });
   }
 };
 
@@ -1039,3 +1039,5 @@ assert.strict = Object.assign(strict, assert, {
 assert.strict.strict = assert.strict;
 
 export default assert;
+
+export { AssertionError };

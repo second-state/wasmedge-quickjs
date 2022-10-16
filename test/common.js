@@ -24,7 +24,7 @@
 
 import { inspect } from "internal/util/inspect";
 
-import assert from "assert";
+import assert, { AssertionError } from "assert";
 import process from "process";
 
 const isWindows = process.platform === 'win32';
@@ -47,7 +47,9 @@ export function mustCallAtLeast(fn) {
 }
 
 export function mustNotCall() {
-  return () => {};
+  return () => {
+    assert(false, "mustNotCall");
+  };
 }
 
 export function mustNotMutateObjectDeep(obj = {}) {
