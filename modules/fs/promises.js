@@ -1,4 +1,4 @@
-import * as fs from "../fs";
+import * as fs from "../internal/fs";
 import { promisify } from "../internal/util"
 
 export const access = promisify(fs.access);
@@ -74,6 +74,4 @@ const promises = {
     constants
 }
 
-export default {
-    promises
-}
+export default promises;

@@ -37,7 +37,7 @@ function copyError(source) {
 }
 
 function inspectValue(val) {
-  return JSON.stringify(val) || "undefined";
+  // return JSON.stringify(val) || "undefined";
   // The util.inspect default values could be changed. This makes sure the
   // error messages contain the necessary information nevertheless.
   return inspect(
@@ -129,8 +129,8 @@ function createErrDiff(actual, expected, operator) {
     } else {
       other = a;
     }
-    Array.prototype.pop(actualLines);
-    Array.prototype.pop(expectedLines);
+    Array.prototype.pop.call(actualLines);
+    Array.prototype.pop.call(expectedLines);
     if (actualLines.length === 0 || expectedLines.length === 0)
       break;
     a = actualLines[actualLines.length - 1];
@@ -142,19 +142,19 @@ function createErrDiff(actual, expected, operator) {
   // E.g., assert.deepStrictEqual({ a: Symbol() }, { a: Symbol() })
   if (maxLines === 0) {
     // We have to get the result again. The lines were all removed before.
-    const actualLines = String.prototype.split(actualInspected, '\n');
+    const actualLines = String.prototype.split.call(actualInspected, '\n');
 
     // Only remove lines in case it makes sense to collapse those.
     // TODO: Accept env to always show the full error.
     if (actualLines.length > 50) {
       actualLines[46] = `${blue}...${white}`;
       while (actualLines.length > 47) {
-        Array.prototype.pop(actualLines);
+        Array.prototype.pop.call(actualLines);
       }
     }
 
     return `${kReadableOperator.notIdentical}\n\n` +
-           `${Array.prototype.join(actualLines, '\n')}\n`;
+           `${Array.prototype.join.call(actualLines, '\n')}\n`;
   }
 
   // There were at least five identical lines at the end. Mark a couple of
@@ -223,8 +223,8 @@ function createErrDiff(actual, expected, operator) {
       // mark it as such.
       let divergingLines =
         actualLine !== expectedLine &&
-        (!String.prototype.endsWith(actualLine, ',') ||
-         String.prototype.slice(actualLine, 0, -1) !== expectedLine);
+        (!String.prototype.endsWith.call(actualLine, ',') ||
+         String.prototype.slice.call(actualLine, 0, -1) !== expectedLine);
       // If the expected line has a trailing comma but is otherwise identical,
       // add a comma at the end of the actual line. Otherwise the output could
       // look weird as in:
@@ -235,8 +235,8 @@ function createErrDiff(actual, expected, operator) {
       //   ]
       //
       if (divergingLines &&
-          String.prototype.endsWith(expectedLine, ',') &&
-          String.prototype.slice(expectedLine, 0, -1) === actualLine) {
+          String.prototype.endsWith.call(expectedLine, ',') &&
+          String.prototype.slice.call(expectedLine, 0, -1) === actualLine) {
         divergingLines = false;
         actualLine += ',';
       }
@@ -293,12 +293,12 @@ function createErrDiff(actual, expected, operator) {
 }
 
 function addEllipsis(string) {
-  const lines = String.prototype.split(string, '\n', 11);
+  const lines = String.prototype.split.call(string, '\n', 11);
   if (lines.length > 10) {
     lines.length = 10;
-    return `${Array.prototype.join(lines, '\n')}\n...`;
+    return `${Array.prototype.join.call(lines, '\n')}\n...`;
   } else if (string.length > 512) {
-    return `${String.prototype.slice(string, 512)}...`;
+    return `${String.prototype.slice.call(string, 512)}...`;
   }
   return string;
 }
@@ -350,7 +350,7 @@ class AssertionError extends Error {
         // In case the objects are equal but the operator requires unequal, show
         // the first object and say A equals B
         let base = kReadableOperator[operator];
-        const res = String.prototype.split(inspectValue(actual), '\n');
+        const res = String.prototype.split.call(inspectValue(actual), '\n');
 
         // In case "actual" is an object or a function, it should not be
         // reference equal.
@@ -365,7 +365,7 @@ class AssertionError extends Error {
         if (res.length > 50) {
           res[46] = `${blue}...${white}`;
           while (res.length > 47) {
-            Array.prototype.pop(res);
+            Array.prototype.pop.call(res);
           }
         }
 
@@ -373,7 +373,7 @@ class AssertionError extends Error {
         if (res.length === 1) {
           super(`${base}${res[0].length > 5 ? '\n\n' : ' '}${res[0]}`);
         } else {
-          super(`${base}\n\n${Array.prototype.join(res, '\n')}\n`);
+          super(`${base}\n\n${Array.prototype.join.call(res, '\n')}\n`);
         }
       } else {
         let res = inspectValue(actual);
@@ -382,15 +382,15 @@ class AssertionError extends Error {
         if (operator === 'notDeepEqual' && res === other) {
           res = `${knownOperator}\n\n${res}`;
           if (res.length > 1024) {
-            res = `${String.prototype.slice(res, 0, 1021)}...`;
+            res = `${String.prototype.slice.call(res, 0, 1021)}...`;
           }
           super(res);
         } else {
           if (res.length > 512) {
-            res = `${String.prototype.slice(res, 0, 509)}...`;
+            res = `${String.prototype.slice.call(res, 0, 509)}...`;
           }
           if (other.length > 512) {
-            other = `${String.prototype.slice(other, 0, 509)}...`;
+            other = `${String.prototype.slice.call(other, 0, 509)}...`;
           }
           if (operator === 'deepEqual') {
             res = `${knownOperator}\n\n${res}\n\nshould loosely deep-equal\n\n`;

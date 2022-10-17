@@ -2,6 +2,10 @@
 // Copyright Joyent, Inc. and Node.js contributors. All rights reserved. MIT license.
 
 import { Writable, Readable } from "stream";
+import { validateEncoding } from "./utils";
+import { URL } from "url";
+import { open, write, close } from "fs";
+import { toPathIfFileURL } from "../url";
 
 const kIsPerformingIO = Symbol('kIsPerformingIO');
 
@@ -19,8 +23,11 @@ export class WriteStreamClass extends Writable {
         this.flags = opts.flags || "w";
         this.mode = opts.mode || 0o666;
         this[kFs] = opts.fs ?? { open, write, close };
-
+        if (typeof (opts) === "string") {
+            validateEncoding(opts, "encoding");
+        }
         if (opts.encoding) {
+            validateEncoding(opts.encoding, "encoding");
             this.setDefaultEncoding(opts.encoding);
         }
     }
@@ -124,6 +131,11 @@ export class ReadStream extends Readable {
         const hasBadOptions = opts && (
             opts.fd || opts.start || opts.end || opts.fs
         );
+        if (typeof (opts) === "string") {
+            validateEncoding(opts, "encoding");
+        } else {
+            validateEncoding(opts.encoding || "utf8", "encoding");
+        }
         if (hasBadOptions) {
             notImplemented(
                 `fs.ReadStream.prototype.constructor with unsupported options (${JSON.stringify(opts)

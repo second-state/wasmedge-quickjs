@@ -59,11 +59,8 @@ async function checkCloseError(op) {
 }
 (async function() {
   tmpdir.refresh();
-  print("truncate");
   await checkCloseError((filePath) => truncate(filePath));
-  print("readFile");
   await checkCloseError((filePath) => readFile(filePath));
-  print("writeFile");
   await checkCloseError((filePath) => writeFile(filePath, '123'));
   if (common.isOSX) {
     await checkCloseError((filePath) => lchmod(filePath, 0o777));

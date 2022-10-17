@@ -42,6 +42,9 @@ import {
   fs as fsConstants,
   os as osConstants,
 } from "../../internal_binding/constants";
+
+import * as errors from "../errors"
+
 const {
   F_OK = 0,
   W_OK = 0,
@@ -1011,6 +1014,22 @@ export const showStringCoercionDeprecation = deprecate(
   "DEP0162",
 );
 
+
+export const validateEncoding = hideStackFrames((value, name) => {
+  let exist = [
+      'utf8', 'utf-8', 'gbk', 'gb18030', 'hz-gb-2312', 'big5', 'euc-jp', 'iso-2022-jp',
+      'utf-16be', 'utf-16le', 'x-user-defined', 'ibm866',
+      'iso-8859-2', 'iso-8859-3', 'iso-8859-4', 'iso-8859-5', 'iso-8859-6', 'iso-8859-7', 'iso-8859-8',
+      'iso-8859-8i', 'iso-8859-10', 'iso-8859-13', 'iso-8859-14', 'iso-8859-15', 'iso-8859-16',
+      'windows-874', 'windows-1250', 'windows-1251', 'windows-1252', 'windows-1253', 'windows-1254',
+      'windows-1255', 'windows-1256', 'windows-1257', 'windows-1258', '', 'hex'
+  ].indexOf(value);
+
+  if (exist < 0) {
+      throw new errors.ERR_INVALID_ARG_VALUE(name, value);
+  }
+})
+
 export default {
   constants,
   assertEncoding,
@@ -1046,4 +1065,5 @@ export default {
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
+  validateEncoding
 };
