@@ -6,6 +6,7 @@ import { validateEncoding } from "./utils";
 import { URL } from "url";
 import { open, write, close } from "fs";
 import { toPathIfFileURL } from "../url";
+import fs from "../../fs";
 
 const kIsPerformingIO = Symbol('kIsPerformingIO');
 
@@ -19,6 +20,7 @@ export class WriteStreamClass extends Writable {
     [kIsPerformingIO] = false;
     constructor(path, opts) {
         super(opts);
+        this.pending = true;
         this.path = toPathIfFileURL(path);
         this.flags = opts.flags || "w";
         this.mode = opts.mode || 0o666;
@@ -42,7 +44,7 @@ export class WriteStreamClass extends Writable {
                     callback(err);
                     return;
                 }
-
+                this.pending = false;
                 this.fd = fd;
                 callback();
                 this.emit("open", this.fd);
@@ -131,6 +133,9 @@ export class ReadStream extends Readable {
         const hasBadOptions = opts && (
             opts.fd || opts.start || opts.end || opts.fs
         );
+        if (opts === null || typeof(opts) === "undefined") {
+            opts = "utf8";
+        }
         if (typeof (opts) === "string") {
             validateEncoding(opts, "encoding");
         } else {
@@ -142,7 +147,11 @@ export class ReadStream extends Readable {
                 })`,
             );
         }
-        const file = Deno.openSync(path, { read: true });
+        fs.promises.open(path, fs.constants.O_RDONLY).then(f => {
+            this.file = f;
+            this.pending = false;
+            this.emit("ready")
+        });
         const buffer = new Uint8Array(16 * 1024);
         super({
             autoDestroy: true,
@@ -150,7 +159,7 @@ export class ReadStream extends Readable {
             objectMode: false,
             read: async function (_size) {
                 try {
-                    const n = await file.read(buffer);
+                    const n = await this.file.read(buffer);
                     this.push(n ? Buffer.from(buffer.slice(0, n)) : null);
                 } catch (err) {
                     this.destroy(err);
@@ -158,12 +167,13 @@ export class ReadStream extends Readable {
             },
             destroy: (err, cb) => {
                 try {
-                    file.close();
+                    this.file.close();
                     // deno-lint-ignore no-empty
                 } catch { }
                 cb(err);
             },
         });
+        this.pending = true;
         this.path = path;
     }
 }

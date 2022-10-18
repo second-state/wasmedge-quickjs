@@ -551,15 +551,23 @@ fn fsync_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
     return JsValue::UnDefined;
 }
 
+fn get_js_number(val: Option<&JsValue>) -> Option<i64> {
+    match val {
+        Some(JsValue::Int(i)) => Some(*i as i64),
+        Some(JsValue::Float(f)) => Some(*f as i64),
+        _ => None
+    }
+}
+
 fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::Int(fd)) = arg.get(0) {
-        if let Some(JsValue::Int(position)) = arg.get(1) {
+        if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 let (promise, ok, error) = ctx.new_promise();
                 if let Some(event_loop) = ctx.event_loop() {
-                    if *position != 0 {
+                    if position != -1 {
                         let res = unsafe {
-                            wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
+                            wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_CUR)
                         };
                         if let Err(e) = res {
                             let err = errno_to_js_object(ctx, e);
@@ -594,11 +602,11 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
 
 fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::Int(fd)) = arg.get(0) {
-        if let Some(JsValue::Int(position)) = arg.get(1) {
+        if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
-                if *position != 0 {
+                if position != -1 {
                     let res = unsafe {
-                        wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
+                        wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_CUR)
                     };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);
@@ -617,8 +625,8 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
                     )
                 };
                 return match res {
-                    Ok(_) => {
-                        let data = ctx.new_array_buffer(&buf);
+                    Ok(rlen) => {
+                        let data = ctx.new_array_buffer(&buf[0..rlen]);
                         JsValue::ArrayBuffer(data)
                     }
                     Err(e) => {

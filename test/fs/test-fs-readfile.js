@@ -9,6 +9,7 @@ import tmpdir from '../../test/common/tmpdir';
 import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
+import process from 'process';
 
 const prefix = `.removeme-fs-readfile-${process.pid}`;
 

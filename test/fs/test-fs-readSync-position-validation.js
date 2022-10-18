@@ -1,6 +1,6 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
-import * as common from '../common/index.mjs';
-import * as fixtures from '../common/fixtures.mjs';
+import common from '../common';
+import fixtures from '../common/fixtures';
 import fs from 'fs';
 import assert from 'assert';
 
@@ -59,7 +59,6 @@ function testInvalid(code, position, internalCatch = false) {
   testValid(9);
   testValid(9n);
   testValid(Number.MAX_SAFE_INTEGER, [ 'EFBIG', 'EOVERFLOW' ]);
-
   testValid(2n ** 63n - 1n - BigInt(length), [ 'EFBIG', 'EOVERFLOW' ]);
   testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n);
 

@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import tmpdir from '../common/tmpdir';
 
+const __filename = args[0];
+
 const readStream = fs.createReadStream(__filename);
 assert.strictEqual(readStream.pending, true);
 readStream.on('ready', common.mustCall(() => {

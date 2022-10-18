@@ -27,6 +27,8 @@ import common from '../common';
 import assert from 'assert';
 import fs from 'fs';
 
+const __filename = args[0];
+
 const dataExpected = fs.readFileSync(__filename, 'utf8');
 
 // Sometimes stat returns size=0, but it's a lie.

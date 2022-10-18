@@ -109,6 +109,51 @@ fn test_fs_promises_file_handle_stat() {
 
 #[test]
 #[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readfile_empty() {
+    test_js_file("test/fs/test-fs-readfile-empty.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readfile_fd() {
+    test_js_file("test/fs/test-fs-readfile-fd.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readfile_flags() {
+    test_js_file("test/fs/test-fs-readfile-flags.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readfile_unlink() {
+    test_js_file("test/fs/test-fs-readfile-unlink.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
+fn test_fs_readfile_zero_byte_liar() {
+    test_js_file("test/fs/test-fs-readfile-zero-byte-liar.js");
+}
+
+#[test]
+fn test_fs_readlink_type_check() {
+    test_js_file("test/fs/test-fs-readlink-type-check.js");
+}
+
+#[test]
+fn test_fs_read_sync_optional_params() {
+    test_js_file("test/fs/test-fs-readSync-optional-params.js");
+}
+
+#[test]
+fn test_fs_read_sync_position_validation() {
+    test_js_file("test/fs/test-fs-readSync-position-validation.js");
+}
+
+#[test]
+#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readv_promises() {
     test_js_file("test/fs/test-fs-readv-promises.js");
 }
@@ -128,6 +173,11 @@ fn test_fs_readv_sync() {
 #[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readv() {
     test_js_file("test/fs/test-fs-readv.js");
+}
+
+#[test]
+fn test_fs_ready_event_stream() {
+    test_js_file("test/fs/test-fs-ready-event-stream.js");
 }
 
 #[test]

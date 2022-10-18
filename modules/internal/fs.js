@@ -1001,12 +1001,18 @@ function read(fd, buffer, offset, length, position, callback) {
         buffer = Buffer.alloc(16384);
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
+        if (option.position === null) {
+            option.position = -1;
+        }
         position = option.position || 0;
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
+        if (option.position === null) {
+            option.position = -1;
+        }
         position = option.position || 0;
     } else if (typeof (offset) === "function") {
         callback = offset;
@@ -1029,19 +1035,49 @@ function read(fd, buffer, offset, length, position, callback) {
 }
 
 function readSync(fd, buffer, offset, length, position) {
-    if (typeof (offset) === "object") {
+    if (typeof (offset) === "object" && offset !== null) {
         let option = offset;
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
-        position = option.position || 0;
+        if (option.position === null || typeof(option.position) === "undefined") {
+            option.position = -1;
+        } else {
+            position = option.position;
+        }
     }
 
-    offset = offset || 0;
-    length = length || buffer.byteLength - offset;
-    position = position || 0;
+    if (typeof (offset) !== "number" || offset === Infinity) {
+        offset = 0;
+        length = buffer.byteLength;
+        position = -1;
+    } else {
+        offset = offset || 0;
+        length = length || buffer.byteLength - offset;
+        if (position === null) {
+            position = -1;
+        }
+        if (position === null || typeof(position) === "undefined") {
+            position = -1;
+        }
+    }
 
     validateInteger(offset, "offset");
-    validateInteger(position, "position");
+    
+    const nodePositionMin = -9223372036854775808n;
+    const nodePositionMax = 9223372036854775807n;
+    if (typeof (position) === "bigint") {
+        if (position < nodePositionMin || position > nodePositionMax) {
+            throw new errors.ERR_OUT_OF_RANGE("position", `>= ${nodePositionMin} && <= ${nodePositionMax}`, position);
+        } else if (position < Number.MIN_SAFE_INTEGER || position > Number.MAX_SAFE_INTEGER) {
+            let err = new Error();
+            err.code = "EFBIG";
+            throw err;
+        } else {
+            position = Number(position);
+        }
+    } else {
+        validateInteger(position, "position");
+    }
     validateInteger(length, "length");
 
     try {
@@ -1166,27 +1202,42 @@ function readFile(path, option, callback) {
         option = option || {};
     }
     setDefaultValue(option, {
-        encoding: encoding ||"",
+        encoding: encoding || "",
         flag: "r",
         signal: undefined
     })
     validateEncoding(option.encoding, "encoding");
     validateFunction(callback, "callback");
 
-    let fd = openSync(path, option.flag);
-    let stat = statSync(path);
+    let fd;
+    if (typeof (path) === "number") {
+        fd = path;
+    } else {
+        try {
+            fd = openSync(path, option.flag);
+        } catch (err) {
+            if (err.message === "File exists.") {
+                err.code = "EEXIST";
+            }
+            callback(err);
+            return;
+        }
+    }
+    let stat = fstatSync(fd);
     let len = stat.size;
     let buf = Buffer.alloc(len)
 
     read(fd, buf, (err, rlen, obuf) => {
+        if (typeof (path) !== "number") {
+            closeSync(fd);
+        }
         if (err) {
             callback(err);
         } else if (option.encoding !== "") {
-            callback(err, obuf.toString(option.encoding));
+            callback(err, obuf.slice(0, rlen).toString(option.encoding));
         } else {
-            callback(err, obuf);
+            callback(err, obuf.slice(0, rlen));
         }
-        closeSync(fd);
     })
 }
 
@@ -1205,16 +1256,31 @@ function readFileSync(path, option) {
         signal: undefined
     })
     validateEncoding(option.encoding, "encoding");
-    let fd = openSync(path, option.flag);
-    let stat = statSync(path);
+    let fd;
+    if (typeof (path) === "number") {
+        fd = path;
+    }
+    else {
+        try {
+            fd = openSync(path, option.flag);
+        } catch (err) {
+            if (err.message === "File exists.") {
+                err.code = "EEXIST";
+            }
+            throw err;
+        }
+    }
+    let stat = fstatSync(fd);
     let len = stat.size;
     let buf = Buffer.alloc(len)
     let rlen = readSync(fd, buf);
-    closeSync(fd);
+    if (typeof (path) !== "number") {
+        closeSync(fd);
+    }
     if (option.encoding !== "") {
-        return buf.toString(option.encoding);
+        return buf.slice(0, rlen).toString(option.encoding);
     } else {
-        return buf;
+        return buf.slice(0, rlen);
     }
 }
 
@@ -1250,6 +1316,7 @@ function readlink(path, option, callback) {
             encoding: option
         };
     }
+    path = getValidatedPath(path);
     setDefaultValue(option, {
         encoding: "utf8"
     });

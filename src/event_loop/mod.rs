@@ -462,7 +462,10 @@ impl IoSelector {
                         callback(
                             ctx,
                             match res {
-                                Ok(_) => PollResult::Read(buf),
+                                Ok(rlen) => {
+                                    buf.resize(rlen, 0);
+                                    PollResult::Read(buf)
+                                }
                                 Err(e) => {
                                     PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
                                 }
