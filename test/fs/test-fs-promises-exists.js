@@ -6,4 +6,4 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 
 assert.strictEqual(fsPromises, fs.promises);
-// assert.strictEqual(fsPromises.constants, fs.constants);
+assert.strictEqual(fsPromises.constants, fs.constants);

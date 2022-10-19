@@ -1,4 +1,4 @@
-import { validateFunction, validateInteger } from "../internal/validators"
+import { validateFunction, validateInteger, validateBoolean } from "../internal/validators"
 import { getValidatedPath, getValidMode, Stats, validateBufferArray, validateEncoding } from "../internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "../internal/errors"
@@ -277,10 +277,12 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
             return convertRawStatInfoToNodeStats(stat);
         }
     } catch (err) {
-        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
+        if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        throw new Error(err.message);
+        let e = new Error(err.message);
+        e.code = "E" + err.code;
+        throw e;
     }
 }
 
@@ -839,6 +841,9 @@ function copyFile(src, dest, mode, callback) {
         callback = mode;
         mode = 0;
     }
+    src = getValidatedPath(src, "src");
+    dest = getValidatedPath(dest, "dest");
+    validateInteger(mode, "mode", 0, 7);
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
@@ -851,10 +856,11 @@ function copyFile(src, dest, mode, callback) {
 }
 
 function copyFileSync(src, dest, mode = 0) {
-    src = getValidatedPath(src);
-    dest = getValidatedPath(dest);
+    src = getValidatedPath(src, "src");
+    dest = getValidatedPath(dest, "dest");
+    validateInteger(mode, "mode", 0, 7);
     try {
-        if (mode ^ constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
+        if (mode & constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
             if (existsSync(dest)) {
                 throw new Error(`EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
             }
@@ -1039,7 +1045,7 @@ function readSync(fd, buffer, offset, length, position) {
         let option = offset;
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
-        if (option.position === null || typeof(option.position) === "undefined") {
+        if (option.position === null || typeof (option.position) === "undefined") {
             option.position = -1;
         } else {
             position = option.position;
@@ -1056,36 +1062,37 @@ function readSync(fd, buffer, offset, length, position) {
         if (position === null) {
             position = -1;
         }
-        if (position === null || typeof(position) === "undefined") {
+        if (position === null || typeof (position) === "undefined") {
             position = -1;
         }
     }
 
     validateInteger(offset, "offset");
-    
+
+
     const nodePositionMin = -9223372036854775808n;
     const nodePositionMax = 9223372036854775807n;
     if (typeof (position) === "bigint") {
         if (position < nodePositionMin || position > nodePositionMax) {
             throw new errors.ERR_OUT_OF_RANGE("position", `>= ${nodePositionMin} && <= ${nodePositionMax}`, position);
-        } else if (position < Number.MIN_SAFE_INTEGER || position > Number.MAX_SAFE_INTEGER) {
-            let err = new Error();
-            err.code = "EFBIG";
-            throw err;
         } else {
             position = Number(position);
         }
     } else {
         validateInteger(position, "position");
     }
-    validateInteger(length, "length");
 
+    position = Number(position);
     try {
         let data = binding.freadSync(fd, position, length);
         buffer.fill(data, offset, offset + data.byteLength);
         return data.byteLength;
     } catch (err) {
-        throw new Error(err.message);
+        let e = new Error(err.message);
+        if (err.code === "INVAL") {
+            e.code = "EOVERFLOW"
+        }
+        throw e;
     }
 }
 
@@ -1289,12 +1296,15 @@ function readlinkSync(path, option) {
     if (typeof (option) === "string") {
         option = {
             encoding: option
-        }
+        };
+    } else {
+        option = option || {};
     }
     setDefaultValue(option, {
         encoding: "utf8"
     });
     validateEncoding(option.encoding, "encoding");
+    print(path);
     try {
         let res = binding.readlinkSync(path);
         if (option.encoding === "buffer" || option.encoding === "Buffer") {
@@ -1687,24 +1697,30 @@ class Dir {
 
     #fetch() {
         if (this.#idx === this.#dataBuf.length && !this.#fin) {
-            let data = binding.freaddirSync(this.#fd, this.#cookie);
-            this.#dataBuf.push(...data.res);
-            this.#fin = data.fin;
-            this.#cookie = data.cookie;
+            try {
+                let data = binding.freaddirSync(this.#fd, this.#cookie);
+                this.#dataBuf.push(...data.res.filter(d => d.name !== "." && d.name !== ".."));
+                this.#fin = data.fin;
+                this.#cookie = data.cookie;
+            } catch (err) {
+                let e = new Error(err.message);
+                e.code = err.code;
+                throw e;
+            }
         }
         return !(this.#idx === this.#dataBuf.length && this.#fin);
     }
 
     close(callback) {
         if (callback) {
-            close(fd, callback);
+            close(this.#fd, callback);
         } else {
-            return fs.promises.close(fd);
+            return fs.promises.close(this.#fd);
         }
     }
 
     closeSync() {
-        closeSync(fd);
+        closeSync(this.#fd);
     }
 
     read(callback) {
@@ -1874,6 +1890,15 @@ const validateObject = hideStackFrames(
         }
     });
 
+const defaultCpOptions = {
+    dereference: false,
+    errorOnExist: false,
+    filter: undefined,
+    force: true,
+    preserveTimestamps: false,
+    recursive: false,
+    verbatimSymlinks: false,
+};
 
 const validateCpOptions = hideStackFrames((options) => {
     if (options === undefined)

@@ -159,7 +159,7 @@ export const validateInteger = hideStackFrames(
             throw new ERR_OUT_OF_RANGE(name, "an integer", value);
         }
         if (value < min || value > max) {
-            throw new ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
+            throw new ERR_OUT_OF_RANGE(name, `an integer >= ${min} && <= ${max}`, value);
         }
     },
 );

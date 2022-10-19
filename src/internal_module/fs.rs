@@ -91,6 +91,8 @@ fn err_to_js_object(ctx: &mut Context, e: io::Error) -> JsValue {
 fn errno_to_js_object(ctx: &mut Context, e: wasi_fs::Errno) -> JsValue {
     let mut res = ctx.new_object();
     res.set("message", JsValue::String(ctx.new_string(e.message())));
+    res.set("code", JsValue::String(ctx.new_string(e.name())));
+    res.set("errno", JsValue::Int(e.raw() as i32));
     JsValue::Object(res)
 }
 

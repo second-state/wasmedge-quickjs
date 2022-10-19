@@ -27,7 +27,19 @@ const {
   ERR_FS_EISDIR,
   ERR_INVALID_RETURN_VALUE,
 } = codes;
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, opendirSync, readlinkSync, statSync, symlinkSync, unlinkSync, utimesSync } from 'fs';
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  opendirSync,
+  readlinkSync,
+  statSync,
+  symlinkSync,
+  unlinkSync,
+  utimesSync
+} from "internal/fs";
 import { dirname, isAbsolute, join, parse, resolve } from 'path';
 import { isPromise } from 'util/types';
 
@@ -108,9 +120,10 @@ function getStatsSync(src, dest, opts) {
 function checkParentPathsSync(src, srcStat, dest) {
   const srcParent = resolve(dirname(src));
   const destParent = resolve(dirname(dest));
-  if (destParent === srcParent || destParent === parse(destParent).root) return;
+  // there is not root path in wasm32-wasi
+  if (destParent === srcParent || destParent === parse(destParent).root || destParent === ".") return;
   let destStat;
-  try {
+  try {  
     destStat = statSync(destParent, { bigint: true });
   } catch (err) {
     if (err.code === 'ENOENT') return;
@@ -149,7 +162,6 @@ function startCopy(destStat, src, dest, opts) {
 function getStats(destStat, src, dest, opts) {
   const statSyncFn = opts.dereference ? statSync : lstatSync;
   const srcStat = statSyncFn(src);
-
   if (srcStat.isDirectory() && opts.recursive) {
     return onDir(srcStat, destStat, src, dest, opts);
   } else if (srcStat.isDirectory()) {
@@ -329,4 +341,4 @@ function copyLink(resolvedSrc, dest) {
   return symlinkSync(resolvedSrc, dest);
 }
 
-export default { cpSyncFn };
+export default cpSyncFn;

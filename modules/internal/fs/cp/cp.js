@@ -120,7 +120,7 @@ function getStats(src, dest, opts) {
     (file) => lstat(file, { bigint: true });
   return SafePromiseAll([
     statFunc(src),
-    PromisePrototypeThen(statFunc(dest), undefined, (err) => {
+    Promise.prototype.then.call(statFunc(dest), undefined, (err) => {
       if (err.code === 'ENOENT') return null;
       throw err;
     }),
@@ -136,7 +136,7 @@ async function checkParentDir(destStat, src, dest, opts) {
 }
 
 function pathExists(dest) {
-  return PromisePrototypeThen(
+  return Promise.prototype.then.call(
     stat(dest),
     () => true,
     (err) => (err.code === 'ENOENT' ? false : PromiseReject(err)));
@@ -172,14 +172,14 @@ async function checkParentPaths(src, srcStat, dest) {
 }
 
 const normalizePathToArray = (path) =>
-  ArrayPrototypeFilter(StringPrototypeSplit(resolve(path), sep), Boolean);
+  Array.prototype.filter.call(String.prototype.split.call(resolve(path), sep), Boolean);
 
 // Return true if dest is a subdir of src, otherwise false.
 // It only checks the path strings.
 function isSrcSubdir(src, dest) {
   const srcArr = normalizePathToArray(src);
   const destArr = normalizePathToArray(dest);
-  return ArrayPrototypeEvery(srcArr, (cur, i) => destArr[i] === cur);
+  return Array.prototype.every.call(srcArr, (cur, i) => destArr[i] === cur);
 }
 
 async function handleFilter(onInclude, destStat, src, dest, opts, cb) {
