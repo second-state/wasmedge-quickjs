@@ -6,7 +6,7 @@ import { hideStackFrames } from "../internal/errors"
 export { fs as constants } from "../internal_binding/constants"
 import { fs as constants, fs } from "../internal_binding/constants"
 import { Buffer } from 'buffer';
-import { promisify } from "../internal/util"
+import { kCustomPromisifiedSymbol, promisify } from "../internal/util"
 import { cpFn } from "../internal/fs/cp/cp";
 import cpSyncFn from "../internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "../internal/fs/stream"
@@ -994,6 +994,22 @@ function fdatasyncSync(fd) {
     }
 }
 
+function fread(fd, position, length) {
+    // poll a file will make infinite loop in wasmedge, so fallback to readSync
+    let stat = fstatSync(fd);
+    if (stat.isFile()) {
+        return new Promise((res, rej) => {
+            try {
+                res(binding.freadSync(fd, position, length));
+            } catch (e) {
+                rej(e);
+            }
+        })
+    } else {
+        return binding.fread(fd, position, length);
+    }
+}
+
 function read(fd, buffer, offset, length, position, callback) {
     if (typeof (buffer) === "function") {
         callback = buffer;
@@ -1032,11 +1048,13 @@ function read(fd, buffer, offset, length, position, callback) {
     validateInteger(position, "position");
     validateInteger(length, "length");
 
-    binding.fread(fd, position, length).then((data) => {
+    fread(fd, position, length).then((data) => {
         buffer.fill(data, offset, data.byteLength);
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
-        callback(e)
+        let err = new Error(e.message);
+        err.code = e.code;
+        callback(err);
     })
 }
 
@@ -1200,6 +1218,7 @@ function open(path, flag = "r", mode = 0o666, callback) {
 function readFile(path, option, callback) {
     if (typeof (option) === "function") {
         callback = option;
+        option = {};
     }
     let encoding = undefined;
     if (typeof (option) === "string") {
@@ -1311,8 +1330,10 @@ function readlinkSync(path, option) {
             return Buffer.from(res);
         }
         return res;
-    } catch (err) {
-        throw new Error(err.message);
+    } catch (e) {
+        let err = new Error(e.message);
+        err.code = e.code;
+        callback(err);
     }
 }
 
@@ -1354,18 +1375,33 @@ function readv(fd, buffer, position, callback) {
     for (const buf of buffer) {
         length += buf.byteLength;
     }
-
-    binding.fread(fd, position, length).then((data) => {
+    fread(fd, position, length).then((data) => {
         let off = 0;
+        let databuf = Buffer.from(data);
         for (const buf of buffer) {
             if (buf.byteLength !== 0) {
-                buf.fill(data.slice(off, off + buf.byteLength));
+                databuf.copy(buf, 0, off, off + buf.byteLength);
+                // buf.fill(data.slice(off, off + buf.byteLength), 0, buf.byteLength);
                 off += buf.byteLength;
             }
         }
-        callback(null, data.byteLength, buffer)
+        callback(null, databuf.byteLength, buffer)
     }).catch((e) => {
-        callback(e)
+        let err = new Error(e.message);
+        err.code = e.code;
+        callback(err);
+    })
+}
+
+readv[kCustomPromisifiedSymbol] = (fd, buffer, position) => {
+    return new Promise((res, rej) => {
+        readv(fd, buffer, position, (err, bytesRead, buffers) => {
+            if (err !== null) {
+                rej(err);
+            } else {
+                res({ bytesRead, buffers });
+            }
+        })
     })
 }
 
@@ -1387,6 +1423,22 @@ function readvSync(fd, buffer, position = 0) {
         }
     }
     return data.byteLength;
+}
+
+function fwrite(fd, position, buffer) {
+    // poll a file will make infinite loop in wasmedge, so fallback to readSync
+    let stat = fstatSync(fd);
+    if (stat.isFile()) {
+        return new Promise((res, rej) => {
+            try {
+                res(binding.fwriteSync(fd, position, buffer));
+            } catch (e) {
+                rej(e);
+            }
+        })
+    } else {
+        return binding.fwrite(fd, position, buffer);
+    }
 }
 
 function write(fd, buffer, offset, length, position, callback) {
@@ -1424,14 +1476,16 @@ function write(fd, buffer, offset, length, position, callback) {
     validateInteger(position, "position");
     validateInteger(length, "length");
 
-    binding.fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
-        if (oriStr !== null) {
-            callback(null, len, buffer.slice(offset, offset + len));
+    fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
+        if (oriStr === null) {
+            callback(null, len, buffer.buffer.slice(offset, offset + len));
         } else {
             callback(null, len, oriStr.slice(offset, offset + len));
         }
     }).catch((e) => {
-        callback(e);
+        let err = new Error(e.message);
+        err.code = e.code;
+        callback(err);
     })
 }
 
@@ -1471,8 +1525,10 @@ function writeSync(fd, buffer, offset, length, position) {
     try {
         let len = binding.fwriteSync(fd, position, buffer.buffer.slice(offset, offset + length));
         return len;
-    } catch (err) {
-        throw new Error(err.message);
+    } catch (e) {
+        let err = new Error(e.message);
+        err.code = e.code;
+        callback(err);
     }
 }
 
@@ -1625,7 +1681,7 @@ function writev(fd, buffer, position, callback) {
 
     let buf = new Blob([...buffer])
 
-    binding.fwrite(fd, position, buf.arrayBuffer()).then((len) => {
+    fwrite(fd, position, buf.arrayBuffer()).then((len) => {
         callback(null, len, buffer)
     }).catch((e) => {
         callback(e)

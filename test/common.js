@@ -59,7 +59,7 @@ export function mustNotMutateObjectDeep(obj = {}) {
 export function mustSucceed(fn) {
   return (err, ...args) => {
     assert.equal(err, null);
-    fn(args)
+    fn(...args)
   };
 }
 

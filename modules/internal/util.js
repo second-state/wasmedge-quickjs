@@ -78,7 +78,7 @@ export function deprecate(fn, msg, code) {
 // In addition to being accessible through util.promisify.custom,
 // this symbol is registered globally and can be accessed in any environment as
 // Symbol.for('nodejs.util.promisify.custom').
-const kCustomPromisifiedSymbol = Symbol.for("nodejs.util.promisify.custom");
+export const kCustomPromisifiedSymbol = Symbol.for("nodejs.util.promisify.custom");
 // This is an internal Node symbol used by functions returning multiple
 // arguments, e.g. ['bytesRead', 'buffer'] for fs.read().
 const kCustomPromisifyArgsSymbol = Symbol.for(

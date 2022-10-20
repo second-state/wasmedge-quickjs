@@ -36,7 +36,6 @@ fn test_fs_append_file_sync() {
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_append_file() {
     test_js_file("test/fs/test-fs-append-file.js");
 }
@@ -97,7 +96,6 @@ fn test_fs_promises_exists() {
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_promises_file_handle_close_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
 }
@@ -113,31 +111,26 @@ fn test_fs_promises_file_handle_stat() {
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readfile_empty() {
     test_js_file("test/fs/test-fs-readfile-empty.js");
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readfile_fd() {
     test_js_file("test/fs/test-fs-readfile-fd.js");
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readfile_flags() {
     test_js_file("test/fs/test-fs-readfile-flags.js");
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readfile_unlink() {
     test_js_file("test/fs/test-fs-readfile-unlink.js");
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readfile_zero_byte_liar() {
     test_js_file("test/fs/test-fs-readfile-zero-byte-liar.js");
 }
@@ -158,13 +151,11 @@ fn test_fs_read_sync_position_validation() {
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readv_promises() {
     test_js_file("test/fs/test-fs-readv-promises.js");
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readv_promisify() {
     test_js_file("test/fs/test-fs-readv-promisify.js");
 }
@@ -175,7 +166,6 @@ fn test_fs_readv_sync() {
 }
 
 #[test]
-#[ignore = "https://github.com/second-state/wasmedge-quickjs/pull/84#issuecomment-1278664721"]
 fn test_fs_readv() {
     test_js_file("test/fs/test-fs-readv.js");
 }

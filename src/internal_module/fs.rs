@@ -569,7 +569,7 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
                 if let Some(event_loop) = ctx.event_loop() {
                     if position != -1 {
                         let res = unsafe {
-                            wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_CUR)
+                            wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET)
                         };
                         if let Err(e) = res {
                             let err = errno_to_js_object(ctx, e);
@@ -608,7 +608,7 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 if position != -1 {
                     let res = unsafe {
-                        wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_CUR)
+                        wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET)
                     };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);
