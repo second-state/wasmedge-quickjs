@@ -16,33 +16,34 @@ export function hideStackFrames(fn) {
 export class ERR_HTTP_HEADERS_SENT extends Error {
     constructor(x) {
         super(
-            "ERR_HTTP_HEADERS_SENT",
             `Cannot ${x} headers after they are sent to the client`,
         );
+        this.code = "ERR_HTTP_HEADERS_SENT";
     }
 }
 
 export class ERR_HTTP_INVALID_HEADER_VALUE extends TypeError {
     constructor(x, y) {
         super(
-            "ERR_HTTP_INVALID_HEADER_VALUE",
             `Invalid value "${x}" for header "${y}"`,
         );
+        this.code = "ERR_HTTP_INVALID_HEADER_VALUE";
     }
 }
 
 export class ERR_HTTP_TRAILER_INVALID extends Error {
     constructor() {
         super(
-            "ERR_HTTP_TRAILER_INVALID",
             `Trailers are invalid with this transfer encoding`,
         );
+        this.code = "ERR_HTTP_TRAILER_INVALID";
     }
 }
 
 export class ERR_INVALID_HTTP_TOKEN extends TypeError {
     constructor(x, y) {
-        super("ERR_INVALID_HTTP_TOKEN", `${x} must be a valid HTTP token ["${y}"]`);
+        super(`${x} must be a valid HTTP token ["${y}"]`);
+        this.code = "ERR_INVALID_HTTP_TOKEN";
     }
 }
 
@@ -286,37 +287,40 @@ export class ERR_METHOD_NOT_IMPLEMENTED extends Error {
 
 export class ERR_STREAM_CANNOT_PIPE extends Error {
     constructor() {
-        super("ERR_STREAM_CANNOT_PIPE", `Cannot pipe, not readable`);
+        super(`Cannot pipe, not readable`);
+        this.code = "ERR_STREAM_CANNOT_PIPE";
     }
 }
 
 export class ERR_STREAM_ALREADY_FINISHED extends Error {
     constructor(x) {
         super(
-            "ERR_STREAM_ALREADY_FINISHED",
             `Cannot call ${x} after a stream was finished`,
         );
+        this.code = "ERR_STREAM_ALREADY_FINISHED";
     }
 }
 
 export class ERR_STREAM_WRITE_AFTER_END extends Error {
     constructor() {
-        super("ERR_STREAM_WRITE_AFTER_END", `write after end`);
+        super(`write after end`);
+        this.code = "ERR_STREAM_WRITE_AFTER_END";
     }
 }
 
 export class ERR_STREAM_NULL_VALUES extends TypeError {
     constructor() {
-        super("ERR_STREAM_NULL_VALUES", `May not write null values to stream`);
+        super(`May not write null values to stream`);
+        this.code = "ERR_STREAM_NULL_VALUES";
     }
 }
 
 export class ERR_STREAM_DESTROYED extends Error {
     constructor(x) {
         super(
-            "ERR_STREAM_DESTROYED",
             `Cannot call ${x} after a stream was destroyed`,
         );
+        this.code = "ERR_STREAM_DESTROYED";
     }
 }
 
@@ -352,15 +356,16 @@ export class ERR_SOCKET_BAD_PORT extends RangeError {
         const operator = allowZero ? ">=" : ">";
 
         super(
-            "ERR_SOCKET_BAD_PORT",
             `${name} should be ${operator} 0 and < 65536. Received ${port}.`,
         );
+        this.code = "ERR_SOCKET_BAD_PORT";
     }
 }
 
 export class ERR_STREAM_PREMATURE_CLOSE extends Error {
     constructor() {
-        super("ERR_STREAM_PREMATURE_CLOSE", `Premature close`);
+        super(`Premature close`);
+        this.code = "ERR_STREAM_PREMATURE_CLOSE";
     }
 }
 
@@ -375,9 +380,9 @@ export class AbortError extends Error {
 export class ERR_INVALID_CALLBACK extends TypeError {
     constructor(object) {
         super(
-            "ERR_INVALID_CALLBACK",
             `Callback must be a function. Received ${JSON.stringify(object)}`,
         );
+        this.code = "ERR_INVALID_CALLBACK";
     }
 }
 
@@ -406,38 +411,43 @@ export class ERR_MISSING_ARGS extends TypeError {
                 break;
         }
 
-        super("ERR_MISSING_ARGS", `${msg} must be specified`);
+        super(`${msg} must be specified`);
+        this.code = "ERR_MISSING_ARGS";
     }
 }
 export class ERR_MISSING_OPTION extends TypeError {
     constructor(x) {
-        super("ERR_MISSING_OPTION", `${x} is required`);
+        super(`${x} is required`);
+        this.code = "ERR_MISSING_OPTION";
     }
 }
 export class ERR_MULTIPLE_CALLBACK extends Error {
     constructor() {
-        super("ERR_MULTIPLE_CALLBACK", `Callback called multiple times`);
+        super(`Callback called multiple times`);
+        this.code = "ERR_MULTIPLE_CALLBACK";
     }
 }
 
 export class ERR_STREAM_PUSH_AFTER_EOF extends Error {
     constructor() {
-        super("ERR_STREAM_PUSH_AFTER_EOF", `stream.push() after EOF`);
+        super(`stream.push() after EOF`);
+        this.code = "ERR_STREAM_PUSH_AFTER_EOF";
     }
 }
 
 export class ERR_STREAM_UNSHIFT_AFTER_END_EVENT extends Error {
     constructor() {
         super(
-            "ERR_STREAM_UNSHIFT_AFTER_END_EVENT",
             `stream.unshift() after end event`,
         );
+        this.code = "ERR_STREAM_UNSHIFT_AFTER_END_EVENT";
     }
 }
 
 export class ERR_UNKNOWN_ENCODING extends TypeError {
     constructor(x) {
-        super("ERR_UNKNOWN_ENCODING", `Unknown encoding: ${x}`);
+        super(`Unknown encoding: ${x}`);
+        this.code = "ERR_UNKNOWN_ENCODING";
     }
 }
 
@@ -452,18 +462,18 @@ function buildReturnPropertyType(value) {
 export class ERR_INVALID_RETURN_VALUE extends TypeError {
     constructor(input, name, value) {
         super(
-            "ERR_INVALID_RETURN_VALUE",
             `Expected ${input} to be returned from the "${name}" function but got ${buildReturnPropertyType(value)}.`,
         );
+        this.code = "ERR_INVALID_RETURN_VALUE";
     }
 }
 
 export class ERR_INCOMPATIBLE_OPTION_PAIR extends TypeError {
     constructor(input, name) {
         super(
-            "ERR_INCOMPATIBLE_OPTION_PAIR",
             `Option "${input}" cannot be used in combination with option "${name}"`,
         );
+        this.code = "ERR_INCOMPATIBLE_OPTION_PAIR";
     }
 }
 
@@ -484,7 +494,7 @@ export const captureStackTrace = hideStackFrames(
 
 const captureLargerStackTrace = hideStackFrames(
     function captureLargerStackTrace(err) {
-        Error.captureStackTrace(err);
+        captureStackTrace(err);
 
         return err;
     },
@@ -521,6 +531,8 @@ export class NodeErrorAbstraction extends Error {
     }
 }
 
+const kIsNodeError = Symbol("kIsNodeError");
+
 /**
  * @typedef {Object} NodeSystemErrorCtx
  * @property {string} code
@@ -550,8 +562,7 @@ class NodeSystemError extends NodeErrorAbstraction {
         }
 
         super("SystemError", key, message);
-
-        captureLargerStackTrace(this);
+        // captureLargerStackTrace(this);
 
         Object.defineProperties(this, {
             [kIsNodeError]: {

@@ -76,6 +76,11 @@ fn test_fs_copyfile() {
 }
 
 #[test]
+fn test_fs_cp() {
+    test_js_file("test/fs/test-fs-cp.js");
+}
+
+#[test]
 fn test_fs_exists() {
     test_js_file("test/fs/test-fs-exists.js");
 }

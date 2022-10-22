@@ -42,6 +42,7 @@ import {
 } from "internal/fs";
 import { dirname, isAbsolute, join, parse, resolve } from 'path';
 import { isPromise } from 'util/types';
+import process from "process";
 
 function cpSyncFn(src, dest, opts) {
   // Warn about using preserveTimestamps on 32-bit node

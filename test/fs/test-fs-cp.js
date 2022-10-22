@@ -20,8 +20,7 @@ import { join } from 'path';
 import { pathToFileURL } from 'url';
 import process from 'process';
 
-// const rawSetTimeout = setTimeout;
-const setTimeout = (timeout, val) => {
+const setTimeoutAsync = (timeout, val) => {
   return new Promise((res, rej) => {
     setTimeout(() => {
       res(val);
@@ -87,7 +86,8 @@ function nextdir() {
   assert(stat.isFile());
 }
 
-
+// path_readlink is unusable in wasmedge, so skip the tests about symlink
+/*
 // It copies file itself, rather than symlink, when dereference is true.
 {
   const src = nextdir();
@@ -104,7 +104,7 @@ function nextdir() {
   assert(stat.isFile());
 }
 
-/*
+
 // It throws error when verbatimSymlinks is not a boolean.
 {
   const src = './test/fixtures/copy/kitchen-sink';
@@ -175,7 +175,7 @@ function nextdir() {
   assert.strictEqual(link, 'foo.js');
 }
 
-
+*/
 // It throws error when src and dest are identical.
 {
   const src = './test/fixtures/copy/kitchen-sink';
@@ -184,7 +184,7 @@ function nextdir() {
     { code: 'ERR_FS_CP_EINVAL' }
   );
 }
-
+/*
 // It throws error if symlink in src points to location in dest.
 {
   const src = nextdir();
@@ -230,7 +230,7 @@ function nextdir() {
     { code: 'ERR_FS_CP_EINVAL' }
   );
 }
-
+*/
 // It throws error if attempt is made to copy directory to file.
 {
   const src = nextdir();
@@ -336,7 +336,7 @@ if (!isWindows && false) {
   assert.throws(() => {
     cpSync(src, dest, {
       filter: async (path) => {
-        await setTimeout(5, 'done');
+        await setTimeoutAsync(5, 'done');
         const pathStat = statSync(path);
         return pathStat.isDirectory() || path.endsWith('.js');
       },
@@ -362,7 +362,7 @@ if (!isWindows && false) {
     { code: 'ERR_FS_CP_EEXIST' }
   );
 }
-
+/*
 // It throws EEXIST error if attempt is made to copy symlink over file.
 {
   const src = nextdir();
@@ -377,7 +377,7 @@ if (!isWindows && false) {
     { code: 'EEXIST' }
   );
 }
-
+*/
 // It makes file writeable when updating timestamp, if not writeable.
 {
   const src = nextdir();
@@ -391,7 +391,7 @@ if (!isWindows && false) {
   const destStat = lstatSync(join(dest, 'foo.txt'));
   assert.strictEqual(srcStat.mtime.getTime(), destStat.mtime.getTime());
 }
-
+/*
 // It copies link if it does not point to folder in src.
 {
   const src = nextdir();
@@ -404,7 +404,7 @@ if (!isWindows && false) {
   const link = readlinkSync(join(dest, 'a', 'c'));
   assert.strictEqual(link, src);
 }
-
+*/
 // It accepts file URL as src and dest.
 {
   const src = './test/fixtures/copy/kitchen-sink';
@@ -485,7 +485,7 @@ if (!isWindows && false) {
     assert(stat.isFile());
   }));
 }
-
+/*
 // It copies file itself, rather than symlink, when dereference is true.
 {
   const src = nextdir();
@@ -505,7 +505,7 @@ if (!isWindows && false) {
     })
   );
 }
-
+*/
 // It returns error when src and dest are identical.
 {
   const src = './test/fixtures/copy/kitchen-sink';
@@ -513,7 +513,7 @@ if (!isWindows && false) {
     assert.strictEqual(err.code, 'ERR_FS_CP_EINVAL');
   }));
 }
-
+/*
 // It returns error if symlink in src points to location in dest.
 {
   const src = nextdir();
@@ -554,7 +554,7 @@ if (!isWindows && false) {
     assert.strictEqual(err.code, 'ERR_FS_CP_EINVAL');
   }));
 }
-
+*/
 // It returns error if attempt is made to copy directory to file.
 {
   const src = nextdir();
@@ -696,7 +696,7 @@ if (!isWindows && false) {
     assert.strictEqual(err.code, 'ERR_FS_CP_EEXIST');
   }));
 }
-
+/*
 // It returns EEXIST error if attempt is made to copy symlink over file.
 {
   const src = nextdir();
@@ -710,7 +710,7 @@ if (!isWindows && false) {
     assert.strictEqual(err.code, 'EEXIST');
   }));
 }
-
+*/
 // It makes file writeable when updating timestamp, if not writeable.
 {
   const src = nextdir();
@@ -729,7 +729,7 @@ if (!isWindows && false) {
     assert.strictEqual(srcStat.mtime.getTime(), destStat.mtime.getTime());
   }));
 }
-
+/*
 // It copies link if it does not point to folder in src.
 {
   const src = nextdir();
@@ -744,7 +744,7 @@ if (!isWindows && false) {
     assert.strictEqual(link, src);
   }));
 }
-
+*/
 // It accepts file URL as src and dest.
 {
   const src = './test/fixtures/copy/kitchen-sink';
@@ -811,7 +811,7 @@ if (!isWindows && false) {
     { code: 'ERR_INVALID_ARG_TYPE' }
   );
 })();
-*/
+
 function assertDirEquivalent(dir1, dir2) {
   const dir1Entries = [];
   collectEntries(dir1, dir1Entries);
