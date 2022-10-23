@@ -1,6 +1,6 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 'use strict';
-require('../common');
+
 import assert from 'assert';
 import fs from 'fs';
 import { join } from 'path';

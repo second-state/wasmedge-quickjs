@@ -24,7 +24,7 @@
 
 import { inspect } from "internal/util/inspect";
 
-import assert, { AssertionError } from "assert";
+import assert from "assert";
 import process from "process";
 
 const isWindows = process.platform === 'win32';
@@ -38,15 +38,99 @@ const isPi = false;
 const isMainThread = true;
 const isDumbTerminal = process.env.TERM === 'dumb';
 
-export function mustCall(fn) {
-  return typeof (fn) === "function" ? fn : (() => { });
+const mustCallChecks = [];
+
+function runCallChecks(exitCode) {
+  if (exitCode !== 0) return;
+
+  const failed = mustCallChecks.filter(function(context) {
+    if ('minimum' in context) {
+      context.messageSegment = `at least ${context.minimum}`;
+      return context.actual < context.minimum;
+    }
+    context.messageSegment = `exactly ${context.exact}`;
+    return context.actual !== context.exact;
+  });
+
+  failed.forEach(function(context) {
+    print('Mismatched %s function calls. Expected %s, actual %d.',
+                context.name,
+                context.messageSegment,
+                context.actual);
+    print(context.stack.split('\n').slice(2).join('\n'));
+  });
+
+  assert.strictEqual(failed.length, 0);
 }
 
-export function mustCallAtLeast(fn) {
-  return typeof (fn) === "function" ? fn : (() => { });
+const noop = () => {};
+
+function _mustCallInner(fn, criteria = 1, field) {
+  if (typeof fn === 'number') {
+    criteria = fn;
+    fn = noop;
+  } else if (fn === undefined) {
+    fn = noop;
+  }
+
+  if (typeof criteria !== 'number')
+    throw new TypeError(`Invalid ${field} value: ${criteria}`);
+
+  const context = {
+    [field]: criteria,
+    actual: 0,
+    stack: inspect(new Error()),
+    name: fn.name || '<anonymous>'
+  };
+
+  // Add the exit listener only once to avoid listener leak warnings
+  if (mustCallChecks.length === 0) {
+    globalThis.commonExitCheck = runCallChecks;
+  };
+
+  mustCallChecks.push(context);
+
+  const _return = function() { // eslint-disable-line func-style
+    context.actual++;
+    return fn.apply(this, arguments);
+  };
+  // Function instances have own properties that may be relevant.
+  // Let's replicate those properties to the returned function.
+  // Refs: https://tc39.es/ecma262/#sec-function-instances
+  Object.defineProperties(_return, {
+    name: {
+      value: fn.name,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    },
+    length: {
+      value: fn.length,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    },
+  });
+  return _return;
 }
 
-function mustNotCall(msg) {
+export function mustCall(fn, exact) {
+  return _mustCallInner(fn, exact, 'exact');
+}
+
+export function mustSucceed(fn, exact) {
+  return mustCall(function(err, ...args) {
+    assert.ifError(err);
+    if (typeof fn === 'function')
+      return fn.apply(this, args);
+  }, exact);
+}
+
+export function mustCallAtLeast(fn, minimum) {
+  return _mustCallInner(fn, minimum, 'minimum');
+}
+
+export function mustNotCall(msg) {
   const callSite = new Error().stack;
   return function mustNotCall(...args) {
     const argsInfo = args.length > 0 ?
@@ -101,19 +185,6 @@ export function mustNotMutateObjectDeep(original) {
   const proxy = new Proxy(original, _mustNotMutateObjectDeepHandler);
   _mustNotMutateObjectDeepProxies.set(original, proxy);
   return proxy;
-}
-
-export function mustSucceed(fn) {
-  return mustCall((err, ...args) => {
-    if (err !== null) {
-      print(err);
-      print(err.stack);
-    }
-    assert.ifError(err);
-    if (typeof (fn) === "function") {
-      fn(...args);
-    }
-  });
 }
 
 export function invalidArgTypeHelper(input) {

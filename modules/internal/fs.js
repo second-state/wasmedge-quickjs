@@ -1,5 +1,5 @@
 import { validateFunction, validateInteger, validateBoolean } from "../internal/validators"
-import { getValidatedPath, getValidMode, Stats, validateBufferArray, validateEncoding } from "../internal/fs/utils"
+import { getValidatedPath, getValidMode, Stats, validateBufferArray, validateEncoding, stringToFlags } from "../internal/fs/utils"
 import * as binding from "_node:fs"
 import * as errors from "../internal/errors"
 import { hideStackFrames } from "../internal/errors"
@@ -111,38 +111,37 @@ function applyDefaultValue(dest, def) {
  * @property {number | null} birthtime
  */
 
-/**
- * @param {RawStat} origin
- * @return {Stats}
- */
-function convertRawStatInfoToNodeStats(origin) {
-    return {
-        dev: origin.dev,
-        ino: origin.ino,
-        mode: origin.mode,
-        nlink: origin.nlink,
-        uid: origin.uid,
-        gid: origin.gid,
-        rdev: origin.rdev,
-        size: origin.size,
-        blksize: origin.blksize,
-        blocks: origin.blocks,
-        mtime: new Date(origin.mtime),
-        atime: new Date(origin.atime),
-        birthtime: new Date(origin.birthtime),
-        mtimeMs: origin.mtime,
-        atimeMs: origin.atime,
-        birthtimeMs: origin.birthtime,
-        isFile: () => origin.is_file,
-        isDirectory: () => origin.is_directory,
-        isSymbolicLink: () => origin.is_symlink,
-        isBlockDevice: () => origin.is_block_device,
-        isFIFO: () => false,
-        isCharacterDevice: () => origin.is_char_device,
-        isSocket: () => origin.is_socket,
-        ctime: new Date(origin.mtime),
-        ctimeMs: origin.mtime,
-    };
+class Stats {
+    #origin = {};
+
+    constructor(origin) {
+        this.dev = origin.dev;
+        this.ino = origin.ino;
+        this.mode = origin.mode;
+        this.nlink = origin.nlink;
+        this.uid = origin.uid;
+        this.gid = origin.gid;
+        this.rdev = origin.rdev;
+        this.size = origin.size || 0;
+        this.blksize = origin.blksize;
+        this.blocks = origin.blocks;
+        this.mtime = new Date(origin.mtime);
+        this.atime = new Date(origin.atime);
+        this.birthtime = new Date(origin.birthtime);
+        this.mtimeMs = origin.mtime;
+        this.atimeMs = origin.atime;
+        this.birthtimeMs = origin.birthtime;
+        this.ctime = new Date(origin.mtime);
+        this.ctimeMs = origin.mtime;
+        this.#origin = origin;
+    }
+    isFile() { return this.#origin.is_file; }
+    isDirectory() { return this.#origin.is_directory };
+    isSymbolicLink() { return this.#origin.is_symlink };
+    isBlockDevice() { return this.#origin.is_block_device };
+    isFIFO() { return false };
+    isCharacterDevice() { return this.#origin.is_char_device };
+    isSocket() { return this.#origin.is_socket };
 }
 
 /**
@@ -155,47 +154,42 @@ function toBigInt(number) {
     return BigInt(number);
 }
 
-/**
- * 
- * @param {RawStat} origin 
- * @returns {BigIntStats}
- */
-function convertRawStatInfoToBigIntNodeStats(
-    origin,
-) {
-    return {
-        dev: toBigInt(origin.dev),
-        ino: toBigInt(origin.ino),
-        mode: toBigInt(origin.mode),
-        nlink: toBigInt(origin.nlink),
-        uid: toBigInt(origin.uid),
-        gid: toBigInt(origin.gid),
-        rdev: toBigInt(origin.rdev),
-        size: toBigInt(origin.size) || 0n,
-        blksize: toBigInt(origin.blksize),
-        blocks: toBigInt(origin.blocks),
-        mtime: new Date(origin.mtime),
-        atime: new Date(origin.atime),
-        birthtime: new Date(origin.birthtime),
-        mtimeMs: toBigInt(origin.mtime),
-        atimeMs: toBigInt(origin.atime),
-        birthtimeMs: toBigInt(origin.birthtime),
-        mtimeNs: toBigInt(origin.mtime) * 1000000n,
-        atimeNs: toBigInt(origin.atime) * 1000000n,
-        birthtimeNs: toBigInt(origin.birthtime) * 1000000n,
-        isFile: () => origin.is_file,
-        isDirectory: () => origin.is_directory,
-        isSymbolicLink: () => origin.is_symlink,
-        isBlockDevice: () => origin.is_block_device,
-        isFIFO: () => false,
-        isCharacterDevice: () => origin.is_char_device,
-        isSocket: () => origin.is_socket,
-        ctime: new Date(origin.mtime),
-        ctimeMs: toBigInt(origin.mtime),
-        ctimeNs: toBigInt(origin.mtime) * 1000000n,
-    };
-}
+class BigIntStats {
+    #origin = {};
 
+    constructor(origin) {
+        this.dev = toBigInt(origin.dev);
+        this.ino = toBigInt(origin.ino);
+        this.mode = toBigInt(origin.mode);
+        this.nlink = toBigInt(origin.nlink);
+        this.uid = toBigInt(origin.uid);
+        this.gid = toBigInt(origin.gid);
+        this.rdev = toBigInt(origin.rdev);
+        this.size = toBigInt(origin.size) || 0n;
+        this.blksize = toBigInt(origin.blksize);
+        this.blocks = toBigInt(origin.blocks);
+        this.mtime = new Date(origin.mtime);
+        this.atime = new Date(origin.atime);
+        this.birthtime = new Date(origin.birthtime);
+        this.mtimeMs = toBigInt(origin.mtime);
+        this.atimeMs = toBigInt(origin.atime);
+        this.birthtimeMs = toBigInt(origin.birthtime);
+        this.mtimeNs = toBigInt(origin.mtime) * 1000000n;
+        this.atimeNs = toBigInt(origin.atime) * 1000000n;
+        this.birthtimeNs = toBigInt(origin.birthtime) * 1000000n;
+        this.ctime = new Date(origin.mtime);
+        this.ctimeMs = toBigInt(origin.mtime);
+        this.ctimeNs = toBigInt(origin.mtime) * 1000000n;
+        this.#origin = origin;
+    }
+    isFile() { return this.#origin.is_file; }
+    isDirectory() { return this.#origin.is_directory };
+    isSymbolicLink() { return this.#origin.is_symlink };
+    isBlockDevice() { return this.#origin.is_block_device };
+    isFIFO() { return false };
+    isCharacterDevice() { return this.#origin.is_char_device };
+    isSocket() { return this.#origin.is_socket };
+}
 
 function stat(path, options, callback) {
     if (typeof (options) === "function") {
@@ -233,12 +227,12 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     try {
         let stat = binding.statSync(path);
         if (options.bigint === true) {
-            return convertRawStatInfoToBigIntNodeStats(stat);
+            return new BigIntStats(stat);
         } else {
-            return convertRawStatInfoToNodeStats(stat);
+            return new Stats(stat);
         }
     } catch (err) {
-        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
+        if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
         let e = new Error("no such file or directory");
@@ -272,9 +266,9 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     try {
         let stat = binding.lstatSync(path);
         if (options.bigint === true) {
-            return convertRawStatInfoToBigIntNodeStats(stat);
+            return new BigIntStats(stat);
         } else {
-            return convertRawStatInfoToNodeStats(stat);
+            return new Stats(stat);
         }
     } catch (err) {
         if (err.code === "NOENT" && options.throwIfNoEntry === false) {
@@ -310,15 +304,17 @@ function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
     try {
         let stat = binding.fstatSync(fd);
         if (options.bigint === true) {
-            return convertRawStatInfoToBigIntNodeStats(stat);
+            return new BigIntStats(stat);
         } else {
-            return convertRawStatInfoToNodeStats(stat);
+            return new Stats(stat);
         }
     } catch (err) {
-        if (err.kind === "NotFound" && options.throwIfNoEntry === false) {
+        if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        throw new Error(err.message);
+        let e = new Error(err.message);
+        e.code = "E" + err.code;
+        throw e;
     }
 }
 
@@ -1178,43 +1174,6 @@ function readSync(fd, buffer, offset, length, position) {
         }
         throw e;
     }
-}
-
-function stringToFlags(flags) {
-    if (typeof flags === 'number') {
-        return flags;
-    }
-
-    switch (flags) {
-        case 'r': return constants.O_RDONLY;
-        case 'rs': // Fall through.
-        case 'sr': return constants.O_RDONLY | constants.O_SYNC;
-        case 'r+': return constants.O_RDWR;
-        case 'rs+': // Fall through.
-        case 'sr+': return constants.O_RDWR | constants.O_SYNC;
-
-        case 'w': return constants.O_TRUNC | constants.O_CREAT | constants.O_WRONLY;
-        case 'wx': // Fall through.
-        case 'xw': return constants.O_TRUNC | constants.O_CREAT | constants.O_WRONLY | constants.O_EXCL;
-
-        case 'w+': return constants.O_TRUNC | constants.O_CREAT | constants.O_RDWR;
-        case 'wx+': // Fall through.
-        case 'xw+': return constants.O_TRUNC | constants.O_CREAT | constants.O_RDWR | constants.O_EXCL;
-
-        case 'a': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY;
-        case 'ax': // Fall through.
-        case 'xa': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_EXCL;
-        case 'as': // Fall through.
-        case 'sa': return constants.O_APPEND | constants.O_CREAT | constants.O_WRONLY | constants.O_SYNC;
-
-        case 'a+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR;
-        case 'ax+': // Fall through.
-        case 'xa+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR | constants.O_EXCL;
-        case 'as+': // Fall through.
-        case 'sa+': return constants.O_APPEND | constants.O_CREAT | constants.O_RDWR | constants.O_SYNC;
-    }
-
-    throw new errors.ERR_INVALID_ARG_VALUE('flags', flags);
 }
 
 function openSync(path, flag = "r", mode = 0o666) {

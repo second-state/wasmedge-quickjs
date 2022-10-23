@@ -10,6 +10,8 @@ import tmpdir from '../common/tmpdir';
 import { isDate } from 'internal/util/types';
 import { inspect } from 'internal/util/inspect';
 
+import process from "process";
+
 tmpdir.refresh();
 
 let testIndex = 0;

@@ -111,7 +111,9 @@ fn stat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue 
                 }
             }
         };
-        return match unsafe { wasi_fs::path_filestat_get(dir, 0, file.as_str()) } {
+        return match unsafe {
+            wasi_fs::path_filestat_get(dir, wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW, file.as_str())
+        } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
@@ -156,9 +158,7 @@ fn lstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
                 }
             }
         };
-        return match unsafe {
-            wasi_fs::path_filestat_get(dir, wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW, file.as_str())
-        } {
+        return match unsafe { wasi_fs::path_filestat_get(dir, 0, file.as_str()) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);
@@ -557,7 +557,7 @@ fn get_js_number(val: Option<&JsValue>) -> Option<i64> {
     match val {
         Some(JsValue::Int(i)) => Some(*i as i64),
         Some(JsValue::Float(f)) => Some(*f as i64),
-        _ => None
+        _ => None,
     }
 }
 
@@ -568,9 +568,8 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
                 let (promise, ok, error) = ctx.new_promise();
                 if let Some(event_loop) = ctx.event_loop() {
                     if position != -1 {
-                        let res = unsafe {
-                            wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET)
-                        };
+                        let res =
+                            unsafe { wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET) };
                         if let Err(e) = res {
                             let err = errno_to_js_object(ctx, e);
                             return JsValue::Exception(ctx.throw_error(err));
@@ -607,9 +606,8 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
         if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 if position != -1 {
-                    let res = unsafe {
-                        wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET)
-                    };
+                    let res =
+                        unsafe { wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET) };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);
                         return JsValue::Exception(ctx.throw_error(err));
