@@ -35,32 +35,85 @@ const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
 const isPi = false;
-
+const isMainThread = true;
 const isDumbTerminal = process.env.TERM === 'dumb';
 
 export function mustCall(fn) {
-  return fn;
+  return typeof (fn) === "function" ? fn : (() => { });
 }
 
 export function mustCallAtLeast(fn) {
-  return fn;
+  return typeof (fn) === "function" ? fn : (() => { });
 }
 
-export function mustNotCall() {
-  return () => {
-    assert(false, "mustNotCall");
+function mustNotCall(msg) {
+  const callSite = new Error().stack;
+  return function mustNotCall(...args) {
+    const argsInfo = args.length > 0 ?
+      `\ncalled with arguments: ${args.map((arg) => inspect(arg)).join(', ')}` : '';
+    assert.fail(
+      `${msg || 'function should not have been called'} at ${callSite}` +
+      argsInfo);
   };
 }
 
-export function mustNotMutateObjectDeep(obj = {}) {
-  return obj;
+const _mustNotMutateObjectDeepProxies = new WeakMap();
+
+export function mustNotMutateObjectDeep(original) {
+  // Return primitives and functions directly. Primitives are immutable, and
+  // proxied functions are impossible to compare against originals, e.g. with
+  // `assert.deepEqual()`.
+  if (original === null || typeof original !== 'object') {
+    return original;
+  }
+
+  const cachedProxy = _mustNotMutateObjectDeepProxies.get(original);
+  if (cachedProxy) {
+    return cachedProxy;
+  }
+
+  const _mustNotMutateObjectDeepHandler = {
+    __proto__: null,
+    defineProperty(target, property, descriptor) {
+      assert.fail(`Expected no side effects, got ${inspect(property)} ` +
+                  'defined');
+    },
+    deleteProperty(target, property) {
+      assert.fail(`Expected no side effects, got ${inspect(property)} ` +
+                  'deleted');
+    },
+    get(target, prop, receiver) {
+      return mustNotMutateObjectDeep(Reflect.get(target, prop, receiver));
+    },
+    preventExtensions(target) {
+      assert.fail('Expected no side effects, got extensions prevented on ' +
+                  inspect(target));
+    },
+    set(target, property, value, receiver) {
+      assert.fail(`Expected no side effects, got ${inspect(value)} ` +
+                  `assigned to ${inspect(property)}`);
+    },
+    setPrototypeOf(target, prototype) {
+      assert.fail(`Expected no side effects, got set prototype to ${prototype}`);
+    }
+  };
+
+  const proxy = new Proxy(original, _mustNotMutateObjectDeepHandler);
+  _mustNotMutateObjectDeepProxies.set(original, proxy);
+  return proxy;
 }
 
 export function mustSucceed(fn) {
-  return (err, ...args) => {
-    assert.equal(err, null);
-    fn(...args)
-  };
+  return mustCall((err, ...args) => {
+    if (err !== null) {
+      print(err);
+      print(err.stack);
+    }
+    assert.ifError(err);
+    if (typeof (fn) === "function") {
+      fn(...args);
+    }
+  });
 }
 
 export function invalidArgTypeHelper(input) {
@@ -87,6 +140,10 @@ export function skip(msg) {
   print("skip, ", msg);
 }
 
+export function platformTimeout(ms) {
+  return ms;
+}
+
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -97,13 +154,15 @@ const common = {
   isSunOS,
   isWindows,
   isAIX,
+  isMainThread,
   mustCall,
   mustCallAtLeast,
   mustNotCall,
   mustNotMutateObjectDeep,
   skip,
   mustSucceed,
-  invalidArgTypeHelper
+  invalidArgTypeHelper,
+  platformTimeout
 };
 
 export default common;

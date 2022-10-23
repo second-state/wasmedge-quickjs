@@ -17,7 +17,7 @@ export const mkdtemp = promisify(fs.mkdtemp);
 export const open = (path, flag, mode) => {
     return new Promise((res, rej) => {
         fs.open(path, flag, mode, (err, fd) => {
-            if (!err) {
+            if (err !== null) {
                 return rej(err);
             }
             res(new fs.FileHandle(fd, path));
@@ -34,7 +34,11 @@ export const rmdir = promisify(fs.rmdir);
 export const rm = promisify(fs.rm);
 export const stat = promisify(fs.stat);
 export const symlink = promisify(fs.symlink);
-export const truncate = promisify(fs.truncate);
+export const truncate = async (path, len) => {
+    let file = await open(path, "r+");
+    await file.truncate(len);
+    await file.close();
+};
 export const unlink = promisify(fs.unlink);
 export const utimes = promisify(fs.utimes);
 export const watch = promisify(fs.watch);

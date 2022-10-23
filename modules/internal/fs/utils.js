@@ -759,7 +759,7 @@ export const getValidatedPath = hideStackFrames(
   (fileURLOrPath, propName = "path") => {
     const path = toPathIfFileURL(fileURLOrPath);
     validatePath(path, propName);
-    return path;
+    return typeof(path) === "string" ? path : path.toString();
   },
 );
 

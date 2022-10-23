@@ -16,6 +16,7 @@ let dir = path.resolve(tmpdir.path);
 // Make sure that the tmp directory is clean
 tmpdir.refresh();
 
+// wasmedge no support so long path
 // Make a long path.
 for (let i = 0; i < 50; i++) {
   dir = `${dir}/1234567890`;

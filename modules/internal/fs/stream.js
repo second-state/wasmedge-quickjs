@@ -12,6 +12,10 @@ const kIsPerformingIO = Symbol('kIsPerformingIO');
 
 const kFs = Symbol('kFs');
 
+function notImplemented(msg) {
+    throw new Error(msg);
+}
+
 export class WriteStreamClass extends Writable {
     fd = null;
     bytesWritten = 0;
@@ -131,7 +135,7 @@ export class ReadStream extends Readable {
     constructor(path, opts) {
         path = path instanceof URL ? fromFileUrl(path) : path;
         const hasBadOptions = opts && (
-            opts.fd || opts.start || opts.end || opts.fs
+            opts.start || opts.end || opts.fs
         );
         if (opts === null || typeof(opts) === "undefined") {
             opts = "utf8";
@@ -147,11 +151,19 @@ export class ReadStream extends Readable {
                 })`,
             );
         }
-        fs.promises.open(path, fs.constants.O_RDONLY).then(f => {
-            this.file = f;
-            this.pending = false;
-            this.emit("ready")
-        });
+        if (opts.fd) {
+            setTimeout(() => {
+                this.file = opts.fd;
+                this.pending = false;
+                this.emit("ready");
+            }, 0);
+        } else {
+            fs.promises.open(path, fs.constants.O_RDONLY).then(f => {
+                this.file = f;
+                this.pending = false;
+                this.emit("ready");
+            });
+        }
         const buffer = new Uint8Array(16 * 1024);
         super({
             autoDestroy: true,

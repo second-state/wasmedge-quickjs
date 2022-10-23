@@ -6,6 +6,7 @@
 // Ref: https://github.com/nodejs/node/issues/31481
 
 import common from '../common';
+import process from 'process';
 
 if (!common.isWindows && process.getuid() === 0)
   common.skip('as this test should not be run as `root`');

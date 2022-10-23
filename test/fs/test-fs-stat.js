@@ -29,8 +29,8 @@ let __filename = args[0];
 
 fs.stat('.', common.mustSucceed(function(stats) {
   assert.ok(stats.mtime instanceof Date);
-  assert.ok(Object.hasOwn(stats, 'blksize'));
-  assert.ok(Object.hasOwn(stats, 'blocks'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'blksize'));
+  assert.ok(Object.prototype.hasOwnProperty.call(stats, 'blocks'));
   // Confirm that we are not running in the context of the internal binding
   // layer.
   // Ref: https://github.com/nodejs/node/commit/463d6bac8b349acc462d345a6e298a76f7d06fb1

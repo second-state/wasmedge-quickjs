@@ -81,6 +81,11 @@ fn test_fs_cp() {
 }
 
 #[test]
+fn test_fs_empty_read_stream() {
+    test_js_file("test/fs/test-fs-empty-readStream.js");
+}
+
+#[test]
 fn test_fs_exists() {
     test_js_file("test/fs/test-fs-exists.js");
 }
@@ -88,6 +93,26 @@ fn test_fs_exists() {
 #[test]
 fn test_fs_link() {
     test_js_file("test/fs/test-fs-link.js");
+}
+
+#[test]
+fn test_fs_make_callback() {
+    test_js_file("test/fs/test-fs-make-callback.js");
+}
+
+#[test]
+fn test_fs_make_stats_callback() {
+    test_js_file("test/fs/test-fs-makeStatsCallback.js");
+}
+
+#[test]
+fn test_fs_mkdir_rmdir() {
+    test_js_file("test/fs/test-fs-mkdir-rmdir.js");
+}
+
+#[test]
+fn test_fs_mkdir() {
+    test_js_file("test/fs/test-fs-mkdir.js");
 }
 
 #[test]

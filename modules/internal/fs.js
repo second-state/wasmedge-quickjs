@@ -11,7 +11,7 @@ import { cpFn } from "../internal/fs/cp/cp";
 import cpSyncFn from "../internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "../internal/fs/stream"
 import EventEmitter from "../events"
-import { normalize } from "path"
+import { normalize, join as pathJoin } from "path"
 import uv from "../internal_binding/uv"
 import { URL } from "../url"
 
@@ -24,12 +24,12 @@ function makeCallback(cb) {
     return (...args) => Reflect.apply(cb, this, args);
 }
 
-function setDefaultValue(dest, def) {
+function applyDefaultValue(dest, def) {
+    let res = {};
     for (const [key, val] of Object.entries(def)) {
-        if (dest[key] === undefined) {
-            dest[key] = val;
-        }
+        res[key] = dest[key] === undefined ? val : dest[key];
     }
+    return res;
 }
 
 /**
@@ -207,8 +207,8 @@ function stat(path, options, callback) {
 
     setTimeout(() => {
         try {
-            statSync(path, options);
-            callback();
+            let res = statSync(path, options);
+            callback(null, res);
         } catch (err) {
             callback(err);
         }
@@ -228,7 +228,7 @@ function stat(path, options, callback) {
 function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     path = getValidatedPath(path);
 
-    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+    options = applyDefaultValue(options, { bigint: false, throwIfNoEntry: true });
 
     try {
         let stat = binding.statSync(path);
@@ -256,8 +256,8 @@ function lstat(path, options, callback) {
 
     setTimeout(() => {
         try {
-            lstatSync(path, options);
-            callback();
+            let res = lstatSync(path, options);
+            callback(null, res);
         } catch (err) {
             callback(err);
         }
@@ -267,7 +267,7 @@ function lstat(path, options, callback) {
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     path = getValidatedPath(path);
 
-    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+    options = applyDefaultValue(options, { bigint: false, throwIfNoEntry: true });
 
     try {
         let stat = binding.lstatSync(path);
@@ -295,7 +295,7 @@ function fstat(fd, options, callback) {
     setTimeout(() => {
         try {
             fstatSync(fd, options);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -305,7 +305,7 @@ function fstat(fd, options, callback) {
 function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
     validateInteger(fd, "fd");
 
-    setDefaultValue(options, { bigint: false, throwIfNoEntry: true });
+    options = applyDefaultValue(options, { bigint: false, throwIfNoEntry: true });
 
     try {
         let stat = binding.fstatSync(fd);
@@ -336,7 +336,7 @@ function access(path, mode = constants.F_OK, callback) {
     setTimeout(() => {
         try {
             accessSync(path, mode);
-            callback();
+            callback(null);
         } catch (err) {
             let e = new Error();
             e.stack += err.stack;
@@ -399,17 +399,34 @@ function existsSync(path) {
     }
 }
 
-function mkdir(path, mode, callback) {
-    if (typeof (mode) === "function") {
-        callback = mode;
-        mode = {};
+function mkdir(path, options, callback) {
+    path = getValidatedPath(path);
+
+    if (typeof (options) === "function") {
+        callback = options;
+        options = {};
     }
 
     validateFunction(callback, "callback");
+
+    if (typeof (options) === "number") {
+        options = {
+            mode: options
+        };
+    } else if (typeof (options) === "string") {
+        options = {
+            mode: parseInt(options)
+        };
+    }
+
+    options = applyDefaultValue(options, { recursive: false, mode: 0o777 });
+
+    validateBoolean(options.recursive, "options.recursive");
+
     setTimeout(() => {
         try {
-            mkdirSync(path, mode);
-            callback();
+            let newPath = mkdirSync(path, options);
+            callback(null, newPath);
         } catch (err) {
             callback(err);
         }
@@ -419,12 +436,51 @@ function mkdir(path, mode, callback) {
 function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
     path = getValidatedPath(path);
 
-    setDefaultValue(options, { recursive: false, mode: 0o777 });
+    if (typeof (options) === "number") {
+        options = {
+            mode: options
+        };
+    } else if (typeof (options) === "string") {
+        options = {
+            mode: parseInt(options)
+        };
+    }
+
+    options = applyDefaultValue(options, { recursive: false, mode: 0o777 });
+
+    validateBoolean(options.recursive, "options.recursive");
 
     try {
+        let dirs = path.split("/");
+        let dir = "";
+        let allExist = true;
+        for (const d of dirs) {
+            dir = pathJoin(dir, d);
+            if (!existsSync(dir)) {
+                allExist = false;
+                break;
+            }
+        }
         binding.mkdirSync(path, options.recursive, options.mode);
+        return allExist ? undefined : dir;
     } catch (err) {
-        throw new Error(err.message);
+        if (err.code === 20) {
+            let e = new Error(`EEXIST: file already exists, mkdir`);
+            e.code = "EEXIST";
+            e.path = path;
+            e.syscall = "mkdir";
+            throw e;
+        } else if (err.code == 54) {
+            let e = new Error(`ENOTDIR: not a directory, mkdir`);
+            e.code = "ENOTDIR";
+            e.path = path;
+            e.syscall = "mkdir";
+            throw e;
+        } else {
+            let e = new Error(err.message);
+            e.code = err.code;
+            throw e;
+        }
     }
 }
 
@@ -511,7 +567,7 @@ function utimes(path, atime, mtime, callback) {
     setTimeout(() => {
         try {
             utimesSync(path, atime, mtime);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -521,7 +577,13 @@ function utimes(path, atime, mtime, callback) {
 function utimesSync(path, atime, mtime) {
     path = getValidatedPath(path);
     atime = getValidTime(atime);
+    if (atime instanceof Date) {
+        atime = atime.getTime();
+    }
     mtime = getValidTime(mtime);
+    if (mtime instanceof Date) {
+        mtime = mtime.getTime();
+    }
 
     try {
         binding.utimeSync(path, atime, mtime);
@@ -544,7 +606,7 @@ function futimes(fd, atime, mtime, callback) {
     setTimeout(() => {
         try {
             futimesSync(fd, atime, mtime);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -572,7 +634,7 @@ function rmdir(path, options, callback) {
     setTimeout(() => {
         try {
             rmdirSync(path, options, callback);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -582,7 +644,7 @@ function rmdir(path, options, callback) {
 function rmdirSync(path, options = { maxRetries: 0, recursive: false, retryDelay: 100 }) {
     path = getValidatedPath(path);
 
-    setDefaultValue(options, { maxRetries: 0, recursive: false, retryDelay: 100 });
+    options = applyDefaultValue(options, { maxRetries: 0, recursive: false, retryDelay: 100 });
 
     try {
         binding.rmdirSync(path, options.recursive);
@@ -600,7 +662,7 @@ function rm(path, options, callback) {
     setTimeout(() => {
         try {
             rmSync(path, options);
-            callback();
+            callback(null);
         }
         catch (err) {
             callback(err);
@@ -611,7 +673,7 @@ function rm(path, options, callback) {
 function rmSync(path, options = { force: false, maxRetries: 0, recursive: false, retryDelay: 100 }) {
     path = getValidatedPath(path);
 
-    setDefaultValue(options, { force: false, maxRetries: 0, recursive: false, retryDelay: 100 });
+    options = applyDefaultValue(options, { force: false, maxRetries: 0, recursive: false, retryDelay: 100 });
 
     for (let i = 0; i < options.maxRetries; i++) {
         try {
@@ -631,7 +693,7 @@ function rename(oldPath, newPath, callback) {
     setTimeout(() => {
         try {
             renameSync(oldPath, newPath);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -670,7 +732,7 @@ function truncate(path, len, callback) {
     setTimeout(() => {
         try {
             truncateSync(path, len);
-            callback();
+            callback(null);
         }
         catch (err) {
             callback(err);
@@ -699,7 +761,7 @@ function ftruncate(fd, len, callback) {
     setTimeout(() => {
         try {
             ftruncateSync(fd, len);
-            callback();
+            callback(null);
         }
         catch (err) {
             callback(err);
@@ -708,7 +770,7 @@ function ftruncate(fd, len, callback) {
 }
 
 function ftruncateSync(fd, len = 0) {
-    validateInteger(len);
+    validateInteger(len, "len");
 
     validateInteger(fd, "fd");
 
@@ -730,7 +792,7 @@ function realpath(path, options = { encoding: "utf8" }, callback) {
             encoding: options
         };
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8"
     });
     validateEncoding(options.encoding, "encoding");
@@ -750,7 +812,7 @@ function realpathSync(path, options = { encoding: "utf8" }) {
             encoding: options
         };
     }
-    setDefaultValue(options, { encoding: "utf8" });
+    options = applyDefaultValue(options, { encoding: "utf8" });
     validateEncoding(options.encoding, "encoding");
     let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
     let stat = lstatSync(path, { throwIfNoEntry: false });
@@ -797,7 +859,7 @@ function mkdtemp(prefix, options = { encoding: "utf8" }, callback) {
         callback = options;
         options = { encoding: "utf8" };
     } else {
-        setDefaultValue(options, { encoding: "utf8" });
+        options = applyDefaultValue(options, { encoding: "utf8" });
     }
     validateFunction(callback, "callback");
     validateEncoding(options.encoding, "encoding");
@@ -821,7 +883,7 @@ function mkdtempSync(prefix, options = { encoding: "utf8" }) {
     if (typeof (options) === "string") {
         options = { encoding: options };
     } else {
-        setDefaultValue(options, { encoding: "utf8" });
+        options = applyDefaultValue(options, { encoding: "utf8" });
     }
     validateEncoding(options.encoding, "encoding");
 
@@ -848,7 +910,7 @@ function copyFile(src, dest, mode, callback) {
     setTimeout(() => {
         try {
             copyFileSync(src, dest, mode);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -859,15 +921,17 @@ function copyFileSync(src, dest, mode = 0) {
     src = getValidatedPath(src, "src");
     dest = getValidatedPath(dest, "dest");
     validateInteger(mode, "mode", 0, 7);
-    try {
-        if (mode & constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
-            if (existsSync(dest)) {
-                throw new Error(`EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
-            }
-            binding.copyFileSync(src, dest);
-        } else {
-            binding.copyFileSync(src, dest);
+    if (mode & constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
+        if (existsSync(dest)) {
+            let e = new Error(`EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
+            e.code = "EEXIST";
+            e.syscall = "copyfile";
+            e.errno = uv.UV_EEXIST;
+            throw e;
         }
+    }
+    try {
+        binding.copyFileSync(src, dest);
     } catch (err) {
         throw new Error(err.message);
     }
@@ -881,7 +945,7 @@ function link(existingPath, newPath, callback) {
     setTimeout(() => {
         try {
             linkSync(existingPath, newPath);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -905,7 +969,7 @@ function symlink(target, path, callback) {
     setTimeout(() => {
         try {
             symlinkSync(target, path);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -930,7 +994,7 @@ function close(fd, callback) {
     setTimeout(() => {
         try {
             closeSync(fd);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -953,7 +1017,7 @@ function fsync(fd, callback) {
     setTimeout(() => {
         try {
             fsyncSync(fd);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -977,7 +1041,7 @@ function fdatasync(fd, callback) {
     setTimeout(() => {
         try {
             fdatasyncSync(fd);
-            callback();
+            callback(null);
         } catch (err) {
             callback(err);
         }
@@ -1016,7 +1080,7 @@ function read(fd, buffer, offset, length, position, callback) {
         buffer = Buffer.alloc(16384);
         offset = 0;
         length = buffer.byteLength - offset;
-        position = 0;
+        position = -1;
     } else if (!(buffer instanceof Buffer)) {
         callback = offset;
         let option = buffer;
@@ -1024,24 +1088,26 @@ function read(fd, buffer, offset, length, position, callback) {
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
         if (option.position === null) {
-            option.position = -1;
+            position = -1;
         }
-        position = option.position || 0;
+        position = position || option.position || -1;
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
         if (option.position === null) {
-            option.position = -1;
+            position = -1;
         }
-        position = option.position || 0;
+        position = position || option.position || -1;
     } else if (typeof (offset) === "function") {
         callback = offset;
         offset = 0;
         length = buffer.byteLength - offset;
-        position = 0;
+        position = -1;
     }
+
+    position = position || -1;
 
     validateFunction(callback, "callback");
     validateInteger(offset, "offset");
@@ -1064,7 +1130,7 @@ function readSync(fd, buffer, offset, length, position) {
         offset = option.offset || 0;
         length = option.length || buffer.byteLength - offset;
         if (option.position === null || typeof (option.position) === "undefined") {
-            option.position = -1;
+            position = -1;
         } else {
             position = option.position;
         }
@@ -1204,15 +1270,14 @@ function open(path, flag = "r", mode = 0o666, callback) {
         throw err;
     }
 
-
     setTimeout(() => {
         try {
-            fd = openSync(path, flag, mode);
+            let fd = openSync(path, flag, mode);
             callback(null, fd);
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function readFile(path, option, callback) {
@@ -1227,7 +1292,7 @@ function readFile(path, option, callback) {
     } else {
         option = option || {};
     }
-    setDefaultValue(option, {
+    option = applyDefaultValue(option, {
         encoding: encoding || "",
         flag: "r",
         signal: undefined
@@ -1276,7 +1341,7 @@ function readFileSync(path, option) {
     } else {
         option = option || {};
     }
-    setDefaultValue(option, {
+    option = applyDefaultValue(option, {
         encoding: encoding || "",
         flag: "r",
         signal: undefined
@@ -1319,7 +1384,7 @@ function readlinkSync(path, option) {
     } else {
         option = option || {};
     }
-    setDefaultValue(option, {
+    option = applyDefaultValue(option, {
         encoding: "utf8"
     });
     validateEncoding(option.encoding, "encoding");
@@ -1348,7 +1413,7 @@ function readlink(path, option, callback) {
         };
     }
     path = getValidatedPath(path);
-    setDefaultValue(option, {
+    option = applyDefaultValue(option, {
         encoding: "utf8"
     });
     validateEncoding(option.encoding, "encoding");
@@ -1359,7 +1424,7 @@ function readlink(path, option, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function readv(fd, buffer, position, callback) {
@@ -1546,7 +1611,7 @@ function writeFile(file, data, options, callback) {
     } else {
         validateObject(options, "option");
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "w",
@@ -1561,7 +1626,7 @@ function writeFile(file, data, options, callback) {
             if (err) {
                 callback(err);
             } else {
-                callback();
+                callback(null);
             }
             closeSync(fd);
         })
@@ -1580,7 +1645,7 @@ function writeFileSync(file, data, options = {}) {
     } else {
         validateObject(options, "option");
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "w",
@@ -1600,13 +1665,16 @@ function appendFile(file, data, options, callback) {
     }
 
     validateFunction(callback, "callback");
-    file = getValidatedPath(file);
+    if (typeof (file) !== "number") {
+        file = getValidatedPath(file);
+    }
+
     if (typeof (options) === "string") {
         options = {
             encoding: options
         };
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -1619,14 +1687,21 @@ function appendFile(file, data, options, callback) {
 
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
-        let fd = openSync(file, options.flag, options.mode);
+        let fd = -1;
+        if (typeof (file) === "number") {
+            fd = file;
+        } else {
+            fd = openSync(file, options.flag, options.mode);
+        }
         write(fd, buffer, (err) => {
             if (err) {
                 callback(err);
             } else {
-                callback();
+                callback(null);
             }
-            closeSync(fd);
+            if (typeof (file) !== "number") {
+                closeSync(fd);
+            }
         })
     } catch (err) {
         callback(err);
@@ -1639,7 +1714,7 @@ function appendFileSync(file, data, options = {}) {
             encoding: options
         };
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -1794,6 +1869,7 @@ class Dir {
                 try {
                     if (!this.#fetch()) {
                         resolve(null);
+                        return;
                     }
                     resolve(new Dirent(this.#dataBuf[this.#idx++]));
                 } catch (err) {
@@ -1812,13 +1888,13 @@ class Dir {
 
     async *[Symbol.asyncIterator]() {
         try {
-            let p = this.read();
+            let p = await this.read();
             while (p) {
                 yield p;
-                p = this.read();
+                p = await this.read();
             }
         } finally {
-            await this.close();
+            this.closeSync();
         }
     }
 }
@@ -1858,7 +1934,7 @@ function readdir(path, options, callback) {
             encoding: options
         };
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         withFileTypes: false
     });
@@ -1869,12 +1945,19 @@ function readdir(path, options, callback) {
     setTimeout(async () => {
         try {
             let data = [];
-            let dir = opendirSync(path);
+            let dir = opendirSync(path, { encoding: options.encoding });
             for await (const p of dir) {
+                if (options.encoding === "buffer") {
+                    p.name === Buffer.from(p.name);
+                } else if (options.encoding !== "utf8") {
+                    p.name = Buffer.from(p.name).toString(options.encoding);
+                }
                 data.push(options.withFileTypes ? p : p.name);
             }
             callback(null, data);
         } catch (err) {
+            print(err);
+            print(err.stack);
             callback(err);
         }
     }, 0);
@@ -1887,7 +1970,7 @@ function readdirSync(path, options) {
             encoding: options
         };
     }
-    setDefaultValue(options, {
+    options = applyDefaultValue(options, {
         encoding: "utf8",
         withFileTypes: false
     });
@@ -2013,12 +2096,19 @@ function cp(src, dest, options, callback) {
 }
 
 class FileHandle extends EventEmitter {
-    fd = 0;
+    #fd = 0;
     #path = "";
     constructor(fd, path) {
-        this.fd = fd;
+        super();
+        this.#fd = fd;
         this.#path = path;
     }
+
+    // for test-fs-promises-file-handle-close-error can re-define property
+    get fd() {
+        return this.#fd;
+    }
+
     appendFile(data, options) {
         let encoding = options.encoding || "utf8";
         return promisify(write)(this.fd, typeof (data) === "string" ? data : data.toString(encoding));

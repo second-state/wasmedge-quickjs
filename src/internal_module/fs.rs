@@ -57,9 +57,9 @@ fn stat_to_js_object(ctx: &mut Context, stat: wasi_fs::Filestat) -> JsValue {
             .into(),
     );
     res.set("size", stat.size.into());
-    res.set("mtime", stat.mtim.into());
-    res.set("atime", stat.atim.into());
-    res.set("birthtime", stat.ctim.into());
+    res.set("mtime", (stat.mtim / 1000000).into());
+    res.set("atime", (stat.atim / 1000000).into());
+    res.set("birthtime", (stat.ctim / 1000000).into());
     res.set("dev", stat.dev.into());
     res.set("ino", stat.ino.into());
     res.set("mode", 0o666.into());
@@ -450,8 +450,8 @@ fn utime_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
                         dir,
                         wasi_fs::LOOKUPFLAGS_SYMLINK_FOLLOW,
                         file.as_str(),
-                        *a as u64,
-                        *m as u64,
+                        (*a as u64) * 1000000,
+                        (*m as u64) * 1000000,
                         wasi_fs::FSTFLAGS_ATIM | wasi_fs::FSTFLAGS_MTIM,
                     )
                 };
@@ -930,6 +930,7 @@ pub fn init_module(ctx: &mut Context) {
             "rmSync\0",
             "renameSync\0",
             "truncateSync\0",
+            "ftruncateSync\0",
             "realpathSync\0",
             "copyFileSync\0",
             "linkSync\0",

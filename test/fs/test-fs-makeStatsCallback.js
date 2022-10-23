@@ -5,6 +5,8 @@ import assert from 'assert';
 import fs from 'fs';
 const callbackThrowValues = [null, true, false, 0, 1, 'foo', /foo/, [], {}];
 
+const __filename = args[0];
+
 function testMakeStatsCallback(cb) {
   return function() {
     // fs.stat() calls makeStatsCallback() on its second argument

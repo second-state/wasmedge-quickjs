@@ -308,6 +308,8 @@ class AssertionError extends Error {
 
     // let quickjs context know assertion has failed
     globalThis.assertPass = false;
+    print("assert fail");
+    print(new Error().stack);
 
     validateObject(options, 'options');
     const {

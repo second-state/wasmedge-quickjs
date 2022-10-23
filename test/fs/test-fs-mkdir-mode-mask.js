@@ -8,9 +8,9 @@ import assert from 'assert';
 import path from 'path';
 import fs from 'fs';
 
+// mode is unsupported in wasi now
 if (common.isWindows) {
   common.skip('mode is not supported in mkdir on Windows');
-  return;
 }
 
 const mode = 0o644;
