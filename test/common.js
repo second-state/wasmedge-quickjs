@@ -43,7 +43,7 @@ const mustCallChecks = [];
 function runCallChecks(exitCode) {
   if (exitCode !== 0) return;
 
-  const failed = mustCallChecks.filter(function(context) {
+  const failed = mustCallChecks.filter(function (context) {
     if ('minimum' in context) {
       context.messageSegment = `at least ${context.minimum}`;
       return context.actual < context.minimum;
@@ -52,18 +52,18 @@ function runCallChecks(exitCode) {
     return context.actual !== context.exact;
   });
 
-  failed.forEach(function(context) {
+  failed.forEach(function (context) {
     print('Mismatched %s function calls. Expected %s, actual %d.',
-                context.name,
-                context.messageSegment,
-                context.actual);
+      context.name,
+      context.messageSegment,
+      context.actual);
     print(context.stack.split('\n').slice(2).join('\n'));
   });
 
   assert.strictEqual(failed.length, 0);
 }
 
-const noop = () => {};
+const noop = () => { };
 
 function _mustCallInner(fn, criteria = 1, field) {
   if (typeof fn === 'number') {
@@ -90,7 +90,7 @@ function _mustCallInner(fn, criteria = 1, field) {
 
   mustCallChecks.push(context);
 
-  const _return = function() { // eslint-disable-line func-style
+  const _return = function () { // eslint-disable-line func-style
     context.actual++;
     return fn.apply(this, arguments);
   };
@@ -119,7 +119,7 @@ export function mustCall(fn, exact) {
 }
 
 export function mustSucceed(fn, exact) {
-  return mustCall(function(err, ...args) {
+  return mustCall(function (err, ...args) {
     assert.ifError(err);
     if (typeof fn === 'function')
       return fn.apply(this, args);
@@ -160,22 +160,22 @@ export function mustNotMutateObjectDeep(original) {
     __proto__: null,
     defineProperty(target, property, descriptor) {
       assert.fail(`Expected no side effects, got ${inspect(property)} ` +
-                  'defined');
+        'defined');
     },
     deleteProperty(target, property) {
       assert.fail(`Expected no side effects, got ${inspect(property)} ` +
-                  'deleted');
+        'deleted');
     },
     get(target, prop, receiver) {
       return mustNotMutateObjectDeep(Reflect.get(target, prop, receiver));
     },
     preventExtensions(target) {
       assert.fail('Expected no side effects, got extensions prevented on ' +
-                  inspect(target));
+        inspect(target));
     },
     set(target, property, value, receiver) {
       assert.fail(`Expected no side effects, got ${inspect(value)} ` +
-                  `assigned to ${inspect(property)}`);
+        `assigned to ${inspect(property)}`);
     },
     setPrototypeOf(target, prototype) {
       assert.fail(`Expected no side effects, got set prototype to ${prototype}`);
@@ -215,6 +215,23 @@ export function platformTimeout(ms) {
   return ms;
 }
 
+export function runWithInvalidFD(func) {
+  let fd = 1 << 30;
+  // Get first known bad file descriptor. 1 << 30 is usually unlikely to
+  // be an valid one.
+  try {
+    while (fs.fstatSync(fd--) && fd > 0);
+  } catch {
+    return func(fd);
+  }
+
+  skip('Could not generate an invalid fd');
+}
+
+export function expectWarning() {
+  // unsupported
+}
+
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -233,7 +250,9 @@ const common = {
   skip,
   mustSucceed,
   invalidArgTypeHelper,
-  platformTimeout
+  platformTimeout,
+  runWithInvalidFD,
+  expectWarning
 };
 
 export default common;

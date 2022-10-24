@@ -14,6 +14,8 @@ const options = common.mustNotMutateObjectDeep({});
 import tmpdir from '../common/tmpdir';
 tmpdir.refresh();
 
+const __filename = args[0];
+
 fs.readFile(__filename, options, common.mustSucceed());
 fs.readFileSync(__filename, options);
 

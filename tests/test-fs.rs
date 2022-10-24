@@ -113,7 +113,6 @@ fn test_fs_empty_read_stream() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_error_messages() {
     test_js_file("test/fs/test-fs-error-messages.js");
 }
@@ -136,7 +135,7 @@ fn test_fs_fchmod() {
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, chown"]
 fn test_fs_fchown() {
     test_js_file("test/fs/test-fs-fchown.js");
 }
@@ -158,7 +157,6 @@ fn test_fs_fmap() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_fsync() {
     test_js_file("test/fs/test-fs-fsync.js");
 }
@@ -219,13 +217,11 @@ fn test_fs_mkdir_rmdir() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_mkdtemp() {
     test_js_file("test/fs/test-fs-mkdtemp.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_mkdtemp_prefix_check() {
     test_js_file("test/fs/test-fs-mkdtemp-prefix-check.js");
 }
@@ -300,7 +296,7 @@ fn test_fs_promises_file_handle_append_file() {
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, chomd"]
 fn test_fs_promises_file_handle_chmod() {
     test_js_file("test/fs/test-fs-promises-file-handle-chmod.js");
 }
@@ -334,7 +330,7 @@ fn test_fs_promises_file_handle_read() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, worker_threads"]
 fn test_fs_promises_file_handle_read_worker() {
     test_js_file("test/fs/test-fs-promises-file-handle-read-worker.js");
 }
@@ -399,7 +395,7 @@ fn test_fs_promises_readfile_with_fd() {
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_promises_watch() {
     test_js_file("test/fs/test-fs-promises-watch.js");
 }
@@ -504,13 +500,13 @@ fn test_fs_readfile() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_readfile_pipe() {
     test_js_file("test/fs/test-fs-readfile-pipe.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_readfile_pipe_large() {
     test_js_file("test/fs/test-fs-readfile-pipe-large.js");
 }
@@ -522,7 +518,7 @@ fn test_fs_readfilesync_enoent() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "linux specific"]
 fn test_fs_read_file_sync_hostname() {
     test_js_file("test/fs/test-fs-read-file-sync-hostname.js");
 }
@@ -534,7 +530,7 @@ fn test_fs_read_file_sync() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_readfilesync_pipe_large() {
     test_js_file("test/fs/test-fs-readfilesync-pipe-large.js");
 }
@@ -716,31 +712,31 @@ fn test_fs_read_zero_length() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, realpath"]
 fn test_fs_realpath_buffer_encoding() {
     test_js_file("test/fs/test-fs-realpath-buffer-encoding.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, realpath"]
 fn test_fs_realpath() {
     test_js_file("test/fs/test-fs-realpath.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, realpath"]
 fn test_fs_realpath_native() {
     test_js_file("test/fs/test-fs-realpath-native.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, realpath"]
 fn test_fs_realpath_on_substed_drive() {
     test_js_file("test/fs/test-fs-realpath-on-substed-drive.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, realpath"]
 fn test_fs_realpath_pipe() {
     test_js_file("test/fs/test-fs-realpath-pipe.js");
 }
@@ -983,79 +979,79 @@ fn test_fs_utimes_y2_k38() {
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_abort_signal() {
     test_js_file("test/fs/test-fs-watch-abort-signal.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_close_when_destroyed() {
     test_js_file("test/fs/test-fs-watch-close-when-destroyed.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_encoding() {
     test_js_file("test/fs/test-fs-watch-encoding.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_enoent() {
     test_js_file("test/fs/test-fs-watch-enoent.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watchfile_bigint() {
     test_js_file("test/fs/test-fs-watchfile-bigint.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_file_enoent_after_deletion() {
     test_js_file("test/fs/test-fs-watch-file-enoent-after-deletion.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watchfile() {
     test_js_file("test/fs/test-fs-watchfile.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watchfile_ref_unref() {
     test_js_file("test/fs/test-fs-watchfile-ref-unref.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch() {
     test_js_file("test/fs/test-fs-watch.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_recursive() {
     test_js_file("test/fs/test-fs-watch-recursive.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_ref_unref() {
     test_js_file("test/fs/test-fs-watch-ref-unref.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_stop_async() {
     test_js_file("test/fs/test-fs-watch-stop-async.js");
 }
 
 #[test]
-#[ignore = "unsupported"]
+#[ignore = "unsupported, watch"]
 fn test_fs_watch_stop_sync() {
     test_js_file("test/fs/test-fs-watch-stop-sync.js");
 }

@@ -12,7 +12,7 @@ pub type Size = usize;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Errno(u16);
+pub struct Errno(pub u16);
 /// No error occurred. System call completed successfully.
 pub const ERRNO_SUCCESS: Errno = Errno(0);
 /// Argument list too long.

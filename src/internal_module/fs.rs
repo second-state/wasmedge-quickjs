@@ -73,19 +73,7 @@ fn stat_to_js_object(ctx: &mut Context, stat: wasi_fs::Filestat) -> JsValue {
 }
 
 fn err_to_js_object(ctx: &mut Context, e: io::Error) -> JsValue {
-    let mut res = ctx.new_object();
-    if let Some(code) = e.raw_os_error() {
-        res.set("code", code.into());
-    }
-    res.set(
-        "kind",
-        JsValue::String(ctx.new_string(format!("{:?}", e.kind()).as_str())),
-    );
-    res.set(
-        "message",
-        JsValue::String(ctx.new_string(e.to_string().as_str())),
-    );
-    JsValue::Object(res)
+    errno_to_js_object(ctx, wasi_fs::Errno(e.raw_os_error().unwrap() as u16))
 }
 
 fn errno_to_js_object(ctx: &mut Context, e: wasi_fs::Errno) -> JsValue {

@@ -149,7 +149,7 @@ function re(literals, ...values) {
 }
 
 // native realpath
-{
+/*{
   const validateError = (err) => {
     assert.strictEqual(nonexistentFile, err.path);
     assert.strictEqual(
@@ -167,7 +167,7 @@ function re(literals, ...values) {
     () => fs.realpathSync.native(nonexistentFile),
     validateError
   );
-}
+}*/
 
 // readlink
 {
@@ -420,6 +420,7 @@ function re(literals, ...values) {
 }
 
 // chmod
+/*
 {
   const validateError = (err) => {
     assert.strictEqual(nonexistentFile, err.path);
@@ -438,7 +439,7 @@ function re(literals, ...values) {
     () => fs.chmodSync(nonexistentFile, 0o666),
     validateError
   );
-}
+}*/
 
 // open
 {
@@ -591,7 +592,7 @@ function re(literals, ...values) {
 }
 
 // chown
-if (!common.isWindows) {
+/*if (!common.isWindows) {
   const validateError = (err) => {
     assert.strictEqual(nonexistentFile, err.path);
     assert.strictEqual(
@@ -611,7 +612,7 @@ if (!common.isWindows) {
                        process.getuid(), process.getgid()),
     validateError
   );
-}
+}*/
 
 // utimes
 if (!common.isAIX) {
@@ -749,7 +750,7 @@ if (!common.isAIX) {
 }
 
 // fchmod
-{
+/*{
   const validateError = (err) => {
     assert.strictEqual(err.message, 'EBADF: bad file descriptor, fchmod');
     assert.strictEqual(err.errno, UV_EBADF);
@@ -787,7 +788,7 @@ if (!common.isWindows) {
       validateError
     );
   });
-}
+}*/
 
 // write buffer
 {

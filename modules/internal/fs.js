@@ -191,6 +191,195 @@ class BigIntStats {
     isSocket() { return this.#origin.is_socket };
 }
 
+const codeToErrorMsg = {
+    "E2BIG": "argument list too long",
+    "EACCES": "permission denied",
+    "EADDRINUSE": "address already in use",
+    "EADDRNOTAVAIL": "address not available",
+    "EAFNOSUPPORT": "address family not supported",
+    "EAGAIN": "resource temporarily unavailable",
+    "EAI_ADDRFAMILY": "address family not supported",
+    "EAI_AGAIN": "temporary failure",
+    "EAI_BADFLAGS": "bad ai_flags value",
+    "EAI_BADHINTS": "invalid value for hints",
+    "EAI_CANCELED": "request canceled",
+    "EAI_FAIL": "permanent failure",
+    "EAI_FAMILY": "ai_family not supported",
+    "EAI_MEMORY": "out of memory",
+    "EAI_NODATA": "no address",
+    "EAI_NONAME": "unknown node or service",
+    "EAI_OVERFLOW": "argument buffer overflow",
+    "EAI_PROTOCOL": "resolved protocol is unknown",
+    "EAI_SERVICE": "service not available for socket type",
+    "EAI_SOCKTYPE": "socket type not supported",
+    "EALREADY": "connection already in progress",
+    "EBADF": "bad file descriptor",
+    "EBUSY": "resource busy or locked",
+    "ECANCELED": "operation canceled",
+    "ECHARSET": "invalid Unicode character",
+    "ECONNABORTED": "software caused connection abort",
+    "ECONNREFUSED": "connection refused",
+    "ECONNRESET": "connection reset by peer",
+    "EDESTADDRREQ": "destination address required",
+    "EEXIST": "file already exists",
+    "EFAULT": "bad address in system call argument",
+    "EFBIG": "file too large",
+    "EHOSTUNREACH": "host is unreachable",
+    "EINTR": "interrupted system call",
+    "EINVAL": "invalid argument",
+    "EIO": "i/o error",
+    "EISCONN": "socket is already connected",
+    "EISDIR": "illegal operation on a directory",
+    "ELOOP": "too many symbolic links encountered",
+    "EMFILE": "too many open files",
+    "EMSGSIZE": "message too long",
+    "ENAMETOOLONG": "name too long",
+    "ENETDOWN": "network is down",
+    "ENETUNREACH": "network is unreachable",
+    "ENFILE": "file table overflow",
+    "ENOBUFS": "no buffer space available",
+    "ENODEV": "no such device",
+    "ENOENT": "no such file or directory",
+    "ENOMEM": "not enough memory",
+    "ENONET": "machine is not on the network",
+    "ENOPROTOOPT": "protocol not available",
+    "ENOSPC": "no space left on device",
+    "ENOSYS": "function not implemented",
+    "ENOTCONN": "socket is not connected",
+    "ENOTDIR": "not a directory",
+    "ENOTEMPTY": "directory not empty",
+    "ENOTSOCK": "socket operation on non-socket",
+    "ENOTSUP": "operation not supported on socket",
+    "EPERM": "operation not permitted",
+    "EPIPE": "broken pipe",
+    "EPROTO": "protocol error",
+    "EPROTONOSUPPORT": "protocol not supported",
+    "EPROTOTYPE": "protocol wrong type for socket",
+    "ERANGE": "result too large",
+    "EROFS": "read-only file system",
+    "ESHUTDOWN": "cannot send after transport endpoint shutdown",
+    "ESPIPE": "invalid seek",
+    "ESRCH": "no such process",
+    "ETIMEDOUT": "connection timed out",
+    "ETXTBSY": "text file is busy",
+    "EXDEV": "cross-device link not permitted",
+    "UNKNOWN": "unknown error",
+    "EOF": "end of file",
+    "ENXIO": "no such device or address",
+    "EMLINK": "too many links",
+    "EHOSTDOWN": "host is down",
+    "EREMOTEIO": "remote I/O error",
+    "ENOTTY": "inappropriate ioctl for device",
+    "EFTYPE": "inappropriate file type or format",
+    "EILSEQ": "illegal byte sequence",
+};
+
+const codeToUvErrno = {
+    "E2BIG": uv.UV_E2BIG,
+    "EACCES": uv.UV_EACCES,
+    "EADDRINUSE": uv.UV_EADDRINUSE,
+    "EADDRNOTAVAIL": uv.UV_EADDRNOTAVAIL,
+    "EAFNOSUPPORT": uv.UV_EAFNOSUPPORT,
+    "EAGAIN": uv.UV_EAGAIN,
+    "EAI_ADDRFAMILY": uv.UV_EAI_ADDRFAMILY,
+    "EAI_AGAIN": uv.UV_EAI_AGAIN,
+    "EAI_BADFLAGS": uv.UV_EAI_BADFLAGS,
+    "EAI_BADHINTS": uv.UV_EAI_BADHINTS,
+    "EAI_CANCELED": uv.UV_EAI_CANCELED,
+    "EAI_FAIL": uv.UV_EAI_FAIL,
+    "EAI_FAMILY": uv.UV_EAI_FAMILY,
+    "EAI_MEMORY": uv.UV_EAI_MEMORY,
+    "EAI_NODATA": uv.UV_EAI_NODATA,
+    "EAI_NONAME": uv.UV_EAI_NONAME,
+    "EAI_OVERFLOW": uv.UV_EAI_OVERFLOW,
+    "EAI_PROTOCOL": uv.UV_EAI_PROTOCOL,
+    "EAI_SERVICE": uv.UV_EAI_SERVICE,
+    "EAI_SOCKTYPE": uv.UV_EAI_SOCKTYPE,
+    "EALREADY": uv.UV_EALREADY,
+    "EBADF": uv.UV_EBADF,
+    "EBUSY": uv.UV_EBUSY,
+    "ECANCELED": uv.UV_ECANCELED,
+    "ECHARSET": uv.UV_ECHARSET,
+    "ECONNABORTED": uv.UV_ECONNABORTED,
+    "ECONNREFUSED": uv.UV_ECONNREFUSED,
+    "ECONNRESET": uv.UV_ECONNRESET,
+    "EDESTADDRREQ": uv.UV_EDESTADDRREQ,
+    "EEXIST": uv.UV_EEXIST,
+    "EFAULT": uv.UV_EFAULT,
+    "EFBIG": uv.UV_EFBIG,
+    "EHOSTUNREACH": uv.UV_EHOSTUNREACH,
+    "EINTR": uv.UV_EINTR,
+    "EINVAL": uv.UV_EINVAL,
+    "EIO": uv.UV_EIO,
+    "EISCONN": uv.UV_EISCONN,
+    "EISDIR": uv.UV_EISDIR,
+    "ELOOP": uv.UV_ELOOP,
+    "EMFILE": uv.UV_EMFILE,
+    "EMSGSIZE": uv.UV_EMSGSIZE,
+    "ENAMETOOLONG": uv.UV_ENAMETOOLONG,
+    "ENETDOWN": uv.UV_ENETDOWN,
+    "ENETUNREACH": uv.UV_ENETUNREACH,
+    "ENFILE": uv.UV_ENFILE,
+    "ENOBUFS": uv.UV_ENOBUFS,
+    "ENODEV": uv.UV_ENODEV,
+    "ENOENT": uv.UV_ENOENT,
+    "ENOMEM": uv.UV_ENOMEM,
+    "ENONET": uv.UV_ENONET,
+    "ENOPROTOOPT": uv.UV_ENOPROTOOPT,
+    "ENOSPC": uv.UV_ENOSPC,
+    "ENOSYS": uv.UV_ENOSYS,
+    "ENOTCONN": uv.UV_ENOTCONN,
+    "ENOTDIR": uv.UV_ENOTDIR,
+    "ENOTEMPTY": uv.UV_ENOTEMPTY,
+    "ENOTSOCK": uv.UV_ENOTSOCK,
+    "ENOTSUP": uv.UV_ENOTSUP,
+    "EPERM": uv.UV_EPERM,
+    "EPIPE": uv.UV_EPIPE,
+    "EPROTO": uv.UV_EPROTO,
+    "EPROTONOSUPPORT": uv.UV_EPROTONOSUPPORT,
+    "EPROTOTYPE": uv.UV_EPROTOTYPE,
+    "ERANGE": uv.UV_ERANGE,
+    "EROFS": uv.UV_EROFS,
+    "ESHUTDOWN": uv.UV_ESHUTDOWN,
+    "ESPIPE": uv.UV_ESPIPE,
+    "ESRCH": uv.UV_ESRCH,
+    "ETIMEDOUT": uv.UV_ETIMEDOUT,
+    "ETXTBSY": uv.UV_ETXTBSY,
+    "EXDEV": uv.UV_EXDEV,
+    "UNKNOWN": uv.UV_UNKNOWN,
+    "EOF": uv.UV_EOF,
+    "ENXIO": uv.UV_ENXIO,
+    "EMLINK": uv.UV_EMLINK,
+    "EHOSTDOWN": uv.UV_EHOSTDOWN,
+    "EREMOTEIO": uv.UV_EREMOTEIO,
+    "ENOTTY": uv.UV_ENOTTY,
+    "EFTYPE": uv.UV_EFTYPE,
+    "EILSEQ": uv.UV_EILSEQ,
+};
+
+function wasiFsSyscallErrorMap(err, syscall, path, dest) {
+    if (typeof (err) === "string") {
+        err = {
+            code: err
+        };
+    }
+    let code = (codeToErrorMsg[err.code] === undefined) ? ("E" + err.code) : err.code;
+    let msg = `${code}: ${codeToErrorMsg[code]}, ${syscall}`;
+    if (path !== undefined) {
+        msg += ` '${path}'`;
+    }
+    if (dest !== undefined) {
+        msg += ` -> '${dest}'`;
+    }
+    let e = new Error(msg);
+    e.code = code;
+    e.errno = codeToUvErrno[code];
+    e.syscall = syscall;
+    e.path = path;
+    e.dest = dest;
+    return e;
+}
+
 function stat(path, options, callback) {
     if (typeof (options) === "function") {
         callback = options;
@@ -235,9 +424,7 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
         if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        let e = new Error("no such file or directory");
-        e.code = "ENOENT";
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "stat", path);
     }
 }
 
@@ -274,9 +461,7 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
         if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        let e = new Error(err.message);
-        e.code = "E" + err.code;
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "lstat", path);
     }
 }
 
@@ -312,9 +497,7 @@ function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
         if (err.code === "NOENT" && options.throwIfNoEntry === false) {
             return undefined;
         }
-        let e = new Error(err.message);
-        e.code = "E" + err.code;
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "fstat");
     }
 }
 
@@ -334,14 +517,7 @@ function access(path, mode = constants.F_OK, callback) {
             accessSync(path, mode);
             callback(null);
         } catch (err) {
-            let e = new Error();
-            e.stack += err.stack;
-            e.code = "ENOENT";
-            e.path = path.toString();
-            e.message = `ENOENT: no such file or directory, access '${path}'`;
-            e.syscall = "access";
-            e.errno = uv.UV_ENOENT;
-            callback(e);
+            callback(err);
         }
     })
 }
@@ -359,14 +535,7 @@ function accessSync(path, mode = constants.F_OK) {
             throw new Error(`EACCES: permission denied, access '${path}'`);
         }
     } catch (err) {
-        let e = new Error();
-        e.stack += err.stack;
-        e.code = "ENOENT";
-        e.path = path.toString();
-        e.message = `ENOENT: no such file or directory, access '${path}'`;
-        e.syscall = "access";
-        e.errno = uv.UV_ENOENT;
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "access", path);
     }
 }
 
@@ -460,23 +629,7 @@ function mkdirSync(path, options = { recursive: false, mode: 0o777 }) {
         binding.mkdirSync(path, options.recursive, options.mode);
         return allExist ? undefined : dir;
     } catch (err) {
-        if (err.code === 20) {
-            let e = new Error(`EEXIST: file already exists, mkdir`);
-            e.code = "EEXIST";
-            e.path = path;
-            e.syscall = "mkdir";
-            throw e;
-        } else if (err.code == 54) {
-            let e = new Error(`ENOTDIR: not a directory, mkdir`);
-            e.code = "ENOTDIR";
-            e.path = path;
-            e.syscall = "mkdir";
-            throw e;
-        } else {
-            let e = new Error(err.message);
-            e.code = err.code;
-            throw e;
-        }
+        throw wasiFsSyscallErrorMap(err, "mkdir", path);
     }
 }
 
@@ -584,7 +737,7 @@ function utimesSync(path, atime, mtime) {
     try {
         binding.utimeSync(path, atime, mtime);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "utime", path);
     }
 }
 
@@ -615,9 +768,15 @@ function futimesSync(fd, atime, mtime) {
     mtime = getValidTime(mtime, "mtime");
 
     try {
+        fstatSync(fd)
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "futime");
+    }
+
+    try {
         binding.futimeSync(fd, atime, mtime);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "futime");
     }
 }
 
@@ -645,7 +804,7 @@ function rmdirSync(path, options = { maxRetries: 0, recursive: false, retryDelay
     try {
         binding.rmdirSync(path, options.recursive);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "rmdir", path);
     }
 }
 
@@ -666,17 +825,17 @@ function rm(path, options, callback) {
     }, 0);
 }
 
-function rmSync(path, options = { force: false, maxRetries: 0, recursive: false, retryDelay: 100 }) {
+function rmSync(path, options = { force: false, maxRetries: 1, recursive: false, retryDelay: 100 }) {
     path = getValidatedPath(path);
 
-    options = applyDefaultValue(options, { force: false, maxRetries: 0, recursive: false, retryDelay: 100 });
+    options = applyDefaultValue(options, { force: false, maxRetries: 1, recursive: false, retryDelay: 100 });
 
     for (let i = 0; i < options.maxRetries; i++) {
         try {
             binding.rmSync(path, options.recursive, options.force);
         } catch (err) {
             if (i === options.maxRetries - 1) {
-                throw new Error(err.message);
+                throw wasiFsSyscallErrorMap(err, "rm", path);
             }
             continue;
         }
@@ -700,23 +859,43 @@ function renameSync(oldPath, newPath) {
     oldPath = getValidatedPath(oldPath);
     newPath = getValidatedPath(newPath);
 
+    if (statSync(oldPath, { throwIfNoEntry: false }) === undefined) {
+        throw wasiFsSyscallErrorMap("NOENT", "rename", oldPath, newPath);
+    }
+
+    if (statSync(newPath, { throwIfNoEntry: false })) {
+        throw wasiFsSyscallErrorMap("EXIST", "rename", oldPath, newPath);
+    }
+
     try {
         binding.renameSync(oldPath, newPath);
     } catch (err) {
-        throw new Error(err.message);
+        print(JSON.stringify(err));
+        print(oldPath, newPath);
+        throw wasiFsSyscallErrorMap(err, "rename", oldPath, newPath);
     }
 }
 
 function unlink(path, callback) {
     path = getValidatedPath(path);
 
-    rm(path, callback);
+    rm(path, (err) => {
+        if (err != null) {
+            callback(wasiFsSyscallErrorMap(err, "unlink", path));
+        } else {
+            callback(null);
+        }
+    });
 }
 
 function unlinkSync(path) {
     path = getValidatedPath(path);
 
-    rmSync(path);
+    try {
+        rmSync(path);
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "unlink", path);
+    }
 }
 
 function truncate(path, len, callback) {
@@ -744,7 +923,7 @@ function truncateSync(path, len = 0) {
     try {
         binding.truncateSync(path, len);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "truncate", path);
     }
 }
 
@@ -773,7 +952,7 @@ function ftruncateSync(fd, len = 0) {
     try {
         binding.ftruncateSync(fd, len);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "ftruncate");
     }
 }
 
@@ -811,7 +990,7 @@ function realpathSync(path, options = { encoding: "utf8" }) {
     options = applyDefaultValue(options, { encoding: "utf8" });
     validateEncoding(options.encoding, "encoding");
     let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
-    let stat = lstatSync(path, { throwIfNoEntry: false });
+    let stat = lstatSync(path);
     if (stat != null) {
         if (!stat.isSymbolicLink()) {
             let res = normalize(path);
@@ -831,7 +1010,7 @@ function realpathSync(path, options = { encoding: "utf8" }) {
             return Buffer.from(res, "utf8");
         }
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "realpath", path);
     }
 }
 
@@ -864,11 +1043,11 @@ function mkdtemp(prefix, options = { encoding: "utf8" }, callback) {
     let path = prefix + genId(6);
     mkdir(path, (err) => {
         if (err) {
-            callback(err);
+            callback(wasiFsSyscallErrorMap(err, "mkdtemp", prefix));
         } else if (useBuffer) {
-            callback(undefined, Buffer.from(path, "utf8"));
+            callback(null, Buffer.from(path, "utf8"));
         } else {
-            callback(undefined, path);
+            callback(null, path);
         }
     })
 }
@@ -886,7 +1065,11 @@ function mkdtempSync(prefix, options = { encoding: "utf8" }) {
     let useBuffer = options.encoding === "buffer" || options.encoding === "Buffer";
 
     let path = prefix + genId(6);
-    mkdirSync(path);
+    try {
+        mkdirSync(path);
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "mkdtemp", prefix);
+    }
     if (useBuffer) {
         return Buffer.from(path, "utf8");
     } else {
@@ -917,6 +1100,11 @@ function copyFileSync(src, dest, mode = 0) {
     src = getValidatedPath(src, "src");
     dest = getValidatedPath(dest, "dest");
     validateInteger(mode, "mode", 0, 7);
+
+    if (statSync(src, { throwIfNoEntry: false }) === undefined) {
+        throw wasiFsSyscallErrorMap("NOENT", "copyfile", src, dest);
+    }
+
     if (mode & constants.COPYFILE_EXCL === constants.COPYFILE_EXCL) {
         if (existsSync(dest)) {
             let e = new Error(`EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
@@ -929,7 +1117,7 @@ function copyFileSync(src, dest, mode = 0) {
     try {
         binding.copyFileSync(src, dest);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "copyfile", src, dest);
     }
 }
 
@@ -955,7 +1143,7 @@ function linkSync(existingPath, newPath) {
     try {
         binding.linkSync(existingPath, newPath);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "link", existingPath, newPath);
     }
 }
 
@@ -979,7 +1167,7 @@ function symlinkSync(target, path) {
     try {
         binding.symlinkSync(target, path);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "symlink", target, path);
     }
 }
 
@@ -1003,7 +1191,7 @@ function closeSync(fd) {
     try {
         binding.fcloseSync(fd);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "close");
     }
 }
 
@@ -1027,7 +1215,7 @@ function fsyncSync(fd) {
     try {
         binding.fsyncSync(fd);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "fsync");
     }
 }
 
@@ -1050,13 +1238,20 @@ function fdatasyncSync(fd) {
     try {
         binding.fdatasyncSync(fd);
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "fdatasync");
     }
 }
 
 function fread(fd, position, length) {
     // poll a file will make infinite loop in wasmedge, so fallback to readSync
-    let stat = fstatSync(fd);
+    let stat = null;
+    try {
+        stat = fstatSync(fd);
+    } catch (err) {
+        return new Promise((res, rej) => {
+            rej(err);
+        })
+    }
     if (stat.isFile()) {
         return new Promise((res, rej) => {
             try {
@@ -1114,9 +1309,7 @@ function read(fd, buffer, offset, length, position, callback) {
         buffer.fill(data, offset, data.byteLength);
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
-        let err = new Error(e.message);
-        err.code = e.code;
-        callback(err);
+        callback(wasiFsSyscallErrorMap(e, "read"));
     })
 }
 
@@ -1168,11 +1361,12 @@ function readSync(fd, buffer, offset, length, position) {
         buffer.fill(data, offset, offset + data.byteLength);
         return data.byteLength;
     } catch (err) {
-        let e = new Error(err.message);
         if (err.code === "INVAL") {
-            e.code = "EOVERFLOW"
+            let e = new Error(err.message);
+            e.code = "EOVERFLOW";
+            throw e;
         }
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "read");
     }
 }
 
@@ -1197,9 +1391,7 @@ function openSync(path, flag = "r", mode = 0o666) {
         let fd = binding.openSync(path, flag, mode);
         return fd;
     } catch (err) {
-        let e = new Error(err.message);
-        e.code = "ENOENT";
-        throw e;
+        throw wasiFsSyscallErrorMap(err, "open", path);
     }
 }
 
@@ -1355,9 +1547,7 @@ function readlinkSync(path, option) {
         }
         return res;
     } catch (e) {
-        let err = new Error(e.message);
-        err.code = e.code;
-        callback(err);
+        throw wasiFsSyscallErrorMap(e, "readlink", path);
     }
 }
 
@@ -1451,7 +1641,14 @@ function readvSync(fd, buffer, position = 0) {
 
 function fwrite(fd, position, buffer) {
     // poll a file will make infinite loop in wasmedge, so fallback to readSync
-    let stat = fstatSync(fd);
+    let stat = null;
+    try {
+        stat = fstatSync(fd);
+    } catch (err) {
+        return new Promise((res, rej) => {
+            rej(err);
+        })
+    }
     if (stat.isFile()) {
         return new Promise((res, rej) => {
             try {
@@ -1507,9 +1704,7 @@ function write(fd, buffer, offset, length, position, callback) {
             callback(null, len, oriStr.slice(offset, offset + len));
         }
     }).catch((e) => {
-        let err = new Error(e.message);
-        err.code = e.code;
-        callback(err);
+        callback(wasiFsSyscallErrorMap(e, "write"));
     })
 }
 
@@ -1550,9 +1745,7 @@ function writeSync(fd, buffer, offset, length, position) {
         let len = binding.fwriteSync(fd, position, buffer.buffer.slice(offset, offset + length));
         return len;
     } catch (e) {
-        let err = new Error(e.message);
-        err.code = e.code;
-        callback(err);
+        throw wasiFsSyscallErrorMap(e, "write");
     }
 }
 
@@ -1915,9 +2108,7 @@ function readdir(path, options, callback) {
             }
             callback(null, data);
         } catch (err) {
-            print(err);
-            print(err.stack);
-            callback(err);
+            callback(wasiFsSyscallErrorMap(err, "scandir", path));
         }
     }, 0);
 }
@@ -1929,19 +2120,23 @@ function readdirSync(path, options) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options, {
+    options = applyDefaultValue(options || {}, {
         encoding: "utf8",
         withFileTypes: false
     });
     validateEncoding(options.encoding, "encoding");
     let data = [];
-    let dir = opendirSync(path);
-    let p = dir.readSync();
-    while (p) {
-        data.push(options.withFileTypes ? p : p.name);
-        p = dir.readSync();
+    try {
+        let dir = opendirSync(path);
+        let p = dir.readSync();
+        while (p) {
+            data.push(options.withFileTypes ? p : p.name);
+            p = dir.readSync();
+        }
+        return data;
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "scandir", path);
     }
-    return data;
 }
 
 function watch() {
