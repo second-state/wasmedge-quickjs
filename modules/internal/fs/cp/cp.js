@@ -47,6 +47,8 @@ import {
   sep,
 } from "path";
 
+import process from "process";
+
 async function cpFn(src, dest, opts) {
   // Warn about using preserveTimestamps on 32-bit node
   if (opts.preserveTimestamps && process.arch === 'ia32') {
@@ -118,7 +120,7 @@ function getStats(src, dest, opts) {
   const statFunc = opts.dereference ?
     (file) => stat(file, { bigint: true }) :
     (file) => lstat(file, { bigint: true });
-  return SafePromiseAll([
+  return Promise.all([
     statFunc(src),
     Promise.prototype.then.call(statFunc(dest), undefined, (err) => {
       if (err.code === 'ENOENT') return null;
@@ -149,7 +151,7 @@ function pathExists(dest) {
 async function checkParentPaths(src, srcStat, dest) {
   const srcParent = resolve(dirname(src));
   const destParent = resolve(dirname(dest));
-  if (destParent === srcParent || destParent === parse(destParent).root) {
+  if (destParent === srcParent || destParent === parse(destParent).root || destParent === ".") {
     return;
   }
   let destStat;

@@ -4,10 +4,10 @@
 import { Writable, Readable } from "stream";
 import { validateEncoding } from "./utils";
 import { URL } from "url";
-import { open, write, close } from "fs";
 import { toPathIfFileURL } from "../url";
-import fs from "../../fs";
+import fs, { open, write, close, statSync } from "../../fs";
 import { validateInteger } from "../validators";
+import { nextTick } from "../../process";
 
 const kIsPerformingIO = Symbol('kIsPerformingIO');
 
@@ -21,7 +21,10 @@ export class WriteStreamClass extends Writable {
     fd = null;
     bytesWritten = 0;
     pos = 0;
-    [kFs] = { open, write };
+    [kFs] = {
+        open: fs.open,
+        write: fs.write
+    };
     [kIsPerformingIO] = false;
     constructor(path, opts) {
         super(opts);
@@ -29,7 +32,10 @@ export class WriteStreamClass extends Writable {
         this.path = toPathIfFileURL(path);
         this.flags = opts.flags || "w";
         this.mode = opts.mode || 0o666;
-        this[kFs] = opts.fs ?? { open, write, close };
+        this[kFs] = opts.fs ?? {
+            open: fs.open, write: fs.write, close: fs.close
+        };
+
         if (typeof (opts) === "string") {
             validateEncoding(opts, "encoding");
         }
@@ -147,7 +153,7 @@ export class ReadStream extends Readable {
         const hasBadOptions = opts && (
             opts.start || opts.end || opts.fs
         );
-        if (opts === null || typeof(opts) === "undefined") {
+        if (opts === null || typeof (opts) === "undefined") {
             opts = "utf8";
         }
         if (typeof (opts) === "string") {
@@ -162,28 +168,50 @@ export class ReadStream extends Readable {
                 })`,
             );
         }
+        const buffer = Buffer.alloc(16 * 1024);
+        let curPos = 0;
         if (opts.fd) {
             setTimeout(() => {
-                this.file = opts.fd;
-                this.pending = false;
-                this.emit("ready");
+                if (this.file === undefined) {
+                    this.file = opts.fd;
+                    this.pending = false;
+                    this.emit("ready");
+                }
             }, 0);
         } else {
             fs.promises.open(path, fs.constants.O_RDONLY).then(f => {
-                this.file = f;
-                this.pending = false;
-                this.emit("ready");
+                if (this.file === undefined) {
+                    this.file = f;
+                    this.pending = false;
+                    this.emit("ready");
+                }
             });
         }
-        const buffer = new Uint8Array(16 * 1024);
         super({
             autoDestroy: true,
             emitClose: true,
             objectMode: false,
             read: async function (_size) {
                 try {
-                    const n = await this.file.read(buffer);
-                    this.push(n ? Buffer.from(buffer.slice(0, n)) : null);
+                    if (this.file === undefined) {
+                        if (opts.fd) {
+                            this.file = new fs.FileHandle(opts.fd, path);
+                        } else {
+                            this.file = new fs.FileHandle(fs.openSync(path, fs.constants.O_RDONLY), path);
+                        }
+                        this.pending = false;
+                        print("ready");
+                        this.emit("ready");
+                    }
+                    opts.end = opts.end || fs.fstatSync(this.file.fd).size;
+                    opts.start = opts.start || 0;
+                    const n = await this.file.read(buffer, 0, opts.end - opts.start - curPos + 1, curPos === 0 ? opts.start : -1);
+                    curPos += n;
+                    if (n === 0) {
+                        this.emit("end");
+                    } else {
+                        this.push(n ? Buffer.from(buffer.slice(0, n)) : null);
+                    }
                 } catch (err) {
                     this.destroy(err);
                 }

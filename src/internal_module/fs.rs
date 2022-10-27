@@ -813,11 +813,14 @@ fn freaddir_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
                     let mut data_pack = ctx.new_array();
                     let mut aidx = 0;
                     let mut dir_next = 0;
-                    while idx < len {
+                    while (idx + s) < len.min(4096) {
                         let dir = unsafe {
                             *(&buf[idx..(idx + s)] as *const [u8] as *const wasi_fs::Dirent)
                         };
                         idx += s;
+                        if (idx + dir.d_namlen as usize) >= len.min(4096) {
+                            break;
+                        }
                         let name =
                             String::from_utf8_lossy(&buf[idx..(idx + dir.d_namlen as usize)])
                                 .to_string();

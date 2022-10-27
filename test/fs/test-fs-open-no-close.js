@@ -9,6 +9,8 @@ import assert from 'assert';
 
 import fs from 'fs';
 
+import process from 'process';
+
 const debuglog = (arg) => {
   console.log(new Date().toLocaleString(), arg);
 };
@@ -25,8 +27,9 @@ fs.open(`${tmpdir.path}/dummy`, 'wx+', common.mustCall((err, fd) => {
 }));
 debuglog('waiting for callback');
 
-process.on('beforeExit', common.mustCall(() => {
+// test_fs's runner will invoke this
+globalThis._onExit = common.mustCall(() => {
   if (openFd) {
     fs.closeSync(openFd);
   }
-}));
+});

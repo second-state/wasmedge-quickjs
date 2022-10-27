@@ -710,6 +710,7 @@ function getValidTime(time, name) {
 }
 
 function utimes(path, atime, mtime, callback) {
+    path = getValidatedPath(path);
     validateFunction(callback);
 
     validateFunction(callback, "callback");
@@ -781,6 +782,7 @@ function futimesSync(fd, atime, mtime) {
 }
 
 function rmdir(path, options, callback) {
+    path = getValidatedPath(path);
     if (typeof (options) === "function") {
         callback = options;
         options = {};
@@ -844,6 +846,8 @@ function rmSync(path, options = { force: false, maxRetries: 1, recursive: false,
 }
 
 function rename(oldPath, newPath, callback) {
+    oldPath = getValidatedPath(oldPath);
+    newPath = getValidatedPath(newPath);
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
@@ -899,6 +903,7 @@ function unlinkSync(path) {
 }
 
 function truncate(path, len, callback) {
+    path = getValidatedPath(path);
     if (typeof (len) === "function") {
         callback = len;
         len = 0;
@@ -957,6 +962,7 @@ function ftruncateSync(fd, len = 0) {
 }
 
 function realpath(path, options = { encoding: "utf8" }, callback) {
+    path = getValidatedPath(path);
     if (typeof (options) === "function") {
         callback = options;
         options = {};
@@ -1148,6 +1154,8 @@ function linkSync(existingPath, newPath) {
 }
 
 function symlink(target, path, callback) {
+    target = getValidatedPath(target);
+    path = getValidatedPath(path);
     validateFunction(callback, "callback");
 
     setTimeout(() => {
@@ -1306,7 +1314,8 @@ function read(fd, buffer, offset, length, position, callback) {
     validateInteger(length, "length");
 
     fread(fd, position, length).then((data) => {
-        buffer.fill(data, offset, data.byteLength);
+        Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
+        // buffer.fill(data, offset, data.byteLength);
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
         callback(wasiFsSyscallErrorMap(e, "read"));
@@ -1455,12 +1464,10 @@ function readFile(path, option, callback) {
     if (typeof (path) === "number") {
         fd = path;
     } else {
-        try {
+        fd = getValidatedPath(path);
+        try {    
             fd = openSync(path, option.flag);
         } catch (err) {
-            if (err.message === "File exists.") {
-                err.code = "EEXIST";
-            }
             callback(err);
             return;
         }
@@ -1503,14 +1510,8 @@ function readFileSync(path, option) {
         fd = path;
     }
     else {
-        try {
-            fd = openSync(path, option.flag);
-        } catch (err) {
-            if (err.message === "File exists.") {
-                err.code = "EEXIST";
-            }
-            throw err;
-        }
+        fd = getValidatedPath(path);
+        fd = openSync(path, option.flag);
     }
     let stat = fstatSync(fd);
     let len = stat.size;
@@ -2246,7 +2247,11 @@ function cp(src, dest, options, callback) {
     options = validateCpOptions(options);
     src = getValidatedPath(src, 'src');
     dest = getValidatedPath(dest, 'dest');
-    cpFn(src, dest, options, callback);
+    cpFn(src, dest, options).then((_val, err) => {
+        callback(err === undefined ? null : err);
+    }).catch(err => {
+        callback(err);
+    });
 }
 
 class FileHandle extends EventEmitter {
@@ -2266,14 +2271,14 @@ class FileHandle extends EventEmitter {
     appendFile(data, options) {
         return promisify(appendFile)(this.fd, data, options);
     }
-    
+
     chown() {
         return new Promise((res, rej) => { res(undefined); });
     }
 
     close() {
         this.emit("close");
-        return promisify(close)(this.fd);
+        return promisify(close)(this.fd).then(() => { this.#fd = -1; });
     }
 
     createReadStream(options) {

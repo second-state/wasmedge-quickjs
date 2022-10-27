@@ -19,6 +19,11 @@ fn test_js_file(file_path: &str) {
             }
         }
         ctx.js_loop().unwrap();
+        println!("{:?}", ctx.get_global().get("_onExit"));
+        if let JsValue::Function(func) = ctx.get_global().get("_onExit") {
+            func.call(&[]);
+        }
+        ctx.js_loop().unwrap();
         println!("{:?}", ctx.get_global().get("commonExitCheck"));
         if let JsValue::Function(func) = ctx.get_global().get("commonExitCheck") {
             func.call(&[]);
@@ -231,13 +236,11 @@ fn test_fs_mkdtemp_prefix_check() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_non_number_arguments_throw() {
     test_js_file("test/fs/test-fs-non-number-arguments-throw.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_null_bytes() {
     test_js_file("test/fs/test-fs-null-bytes.js");
 }
@@ -259,25 +262,22 @@ fn test_fs_open() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, mode"]
 fn test_fs_open_mode_mask() {
     test_js_file("test/fs/test-fs-open-mode-mask.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_open_no_close() {
     test_js_file("test/fs/test-fs-open-no-close.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_open_numeric_flags() {
     test_js_file("test/fs/test-fs-open-numeric-flags.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_options_immutable() {
     test_js_file("test/fs/test-fs-options-immutable.js");
 }
@@ -306,11 +306,13 @@ fn test_fs_promises_file_handle_chmod() {
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_promises_file_handle_close_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_promises_file_handle_close() {
     test_js_file("test/fs/test-fs-promises-file-handle-close.js");
 }
@@ -340,6 +342,7 @@ fn test_fs_promises_file_handle_read_worker() {
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_promises_file_handle_stat() {
     test_js_file("test/fs/test-fs-promises-file-handle-stat.js");
 }
@@ -690,11 +693,13 @@ fn test_fs_readv() {
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_readv_promises() {
     test_js_file("test/fs/test-fs-readv-promises.js");
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_readv_promisify() {
     test_js_file("test/fs/test-fs-readv-promisify.js");
 }
@@ -812,6 +817,7 @@ fn test_fs_sir_writes_alot() {
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_stat_bigint() {
     test_js_file("test/fs/test-fs-stat-bigint.js");
 }
@@ -822,6 +828,7 @@ fn test_fs_stat_date() {
 }
 
 #[test]
+#[ignore = "working"]
 fn test_fs_stat() {
     test_js_file("test/fs/test-fs-stat.js");
 }
