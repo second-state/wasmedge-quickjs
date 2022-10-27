@@ -123,7 +123,11 @@ export function promisify(
                     resolve(values[0]);
                 }
             });
-            Reflect.apply(original, this, args);
+            try {
+                Reflect.apply(original, this, args);
+            } catch (err) {
+                return reject(err);
+            }
         });
     }
 

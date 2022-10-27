@@ -40,8 +40,8 @@ const isDumbTerminal = process.env.TERM === 'dumb';
 
 const mustCallChecks = [];
 
-function runCallChecks(exitCode) {
-  if (exitCode !== 0) return;
+function runCallChecks() {
+  if (globalThis.assertPass === false) return;
 
   const failed = mustCallChecks.filter(function (context) {
     if ('minimum' in context) {
@@ -53,10 +53,7 @@ function runCallChecks(exitCode) {
   });
 
   failed.forEach(function (context) {
-    print('Mismatched %s function calls. Expected %s, actual %d.',
-      context.name,
-      context.messageSegment,
-      context.actual);
+    print(`Mismatched ${context.name} function calls. Expected ${context.messageSegment}, actual ${context.actual}.`);
     print(context.stack.split('\n').slice(2).join('\n'));
   });
 

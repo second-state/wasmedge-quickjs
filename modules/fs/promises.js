@@ -2,7 +2,13 @@ import * as fs from "../internal/fs";
 import { promisify } from "../internal/util"
 
 export const access = promisify(fs.access);
-export const appendFile = promisify(fs.appendFile);
+export const appendFile = (file, data, opts) => {
+    if (file instanceof fs.FileHandle) {
+        return file.appendFile(data, opts);
+    } else {
+        return promisify(fs.appendFile)(file, data, opts);
+    }
+};
 export const chmod = promisify(fs.chmod);
 export const chown = promisify(fs.chown);
 export const copyFile = promisify(fs.copyFile);

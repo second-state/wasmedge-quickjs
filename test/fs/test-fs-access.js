@@ -92,7 +92,7 @@ fs.promises.access(readOnlyFile, fs.R_OK)
     .then(common.mustNotCall(), common.mustCall(expectedError))
     .catch(throwNextTick);
 }
-
+/* require chmod
 {
   function expectedError(err) {
     assert.strictEqual(this, undefined);
@@ -108,7 +108,7 @@ fs.promises.access(readOnlyFile, fs.R_OK)
     .then(common.mustNotCall(), common.mustCall(expectedError))
     .catch(throwNextTick);
 }
-
+*/
 {
   const expectedError = (err) => {
     assert.strictEqual(err.code, 'ERR_INVALID_ARG_TYPE');

@@ -442,7 +442,7 @@ function lstat(path, options, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
@@ -478,7 +478,7 @@ function fstat(fd, options, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
@@ -519,7 +519,7 @@ function access(path, mode = constants.F_OK, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function accessSync(path, mode = constants.F_OK) {
@@ -759,7 +759,7 @@ function futimes(fd, atime, mtime, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function futimesSync(fd, atime, mtime) {
@@ -852,7 +852,7 @@ function rename(oldPath, newPath, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function renameSync(oldPath, newPath) {
@@ -1182,7 +1182,7 @@ function close(fd, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function closeSync(fd) {
@@ -1205,7 +1205,7 @@ function fsync(fd, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function fsyncSync(fd) {
@@ -1229,7 +1229,7 @@ function fdatasync(fd, callback) {
         } catch (err) {
             callback(err);
         }
-    })
+    }, 0);
 }
 
 function fdatasyncSync(fd) {
@@ -1826,7 +1826,7 @@ function appendFile(file, data, options, callback) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options, {
+    options = applyDefaultValue(options || {}, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -1866,7 +1866,7 @@ function appendFileSync(file, data, options = {}) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options, {
+    options = applyDefaultValue(options || {}, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -2264,9 +2264,9 @@ class FileHandle extends EventEmitter {
     }
 
     appendFile(data, options) {
-        let encoding = options.encoding || "utf8";
-        return promisify(write)(this.fd, typeof (data) === "string" ? data : data.toString(encoding));
+        return promisify(appendFile)(this.fd, data, options);
     }
+    
     chown() {
         return new Promise((res, rej) => { res(undefined); });
     }
