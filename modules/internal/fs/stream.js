@@ -28,14 +28,6 @@ export class WriteStreamClass extends Writable {
     [kIsPerformingIO] = false;
     constructor(path, opts) {
         super(opts);
-        this.pending = true;
-        this.path = toPathIfFileURL(path);
-        this.flags = opts.flags || "w";
-        this.mode = opts.mode || 0o666;
-        this[kFs] = opts.fs ?? {
-            open: fs.open, write: fs.write, close: fs.close
-        };
-
         if (typeof (opts) === "string") {
             validateEncoding(opts, "encoding");
         }
@@ -46,6 +38,13 @@ export class WriteStreamClass extends Writable {
         if (opts.start) {
             validateInteger(opts.start, "start");
         }
+        this.pending = true;
+        this.path = toPathIfFileURL(path);
+        this.flags = opts.flags || "w";
+        this.mode = opts.mode || 0o666;
+        this[kFs] = opts.fs ?? {
+            open: fs.open, write: fs.write, close: fs.close
+        };
     }
 
     _construct(callback) {

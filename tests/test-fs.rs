@@ -294,7 +294,6 @@ fn test_fs_promises_file_handle_aggregate_errors() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_append_file() {
     test_js_file("test/fs/test-fs-promises-file-handle-append-file.js");
 }
@@ -312,7 +311,7 @@ fn test_fs_promises_file_handle_close_errors() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsuppored, required manual triggered gc"]
 fn test_fs_promises_file_handle_close() {
     test_js_file("test/fs/test-fs-promises-file-handle-close.js");
 }
@@ -342,7 +341,6 @@ fn test_fs_promises_file_handle_read_worker() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_stat() {
     test_js_file("test/fs/test-fs-promises-file-handle-stat.js");
 }
@@ -360,7 +358,6 @@ fn test_fs_promises_file_handle_sync() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_truncate() {
     test_js_file("test/fs/test-fs-promises-file-handle-truncate.js");
 }
@@ -1104,7 +1101,6 @@ fn test_fs_write_file() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_file_sync() {
     test_js_file("test/fs/test-fs-write-file-sync.js");
 }

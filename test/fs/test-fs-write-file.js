@@ -67,7 +67,7 @@ fs.open(filename4, 'w+', common.mustSucceed((fd) => {
   }));
 }));
 
-
+/* unsupport AbortController
 {
   // Test that writeFile is cancellable with an AbortSignal.
   // Before the operation has started
@@ -102,3 +102,4 @@ fs.open(filename4, 'w+', common.mustSucceed((fd) => {
   fs.writeFileSync(filename, '');
   fs.writeFile(filename, s, { flag: 'r' }, common.expectsError(/EBADF/));
 }
+*/

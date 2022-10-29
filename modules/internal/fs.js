@@ -473,8 +473,8 @@ function fstat(fd, options, callback) {
 
     setTimeout(() => {
         try {
-            fstatSync(fd, options);
-            callback(null);
+            let res = fstatSync(fd, options);
+            callback(null, res);
         } catch (err) {
             callback(err);
         }
@@ -1465,7 +1465,7 @@ function readFile(path, option, callback) {
         fd = path;
     } else {
         fd = getValidatedPath(path);
-        try {    
+        try {
             fd = openSync(path, option.flag);
         } catch (err) {
             callback(err);
@@ -1691,6 +1691,9 @@ function write(fd, buffer, offset, length, position, callback) {
         offset = 0;
         length = buffer.byteLength - offset;
         position = 0;
+    } else if (typeof (position) === "function") {
+        callback = position;
+        position = 0;
     }
 
     validateFunction(callback, "callback");
@@ -1804,11 +1807,21 @@ function writeFileSync(file, data, options = {}) {
         flag: "w",
         signal: null
     });
-    file = getValidatedPath(file);
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
-    let fd = openSync(file, options.flag, options.mode);
+    if (!(buffer instanceof Buffer) && buffer.toString() !== undefined) {
+        buffer = Buffer.from(data.toString(), options.encoding);
+    }
+    let fd;
+    if (typeof (file) === "number") {
+        fd = file;
+    } else {
+        file = getValidatedPath(file);
+        fd = openSync(file, options.flag, options.mode);
+    }
     writeSync(fd, buffer);
-    closeSync(fd);
+    if (typeof (file) !== "number") {
+        closeSync(fd);
+    }
 }
 
 function appendFile(file, data, options, callback) {
