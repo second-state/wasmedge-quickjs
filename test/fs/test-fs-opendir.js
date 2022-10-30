@@ -11,11 +11,13 @@ import tmpdir from '../common/tmpdir';
 const testDir = tmpdir.path;
 const files = ['empty', 'files', 'for', 'just', 'testing'];
 
+const __filename = args[0];
+
 // Make sure tmp directory is clean
 tmpdir.refresh();
 
 // Create the necessary files
-files.forEach(function(filename) {
+files.forEach(function (filename) {
   fs.closeSync(fs.openSync(path.join(testDir, filename), 'w'));
 });
 
@@ -87,15 +89,15 @@ fs.opendir(testDir, common.mustSucceed((dir) => {
 }));
 
 // opendir() on file should throw ENOTDIR
-assert.throws(function() {
+assert.throws(function () {
   fs.opendirSync(__filename);
 }, /Error: ENOTDIR: not a directory/);
 
-assert.throws(function() {
+assert.throws(function () {
   fs.opendir(__filename);
-}, /TypeError \[ERR_INVALID_ARG_TYPE\]: The "callback" argument must be of type function/);
+}, /TypeError( \[ERR_INVALID_ARG_TYPE\])?: The "callback" argument must be of type function/);
 
-fs.opendir(__filename, common.mustCall(function(e) {
+fs.opendir(__filename, common.mustCall(function (e) {
   assert.strictEqual(e.code, 'ENOTDIR');
 }));
 
@@ -159,14 +161,14 @@ async function doAsyncIterBreakTest() {
   for await (const dirent of dir) { // eslint-disable-line no-unused-vars
     break;
   }
-
+  
   await assert.rejects(async () => dir.read(), dirclosedError);
 }
 doAsyncIterBreakTest().then(common.mustCall());
 
 async function doAsyncIterReturnTest() {
   const dir = await fs.promises.opendir(testDir);
-  await (async function() {
+  await (async function () {
     for await (const dirent of dir) {
       return;
     }
@@ -246,7 +248,7 @@ doConcurrentAsyncAndSyncOps().then(common.mustCall());
 // Check read throw exceptions on invalid callback
 {
   const dir = fs.opendirSync(testDir);
-  assert.throws(() => dir.read('INVALID_CALLBACK'), /ERR_INVALID_ARG_TYPE/);
+  assert.throws(() => dir.read('INVALID_CALLBACK'), { code: /ERR_INVALID_ARG_TYPE/ });
 }
 
 // Check that concurrent read() operations don't do weird things.

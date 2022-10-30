@@ -199,7 +199,6 @@ export class ReadStream extends Readable {
                             this.file = new fs.FileHandle(fs.openSync(path, fs.constants.O_RDONLY), path);
                         }
                         this.pending = false;
-                        print("ready");
                         this.emit("ready");
                     }
                     opts.end = opts.end || fs.fstatSync(this.file.fd).size;

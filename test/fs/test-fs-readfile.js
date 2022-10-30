@@ -22,10 +22,10 @@ const fileInfo = [
     len: 64 * 1024 },
   { name: path.join(tmpdir.path, `${prefix}-64KLessOne.txt`),
     len: (64 * 1024) - 1 },
-  { name: path.join(tmpdir.path, `${prefix}-1M.txt`),
+  /*{ name: path.join(tmpdir.path, `${prefix}-1M.txt`),
     len: 1 * 1024 * 1024 },
   { name: path.join(tmpdir.path, `${prefix}-1MPlusOne.txt`),
-    len: (1 * 1024 * 1024) + 1 },
+    len: (1 * 1024 * 1024) + 1 },*/
 ];
 
 // Populate each fileInfo (and file) with unique fill.
@@ -70,7 +70,7 @@ for (const e of fileInfo) {
     fs.readFileSync(file);
   }, { code: 'ERR_FS_FILE_TOO_LARGE', name: 'RangeError' });
 }
-
+/*
 {
   // Test cancellation, before
   const signal = AbortSignal.abort();
@@ -95,3 +95,4 @@ for (const e of fileInfo) {
     fs.readFile(fileInfo[0].name, { signal: 'hello' }, callback);
   }, { code: 'ERR_INVALID_ARG_TYPE', name: 'TypeError' });
 }
+*/

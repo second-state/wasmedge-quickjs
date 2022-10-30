@@ -441,6 +441,9 @@ class AssertionError extends Error {
     this.stack; // eslint-disable-line no-unused-expressions
     // Reset the name.
     this.name = 'AssertionError';
+
+    print(this);
+    print(this.stack);
   }
 
   toString() {

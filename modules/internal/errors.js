@@ -786,3 +786,29 @@ export class ERR_AMBIGUOUS_ARGUMENT extends TypeError {
         );
     }
 }
+
+export class ERR_DIR_CLOSED extends Error {
+    constructor() {
+        super("Directory handle was closed");
+        this.code = "ERR_DIR_CLOSED";
+    }
+}
+
+export class ERR_DIR_CONCURRENT_OPERATION extends Error {
+    constructor() {
+        super(
+            "Cannot do synchronous work on directory handle with concurrent asynchronous operations",
+        );
+        this.code = "ERR_DIR_CONCURRENT_OPERATION";
+    }
+}
+
+export class ERR_FS_FILE_TOO_LARGE extends RangeError {
+    constructor(x) {
+        super(
+            `File size (${x}) is greater than 2 GB`,
+        );
+        this.code = "ERR_FS_FILE_TOO_LARGE";
+    }
+}
+

@@ -246,7 +246,6 @@ fn test_fs_null_bytes() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_opendir() {
     test_js_file("test/fs/test-fs-opendir.js");
 }
@@ -435,13 +434,12 @@ fn test_fs_promisified() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "MacOS specific"]
 fn test_fs_readdir_buffer() {
     test_js_file("test/fs/test-fs-readdir-buffer.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_readdir() {
     test_js_file("test/fs/test-fs-readdir.js");
 }
@@ -465,7 +463,6 @@ fn test_fs_readdir_ucs2() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_empty_buffer() {
     test_js_file("test/fs/test-fs-read-empty-buffer.js");
 }
@@ -482,7 +479,7 @@ fn test_fs_readfile_empty() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_readfile_error() {
     test_js_file("test/fs/test-fs-readfile-error.js");
 }
@@ -498,7 +495,6 @@ fn test_fs_readfile_flags() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_readfile() {
     test_js_file("test/fs/test-fs-readfile.js");
 }
@@ -516,7 +512,7 @@ fn test_fs_readfile_pipe_large() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "windows specific"]
 fn test_fs_readfilesync_enoent() {
     test_js_file("test/fs/test-fs-readfilesync-enoent.js");
 }
@@ -528,7 +524,6 @@ fn test_fs_read_file_sync_hostname() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_file_sync() {
     test_js_file("test/fs/test-fs-read-file-sync.js");
 }

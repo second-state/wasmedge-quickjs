@@ -276,8 +276,11 @@ fn truncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
         return JsValue::UnDefined;
     }
     if let Some(JsValue::String(p)) = path {
-        if let Some(JsValue::Int(l)) = len {
-            let res = fs::File::open(p.as_str()).and_then(|file| file.set_len(*l as u64));
+        if let Some(l) = get_js_number(len) {
+            let res = fs::OpenOptions::new()
+                .write(true)
+                .open(p.as_str())
+                .and_then(|file| file.set_len(l as u64));
             return match res {
                 Ok(()) => JsValue::UnDefined,
                 Err(e) => {
@@ -297,8 +300,8 @@ fn ftruncate_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsV
         return JsValue::UnDefined;
     }
     if let Some(JsValue::Int(f)) = fd {
-        if let Some(JsValue::Int(l)) = len {
-            let res = unsafe { wasi_fs::fd_filestat_set_size(*f as u32, *l as u64) };
+        if let Some(l) = get_js_number(len) {
+            let res = unsafe { wasi_fs::fd_filestat_set_size(*f as u32, l as u64) };
             return match res {
                 Ok(()) => JsValue::UnDefined,
                 Err(e) => {

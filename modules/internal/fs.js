@@ -867,15 +867,13 @@ function renameSync(oldPath, newPath) {
         throw wasiFsSyscallErrorMap("NOENT", "rename", oldPath, newPath);
     }
 
-    if (statSync(newPath, { throwIfNoEntry: false })) {
+    if (statSync(newPath, { throwIfNoEntry: false }) !== undefined) {
         throw wasiFsSyscallErrorMap("EXIST", "rename", oldPath, newPath);
     }
 
     try {
         binding.renameSync(oldPath, newPath);
     } catch (err) {
-        print(JSON.stringify(err));
-        print(oldPath, newPath);
         throw wasiFsSyscallErrorMap(err, "rename", oldPath, newPath);
     }
 }
@@ -1280,7 +1278,7 @@ function read(fd, buffer, offset, length, position, callback) {
         offset = 0;
         length = buffer.byteLength - offset;
         position = -1;
-    } else if (!(buffer instanceof Buffer)) {
+    } else if (!(buffer instanceof Buffer) && !Object.prototype.toString.call(buffer).endsWith("Array]")) {
         callback = offset;
         let option = buffer;
         buffer = Buffer.alloc(16384);
@@ -1312,6 +1310,14 @@ function read(fd, buffer, offset, length, position, callback) {
     validateInteger(offset, "offset");
     validateInteger(position, "position");
     validateInteger(length, "length");
+
+    if (buffer.byteLength == 0) {
+        throw new errors.ERR_INVALID_ARG_VALUE(
+            "buffer",
+            buffer,
+            "is empty and cannot be written",
+        );
+    }
 
     fread(fd, position, length).then((data) => {
         Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
@@ -1351,6 +1357,13 @@ function readSync(fd, buffer, offset, length, position) {
 
     validateInteger(offset, "offset");
 
+    if (buffer.byteLength == 0) {
+        throw new errors.ERR_INVALID_ARG_VALUE(
+            "buffer",
+            buffer,
+            "is empty and cannot be written",
+        );
+    }
 
     const nodePositionMin = -9223372036854775808n;
     const nodePositionMax = 9223372036854775807n;
@@ -1474,7 +1487,13 @@ function readFile(path, option, callback) {
     }
     let stat = fstatSync(fd);
     let len = stat.size;
-    let buf = Buffer.alloc(len)
+
+    if (len > 2 ** 31 - 1) {
+        callback(new errors.ERR_FS_FILE_TOO_LARGE(len));
+        return;
+    }
+
+    let buf = Buffer.alloc(Math.max(len, 1));
 
     read(fd, buf, (err, rlen, obuf) => {
         if (typeof (path) !== "number") {
@@ -1515,7 +1534,10 @@ function readFileSync(path, option) {
     }
     let stat = fstatSync(fd);
     let len = stat.size;
-    let buf = Buffer.alloc(len)
+    if (len > 2 ** 31 - 1) {
+        throw new errors.ERR_FS_FILE_TOO_LARGE(len);
+    }
+    let buf = Buffer.alloc(Math.max(len, 1));
     let rlen = readSync(fd, buf);
     if (typeof (path) !== "number") {
         closeSync(fd);
@@ -1540,7 +1562,6 @@ function readlinkSync(path, option) {
         encoding: "utf8"
     });
     validateEncoding(option.encoding, "encoding");
-    print(path);
     try {
         let res = binding.readlinkSync(path);
         if (option.encoding === "buffer" || option.encoding === "Buffer") {
@@ -1991,8 +2012,12 @@ class Dir {
     #idx = 0;
     #fin = false;
     #cookie = 0;
+    #closed = false;
 
     #fetch() {
+        if (this.#closed) {
+            throw new errors.ERR_DIR_CLOSED();
+        }
         if (this.#idx === this.#dataBuf.length && !this.#fin) {
             try {
                 let data = binding.freaddirSync(this.#fd, this.#cookie);
@@ -2010,42 +2035,77 @@ class Dir {
 
     close(callback) {
         if (callback) {
-            close(this.#fd, callback);
+            validateFunction(callback, "callback");
+            if (this.#closed) {
+                callback(new errors.ERR_DIR_CLOSED());
+                return;
+            }
+            close(this.#fd, (...args) => {
+                this.#closed = true;
+                callback(...args);
+            });
         } else {
-            return fs.promises.close(this.#fd);
+            if (this.#closed) {
+                return new Promise((_res, rej) => rej(new errors.ERR_DIR_CLOSED()));
+            }
+            return promisify(close)(this.#fd).then(() => this.#closed = true);
         }
     }
 
     closeSync() {
+        if (this.#closed) {
+            throw new errors.ERR_DIR_CLOSED();
+        }
+        if (this.#inReading) {
+            throw new errors.ERR_DIR_CONCURRENT_OPERATION();
+        }
         closeSync(this.#fd);
+        this.#closed = true;
     }
+
+    #inReading = false;
 
     read(callback) {
         if (callback) {
-            try {
-                if (!this.#fetch()) {
-                    callback(null, null);
-                }
-                callback(null, new Dirent(this.#dataBuf[this.#idx++]));
-            } catch (err) {
-                callback(err);
-            }
-        } else {
-            return new Promise((resolve, reject) => {
+            validateFunction(callback, "callback");
+            this.#inReading = true;
+            setTimeout(() => {
                 try {
                     if (!this.#fetch()) {
-                        resolve(null);
-                        return;
+                        callback(null, null);
                     }
-                    resolve(new Dirent(this.#dataBuf[this.#idx++]));
+                    this.#inReading = false;
+                    callback(null, new Dirent(this.#dataBuf[this.#idx++]));
                 } catch (err) {
-                    reject(err);
+                    this.#inReading = false;
+                    callback(err);
                 }
+            }, 0);
+        } else {
+            this.#inReading = true;
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    try {
+                        if (!this.#fetch()) {
+                            this.#inReading = false;
+                            resolve(null);
+                            return;
+                        }
+                        this.#inReading = false;
+                        resolve(new Dirent(this.#dataBuf[this.#idx++]));
+                    } catch (err) {
+                        this.#inReading = false;
+                        reject(err);
+                    }
+                }, 0);
             })
         }
     }
 
     readSync() {
+        if (this.#inReading) {
+            throw new errors.ERR_DIR_CONCURRENT_OPERATION();
+        }
         if (!this.#fetch()) {
             return null;
         }
@@ -2054,10 +2114,10 @@ class Dir {
 
     async *[Symbol.asyncIterator]() {
         try {
-            let p = await this.read();
+            let p = this.readSync();
             while (p) {
                 yield p;
-                p = await this.read();
+                p = this.readSync();
             }
         } finally {
             this.closeSync();
@@ -2068,10 +2128,24 @@ class Dir {
 function opendir(path, options, callback) {
     if (typeof (options) === "function") {
         callback = options;
+        options = {};
     }
 
     path = getValidatedPath(path);
     validateFunction(callback, "callback");
+
+    if (options && options.bufferSize !== undefined) {
+        validateInteger(options.bufferSize, "bufferSize", 1);
+    }
+
+    try {
+        if (!statSync(path).isDirectory()) {
+            throw wasiFsSyscallErrorMap("NOTDIR", "opendir", path);
+        }
+    } catch (err) {
+        callback(wasiFsSyscallErrorMap(err, "opendir", path));
+        return;
+    }
 
     setTimeout(() => {
         try {
@@ -2085,6 +2159,18 @@ function opendir(path, options, callback) {
 
 function opendirSync(path, options) {
     path = getValidatedPath(path);
+
+    if (options && options.bufferSize !== undefined) {
+        validateInteger(options.bufferSize, "bufferSize", 1);
+    }
+
+    try {
+        if (!statSync(path).isDirectory()) {
+            throw wasiFsSyscallErrorMap("NOTDIR", "opendir", path);
+        }
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "opendir", path);
+    }
 
     let fd = openSync(path);
     return new Dir(fd, path);

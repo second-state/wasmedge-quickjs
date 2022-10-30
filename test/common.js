@@ -117,6 +117,10 @@ export function mustCall(fn, exact) {
 
 export function mustSucceed(fn, exact) {
   return mustCall(function (err, ...args) {
+    if (err) {
+      print("must succeed but got: ", err);
+      print(err.stack);
+    }
     assert.ifError(err);
     if (typeof fn === 'function')
       return fn.apply(this, args);
@@ -229,6 +233,24 @@ export function expectWarning() {
   // unsupported
 }
 
+// Useful for testing expected internal/error objects
+export function expectsError(validator, exact) {
+  return mustCall((...args) => {
+    if (args.length !== 1) {
+      // Do not use `assert.strictEqual()` to prevent `inspect` from
+      // always being called.
+      assert.fail(`Expected one argument, got ${inspect(args)}`);
+    }
+    const error = args.pop();
+    const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
+    // The error message should be non-enumerable
+    assert.strictEqual(descriptor.enumerable, false);
+
+    assert.throws(() => { throw error; }, validator);
+    return true;
+  }, exact);
+}
+
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -249,7 +271,8 @@ const common = {
   invalidArgTypeHelper,
   platformTimeout,
   runWithInvalidFD,
-  expectWarning
+  expectWarning,
+  expectsError
 };
 
 export default common;

@@ -7,6 +7,8 @@ import fs from 'fs';
 
 import tmpdir from '../common/tmpdir';
 
+const __filename = args[0];
+
 const readdirDir = tmpdir.path;
 const files = ['empty', 'files', 'for', 'just', 'testing'];
 
