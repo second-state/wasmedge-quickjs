@@ -36,7 +36,7 @@ tmpdir.refresh();
 }
 
 const fdsToCloseOnExit = [];
-process.on('beforeExit', common.mustCall(() => {
+globalThis.commonExitCheck = common.mustCall(() => {
   for (const fd of fdsToCloseOnExit) {
     try {
       fs.closeSync(fd);
@@ -44,7 +44,7 @@ process.on('beforeExit', common.mustCall(() => {
       // Failed to close, ignore
     }
   }
-}));
+});
 
 {
   /* writeFile() test. */
@@ -77,7 +77,7 @@ process.on('beforeExit', common.mustCall(() => {
     fs.writeFile(fd, 'World', common.expectsError(/EBADF/));
   }));
 }
-
+/*
 // Test with an AbortSignal
 {
   const controller = new AbortController();
@@ -93,3 +93,4 @@ process.on('beforeExit', common.mustCall(() => {
 
   controller.abort();
 }
+*/

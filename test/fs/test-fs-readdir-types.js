@@ -8,8 +8,10 @@ import fs from 'fs';
 
 import tmpdir from '../common/tmpdir';
 
-import { internalBinding } from 'internal/test/binding';
-const binding = internalBinding('fs');
+// import { internalBinding } from 'internal/test/binding';
+// const binding = internalBinding('fs');
+
+const __filename = args[0];
 
 const readdirDir = tmpdir.path;
 const files = ['empty', 'files', 'for', 'just', 'testing'];
@@ -36,6 +38,8 @@ files.forEach(function(currentFile) {
 
 function assertDirents(dirents) {
   assert.strictEqual(files.length, dirents.length);
+  // dirent is not order by name in this platform
+  dirents.sort((a, b) => a.name > b.name);
   for (const [i, dirent] of dirents.entries()) {
     assert(dirent instanceof fs.Dirent);
     assert.strictEqual(dirent.name, files[i]);
@@ -79,6 +83,7 @@ fs.readdir(readdirDir, {
   assertDirents(dirents);
 })().then(common.mustCall());
 
+/* nodejs implement specific
 // Check for correct types when the binding returns unknowns
 const UNKNOWN = constants.UV_DIRENT_UNKNOWN;
 const oldReaddir = binding.readdir;
@@ -115,3 +120,4 @@ for (const method of typeMethods) {
     assert.strictEqual(dirent[testMethod](), testMethod === method);
   }
 }
+*/

@@ -118,8 +118,8 @@ fn fstat_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
     if fd.is_none() {
         return JsValue::UnDefined;
     }
-    if let JsValue::Int(f) = fd.unwrap() {
-        return match unsafe { wasi_fs::fd_filestat_get(*f as u32) } {
+    if let Some(f) = get_js_number(fd) {
+        return match unsafe { wasi_fs::fd_filestat_get(f as u32) } {
             Ok(stat) => stat_to_js_object(ctx, stat),
             Err(e) => {
                 let err = errno_to_js_object(ctx, e);

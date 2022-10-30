@@ -445,19 +445,18 @@ fn test_fs_readdir() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported"]
 fn test_fs_readdir_stack_overflow() {
     test_js_file("test/fs/test-fs-readdir-stack-overflow.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_readdir_types() {
     test_js_file("test/fs/test-fs-readdir-types.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "linux specific"]
 fn test_fs_readdir_ucs2() {
     test_js_file("test/fs/test-fs-readdir-ucs2.js");
 }
@@ -468,7 +467,6 @@ fn test_fs_read_empty_buffer() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_file_assert_encoding() {
     test_js_file("test/fs/test-fs-read-file-assert-encoding.js");
 }
@@ -707,7 +705,6 @@ fn test_fs_ready_event_stream() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_zero_length() {
     test_js_file("test/fs/test-fs-read-zero-length.js");
 }
@@ -743,7 +740,6 @@ fn test_fs_realpath_pipe() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rename_type_check() {
     test_js_file("test/fs/test-fs-rename-type-check.js");
 }
@@ -755,43 +751,36 @@ fn test_fs_rmdir_recursive() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_sync_warns_not_found() {
     test_js_file("test/fs/test-fs-rmdir-recursive-sync-warns-not-found.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_sync_warns_on_file() {
     test_js_file("test/fs/test-fs-rmdir-recursive-sync-warns-on-file.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_throws_not_found() {
     test_js_file("test/fs/test-fs-rmdir-recursive-throws-not-found.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_throws_on_file() {
     test_js_file("test/fs/test-fs-rmdir-recursive-throws-on-file.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_warns_not_found() {
     test_js_file("test/fs/test-fs-rmdir-recursive-warns-not-found.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_recursive_warns_on_file() {
     test_js_file("test/fs/test-fs-rmdir-recursive-warns-on-file.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_rmdir_type_check() {
     test_js_file("test/fs/test-fs-rmdir-type-check.js");
 }
@@ -809,7 +798,6 @@ fn test_fs_sir_writes_alot() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_stat_bigint() {
     test_js_file("test/fs/test-fs-stat-bigint.js");
 }
@@ -820,7 +808,6 @@ fn test_fs_stat_date() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_stat() {
     test_js_file("test/fs/test-fs-stat.js");
 }
@@ -916,25 +903,23 @@ fn test_fs_sync_fd_leak() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_syncwritestream() {
     test_js_file("test/fs/test-fs-syncwritestream.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "nodejs implement specific"]
 fn test_fs_timestamp_parsing_error() {
     test_js_file("test/fs/test-fs-timestamp-parsing-error.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_truncate_clear_file_zero() {
     test_js_file("test/fs/test-fs-truncate-clear-file-zero.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_truncate_fd() {
     test_js_file("test/fs/test-fs-truncate-fd.js");
 }
@@ -946,19 +931,17 @@ fn test_fs_truncate() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_truncate_sync() {
     test_js_file("test/fs/test-fs-truncate-sync.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_unlink_type_check() {
     test_js_file("test/fs/test-fs-unlink-type-check.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "nodejs implement specific"]
 fn test_fs_utils_get_dirents() {
     test_js_file("test/fs/test-fs-utils-get-dirents.js");
 }
@@ -976,7 +959,7 @@ fn test_fs_utimes() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_utimes_y2_k38() {
     test_js_file("test/fs/test-fs-utimes-y2K38.js");
 }
@@ -1084,13 +1067,12 @@ fn test_fs_write_file_buffer() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "windows specific"]
 fn test_fs_write_file_invalid_path() {
     test_js_file("test/fs/test-fs-write-file-invalid-path.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_file() {
     test_js_file("test/fs/test-fs-write-file.js");
 }
@@ -1107,7 +1089,6 @@ fn test_fs_write_file_typedarrays() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_writefile_with_fd() {
     test_js_file("test/fs/test-fs-writefile-with-fd.js");
 }
@@ -1125,7 +1106,6 @@ fn test_fs_write_negativeoffset() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_no_fd() {
     test_js_file("test/fs/test-fs-write-no-fd.js");
 }
@@ -1209,25 +1189,22 @@ fn test_fs_write_stream_fs() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_stream() {
     test_js_file("test/fs/test-fs-write-stream.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupported, child_process"]
 fn test_fs_write_stream_patch_open() {
     test_js_file("test/fs/test-fs-write-stream-patch-open.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_stream_throw_type_error() {
     test_js_file("test/fs/test-fs-write-stream-throw-type-error.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_sync() {
     test_js_file("test/fs/test-fs-write-sync.js");
 }

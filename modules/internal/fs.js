@@ -846,8 +846,8 @@ function rmSync(path, options = { force: false, maxRetries: 1, recursive: false,
 }
 
 function rename(oldPath, newPath, callback) {
-    oldPath = getValidatedPath(oldPath);
-    newPath = getValidatedPath(newPath);
+    oldPath = getValidatedPath(oldPath, "oldPath");
+    newPath = getValidatedPath(newPath, "newPath");
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
@@ -860,8 +860,8 @@ function rename(oldPath, newPath, callback) {
 }
 
 function renameSync(oldPath, newPath) {
-    oldPath = getValidatedPath(oldPath);
-    newPath = getValidatedPath(newPath);
+    oldPath = getValidatedPath(oldPath, "oldPath");
+    newPath = getValidatedPath(newPath, "newPath");
 
     if (statSync(oldPath, { throwIfNoEntry: false }) === undefined) {
         throw wasiFsSyscallErrorMap("NOENT", "rename", oldPath, newPath);
@@ -901,7 +901,11 @@ function unlinkSync(path) {
 }
 
 function truncate(path, len, callback) {
-    path = getValidatedPath(path);
+    if (typeof (path) !== "number") {
+        path = getValidatedPath(path);
+    } else {
+        validateInteger(path);
+    }
     if (typeof (len) === "function") {
         callback = len;
         len = 0;
@@ -909,7 +913,11 @@ function truncate(path, len, callback) {
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
-            truncateSync(path, len);
+            if (typeof (path) === "number") {
+                ftruncateSync(path, len);
+            } else {
+                truncateSync(path, len);
+            }
             callback(null);
         }
         catch (err) {
@@ -920,11 +928,18 @@ function truncate(path, len, callback) {
 
 function truncateSync(path, len = 0) {
     validateInteger(len);
-
-    path = getValidatedPath(path);
+    if (typeof (path) !== "number") {
+        path = getValidatedPath(path);
+    } else {
+        validateInteger(path);
+    }
 
     try {
-        binding.truncateSync(path, len);
+        if (typeof (path) === "number") {
+            binding.ftruncateSync(path, len);
+        } else {
+            binding.truncateSync(path, len);
+        }
     } catch (err) {
         throw wasiFsSyscallErrorMap(err, "truncate", path);
     }
@@ -1311,6 +1326,11 @@ function read(fd, buffer, offset, length, position, callback) {
     validateInteger(position, "position");
     validateInteger(length, "length");
 
+    if (length === 0) {
+        callback(null, 0, buffer);
+        return;
+    }
+
     if (buffer.byteLength == 0) {
         throw new errors.ERR_INVALID_ARG_VALUE(
             "buffer",
@@ -1357,7 +1377,10 @@ function readSync(fd, buffer, offset, length, position) {
 
     validateInteger(offset, "offset");
 
-    if (buffer.byteLength == 0) {
+    if (length === 0) {
+        return 0;
+    }
+    if (buffer.byteLength === 0) {
         throw new errors.ERR_INVALID_ARG_VALUE(
             "buffer",
             buffer,
@@ -1721,6 +1744,7 @@ function write(fd, buffer, offset, length, position, callback) {
     validateInteger(offset, "offset");
     validateInteger(position, "position");
     validateInteger(length, "length");
+    validateInteger(fd, "fd");
 
     fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
         if (oriStr === null) {
@@ -1765,6 +1789,7 @@ function writeSync(fd, buffer, offset, length, position) {
     validateInteger(offset, "offset");
     validateInteger(position, "position");
     validateInteger(length, "length");
+    validateInteger(fd, "fd");
 
     try {
         let len = binding.fwriteSync(fd, position, buffer.buffer.slice(offset, offset + length));
@@ -1795,17 +1820,26 @@ function writeFile(file, data, options, callback) {
         signal: null
     });
     validateFunction(callback, "callback");
-    file = getValidatedPath(file);
+    if (typeof (file) === "string") {
+        file = getValidatedPath(file);
+    }
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
     try {
-        let fd = openSync(file, options.flag, options.mode);
+        let fd;
+        if (typeof (file) === "number") {
+            fd = file;
+        } else {
+            fd = openSync(file, options.flag, options.mode);
+        }
         write(fd, buffer, (err) => {
             if (err) {
                 callback(err);
             } else {
                 callback(null);
             }
-            closeSync(fd);
+            if (typeof (file) !== "number") {
+                closeSync(fd);
+            }
         })
     } catch (err) {
         callback(err);

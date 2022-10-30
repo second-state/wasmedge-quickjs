@@ -6,7 +6,7 @@ import { validateEncoding } from "./utils";
 import { URL } from "url";
 import { toPathIfFileURL } from "../url";
 import fs, { open, write, close, statSync } from "../../fs";
-import { validateInteger } from "../validators";
+import { validateInteger, validateObject } from "../validators";
 import { nextTick } from "../../process";
 
 const kIsPerformingIO = Symbol('kIsPerformingIO');
@@ -30,7 +30,12 @@ export class WriteStreamClass extends Writable {
         super(opts);
         if (typeof (opts) === "string") {
             validateEncoding(opts, "encoding");
+            opts = {};
         }
+        if (opts === null || opts === undefined) {
+            opts = {};
+        }
+        validateObject(opts, "options");
         if (opts.encoding) {
             validateEncoding(opts.encoding, "encoding");
             this.setDefaultEncoding(opts.encoding);
