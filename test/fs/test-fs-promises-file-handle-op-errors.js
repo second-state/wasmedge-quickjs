@@ -9,15 +9,15 @@ import tmpdir from '../common/tmpdir';
 // when both an operation and close throw.
 
 import path from 'path';
-const {
+import {
   readFile,
   writeFile,
   truncate,
   lchmod,
-} = require('fs/promises');
-const {
+} from 'fs/promises';
+import {
   FileHandle,
-} = require('internal/fs/promises');
+} from 'fs';
 
 import assert from 'assert';
 const originalFd = Object.getOwnPropertyDescriptor(FileHandle.prototype, 'fd');

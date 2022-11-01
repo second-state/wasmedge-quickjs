@@ -364,6 +364,9 @@ function wasiFsSyscallErrorMap(err, syscall, path, dest) {
         };
     }
     let code = (codeToErrorMsg[err.code] === undefined) ? ("E" + err.code) : err.code;
+    if (codeToErrorMsg[code] === undefined) {
+        return err;
+    }
     let msg = `${code}: ${codeToErrorMsg[code]}, ${syscall}`;
     if (path !== undefined) {
         msg += ` '${path}'`;
@@ -1103,6 +1106,12 @@ function copyFile(src, dest, mode, callback) {
     }
     src = getValidatedPath(src, "src");
     dest = getValidatedPath(dest, "dest");
+    if (typeof (mode) !== "string" || !(typeof (mode) === "number" && Number.isInteger(mode))) {
+        throw new errors.ERR_INVALID_ARG_TYPE("mode", ["integer", "string"], mode);
+    }
+    if (typeof (mode) === "string") {
+        mode = stringToFlags(mode, "mode");
+    }
     validateInteger(mode, "mode", 0, 7);
     validateFunction(callback, "callback");
     setTimeout(() => {
@@ -1296,22 +1305,22 @@ function read(fd, buffer, offset, length, position, callback) {
     } else if (!(buffer instanceof Buffer) && !Object.prototype.toString.call(buffer).endsWith("Array]")) {
         callback = offset;
         let option = buffer;
-        buffer = Buffer.alloc(16384);
-        offset = option.offset || 0;
-        length = option.length || buffer.byteLength - offset;
+        buffer = option.buffer !== undefined ? option.buffer : Buffer.alloc(16384);
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
         if (option.position === null) {
             position = -1;
         }
-        position = position || option.position || -1;
+        position = position ?? option.position ?? -1;
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
-        offset = option.offset || 0;
-        length = option.length || buffer.byteLength - offset;
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
         if (option.position === null) {
             position = -1;
         }
-        position = position || option.position || -1;
+        position = position ?? option.position ?? -1;
     } else if (typeof (offset) === "function") {
         callback = offset;
         offset = 0;
@@ -1319,8 +1328,9 @@ function read(fd, buffer, offset, length, position, callback) {
         position = -1;
     }
 
-    position = position || -1;
+    position = position ?? -1;
 
+    validateInteger(fd, "fd");
     validateFunction(callback, "callback");
     validateInteger(offset, "offset");
     validateInteger(position, "position");
@@ -1330,8 +1340,17 @@ function read(fd, buffer, offset, length, position, callback) {
         callback(null, 0, buffer);
         return;
     }
-
-    if (buffer.byteLength == 0) {
+    try {
+        let stat = fstatSync(fd);
+        if (position > stat.size) {
+            callback(null, 0, buffer);
+            return;
+        }
+    } catch (err) {
+        callback(wasiFsSyscallErrorMap(err, "read"));
+        return;
+    }
+    if (buffer.byteLength === 0) {
         throw new errors.ERR_INVALID_ARG_VALUE(
             "buffer",
             buffer,
@@ -1340,10 +1359,14 @@ function read(fd, buffer, offset, length, position, callback) {
     }
 
     fread(fd, position, length).then((data) => {
-        Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
-        // buffer.fill(data, offset, data.byteLength);
+        if (buffer instanceof Buffer) {
+            Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
+        } else {
+            buffer.set(new Uint8Array(data), offset);
+        }
         callback(null, data.byteLength, buffer)
     }).catch((e) => {
+        print(e);
         callback(wasiFsSyscallErrorMap(e, "read"));
     })
 }
@@ -1351,13 +1374,22 @@ function read(fd, buffer, offset, length, position, callback) {
 function readSync(fd, buffer, offset, length, position) {
     if (typeof (offset) === "object" && offset !== null) {
         let option = offset;
-        offset = option.offset || 0;
-        length = option.length || buffer.byteLength - offset;
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
         if (option.position === null || typeof (option.position) === "undefined") {
             position = -1;
         } else {
             position = option.position;
         }
+    } else if (!(buffer instanceof Buffer) && !Object.prototype.toString.call(buffer).endsWith("Array]")) {
+        let option = buffer;
+        buffer = option.buffer !== undefined ? option.buffer : Buffer.alloc(16384);
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
+        if (option.position === null) {
+            position = -1;
+        }
+        position = position ?? option.position ?? -1;
     }
 
     if (typeof (offset) !== "number" || offset === Infinity) {
@@ -1365,16 +1397,14 @@ function readSync(fd, buffer, offset, length, position) {
         length = buffer.byteLength;
         position = -1;
     } else {
-        offset = offset || 0;
-        length = length || buffer.byteLength - offset;
-        if (position === null) {
-            position = -1;
-        }
+        offset = offset ?? 0;
+        length = length ?? buffer.byteLength - offset;
         if (position === null || typeof (position) === "undefined") {
             position = -1;
         }
     }
 
+    validateInteger(fd, "fd");
     validateInteger(offset, "offset");
 
     if (length === 0) {
@@ -1399,11 +1429,22 @@ function readSync(fd, buffer, offset, length, position) {
     } else {
         validateInteger(position, "position");
     }
-
+    try {
+        let stat = fstatSync(fd);
+        if (position > stat.size) {
+            return 0;
+        }
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "read");
+    }
     position = Number(position);
     try {
         let data = binding.freadSync(fd, position, length);
-        buffer.fill(data, offset, offset + data.byteLength);
+        if (buffer instanceof Buffer) {
+            Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
+        } else {
+            buffer.set(new Uint8Array(data), offset);
+        }
         return data.byteLength;
     } catch (err) {
         if (err.code === "INVAL") {
@@ -1486,10 +1527,10 @@ function readFile(path, option, callback) {
         encoding = option;
         option = {};
     } else {
-        option = option || {};
+        option = option ?? {};
     }
     option = applyDefaultValue(option, {
-        encoding: encoding || "",
+        encoding: encoding ?? "",
         flag: "r",
         signal: undefined
     })
@@ -1539,10 +1580,10 @@ function readFileSync(path, option) {
         encoding = option;
         option = {};
     } else {
-        option = option || {};
+        option = option ?? {};
     }
     option = applyDefaultValue(option, {
-        encoding: encoding || "",
+        encoding: encoding ?? "",
         flag: "r",
         signal: undefined
     })
@@ -1579,7 +1620,7 @@ function readlinkSync(path, option) {
             encoding: option
         };
     } else {
-        option = option || {};
+        option = option ?? {};
     }
     option = applyDefaultValue(option, {
         encoding: "utf8"
@@ -1727,9 +1768,9 @@ function write(fd, buffer, offset, length, position, callback) {
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
-        offset = option.offset || 0;
-        length = option.length || buffer.byteLength - offset;
-        position = option.position || 0;
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
+        position = option.position ?? 0;
     } else if (typeof (offset) === "function") {
         callback = offset;
         offset = 0;
@@ -1767,23 +1808,23 @@ function writeSync(fd, buffer, offset, length, position) {
     let oriStr = null;
     if (typeof (buffer) === "string") {
         oriStr = buffer;
-        let encoding = length || "utf8";
+        let encoding = length ?? "utf8";
         buffer = Buffer.from(buffer, encoding);
-        position = offset || 0;
+        position = offset ?? 0;
         offset = 0;
         length = buffer.byteLength - offset;
     } else if (typeof (offset) === "object") {
         let option = offset;
-        offset = option.offset || 0;
-        length = option.length || buffer.byteLength - offset;
-        position = option.position || 0;
+        offset = option.offset ?? 0;
+        length = option.length ?? buffer.byteLength - offset;
+        position = option.position ?? 0;
     } else if (typeof (offset) === "number") {
         length = buffer.byteLength - offset;
         position = 0;
     } else {
-        offset = offset || 0;
-        length = length || buffer.byteLength - offset
-        position = position || 0;
+        offset = offset ?? 0;
+        length = length ?? buffer.byteLength - offset
+        position = position ?? 0;
     }
 
     validateInteger(offset, "offset");
@@ -1804,7 +1845,7 @@ function writeFile(file, data, options, callback) {
         callback = options;
         options = {};
     }
-    options = options || {};
+    options = options ?? {};
     if (typeof (options) === "string") {
         validateEncoding(options, "option");
         options = {
@@ -1847,7 +1888,7 @@ function writeFile(file, data, options, callback) {
 }
 
 function writeFileSync(file, data, options = {}) {
-    options = options || {};
+    options = options ?? {};
     if (typeof (options) === "string") {
         validateEncoding(options, "option");
         options = {
@@ -1895,7 +1936,7 @@ function appendFile(file, data, options, callback) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options || {}, {
+    options = applyDefaultValue(options ?? {}, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -1935,7 +1976,7 @@ function appendFileSync(file, data, options = {}) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options || {}, {
+    options = applyDefaultValue(options ?? {}, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -2254,7 +2295,7 @@ function readdirSync(path, options) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options || {}, {
+    options = applyDefaultValue(options ?? {}, {
         encoding: "utf8",
         withFileTypes: false
     });
@@ -2388,7 +2429,7 @@ function cp(src, dest, options, callback) {
 }
 
 class FileHandle extends EventEmitter {
-    #fd = 0;
+    #fd = -1;
     #path = "";
     constructor(fd, path) {
         super();
@@ -2401,53 +2442,86 @@ class FileHandle extends EventEmitter {
         return this.#fd;
     }
 
-    appendFile(data, options) {
-        return promisify(appendFile)(this.fd, data, options);
+    async appendFile(data, options) {
+        return await promisify(appendFile)(this.fd, data, options);
     }
 
-    chown() {
-        return new Promise((res, rej) => { res(undefined); });
+    async chown() {
+        return undefined;
     }
 
-    close() {
+    async close() {
+        if (this.#fd === -1) {
+            return;
+        }
         this.emit("close");
-        return promisify(close)(this.fd).then(() => { this.#fd = -1; });
+        return await promisify(close)(this.#fd).then(() => { this.#fd = -1; });
     }
 
-    createReadStream(options) {
+    async createReadStream(options) {
         return createReadStream(this.#path, options);
     }
 
-    createWriteStream(options) {
+    async createWriteStream(options) {
         return createWriteStream(this.#path, options);
     }
 
-    dataSync() {
-        return promisify(fdatasync)(this.fd);
+    async dataSync() {
+        return await promisify(fdatasync)(this.fd);
     }
 
-    read(...args) {
-        return promisify(read)(this.fd, ...args);
+    async read(...args) {
+        return await promisify(read)(this.fd, ...args);
     }
 
-    readFile(options) {
-        return promisify(readFile)(this.#path, options)
+    async readFile(options) {
+        let errs = [];
+        try {
+            return await promisify(readFile)(this.fd, options);
+        } catch (err) {
+            errs.push(err);
+            try {
+                await this.close();
+            } catch (err2) {
+                errs.push(err2);
+            }
+        }
+        if (errs.length == 1) {
+            throw errs[0];
+        } else if (errs.length > 1) {
+            throw new errors.AggregateError(errs);
+        }
     }
 
-    readv(buffers, position) {
-        return promisify(readv)(this.fd, buffers, position);
+    async readv(buffers, position) {
+        return await promisify(readv)(this.fd, buffers, position);
     }
 
-    stat(options) {
-        return promisify(fstat)(this.fd, options);
+    async stat(options) {
+        return await promisify(fstat)(this.fd, options);
     }
 
-    sync() {
-        return promisify(fsync)(this.fd);
+    async sync() {
+        return await promisify(fsync)(this.fd);
     }
 
-    truncate(len) {
-        return promisify(ftruncate)(this.fd, len);
+    async truncate(len) {
+        let errs = [];
+        try {
+            return await promisify(ftruncate)(this.fd, len);
+        } catch (err) {
+            errs.push(err);
+            try {
+                await this.close();
+            } catch (err2) {
+                errs.push(err2);
+            }
+        }
+        if (errs.length == 1) {
+            throw errs[0];
+        } else if (errs.length > 1) {
+            throw new errors.AggregateError(errs);
+        }
     }
 
     utimes(atime, mtime) {
@@ -2458,8 +2532,23 @@ class FileHandle extends EventEmitter {
         return promisify(write)(this.fd, ...args);
     }
 
-    writeFile(data, options) {
-        return promisify(writeFile)(this.#path, data, options);
+    async writeFile(data, options) {
+        let errs = [];
+        try {
+            return await promisify(writeFile)(this.fd, data, options);
+        } catch (err) {
+            errs.push(err);
+            try {
+                await this.close();
+            } catch (err2) {
+                errs.push(err2);
+            }
+        }
+        if (errs.length == 1) {
+            throw errs[0];
+        } else if (errs.length > 1) {
+            throw new errors.AggregateError(errs);
+        }
     }
 
     writev(buffers, position) {

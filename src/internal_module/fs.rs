@@ -558,16 +558,9 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 let (promise, ok, error) = ctx.new_promise();
                 if let Some(event_loop) = ctx.event_loop() {
-                    if position != -1 {
-                        let res =
-                            unsafe { wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET) };
-                        if let Err(e) = res {
-                            let err = errno_to_js_object(ctx, e);
-                            return JsValue::Exception(ctx.throw_error(err));
-                        }
-                    }
                     event_loop.fd_read(
                         *fd,
+                        position,
                         *length as u64,
                         Box::new(move |ctx, res| match res {
                             PollResult::Read(data) => {
@@ -728,21 +721,13 @@ fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
 
 fn fwrite(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     if let Some(JsValue::Int(fd)) = arg.get(0) {
-        if let Some(JsValue::Int(position)) = arg.get(1) {
+        if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
                 let (promise, ok, error) = ctx.new_promise();
                 if let Some(event_loop) = ctx.event_loop() {
-                    if *position != 0 {
-                        let res = unsafe {
-                            wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
-                        };
-                        if let Err(e) = res {
-                            let err = errno_to_js_object(ctx, e);
-                            return JsValue::Exception(ctx.throw_error(err));
-                        }
-                    }
                     event_loop.fd_write(
                         *fd,
+                        position,
                         buf.to_vec(),
                         Box::new(move |ctx, res| match res {
                             PollResult::Write(len) => {
@@ -772,7 +757,7 @@ fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
             if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
                 if *position != 0 {
                     let res = unsafe {
-                        wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_CUR)
+                        wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_SET)
                     };
                     if let Err(e) = res {
                         let err = errno_to_js_object(ctx, e);

@@ -19,17 +19,14 @@ fn test_js_file(file_path: &str) {
             }
         }
         ctx.js_loop().unwrap();
-        println!("{:?}", ctx.get_global().get("_onExit"));
         if let JsValue::Function(func) = ctx.get_global().get("_onExit") {
             func.call(&[]);
         }
         ctx.js_loop().unwrap();
-        println!("{:?}", ctx.get_global().get("commonExitCheck"));
         if let JsValue::Function(func) = ctx.get_global().get("commonExitCheck") {
             func.call(&[]);
         }
         ctx.js_loop().unwrap();
-        println!("{:?}", ctx.get_global().get("assertPass"));
         if let JsValue::Bool(false) = ctx.get_global().get("assertPass") {
             assert!(false, "js assert fail");
         }
@@ -287,7 +284,6 @@ fn test_fs_promises_exists() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_aggregate_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-aggregate-errors.js");
 }
@@ -304,25 +300,22 @@ fn test_fs_promises_file_handle_chmod() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_close_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-close-errors.js");
 }
 
 #[test]
-#[ignore = "unsuppored, required manual triggered gc"]
+#[ignore = "unsupported, required manual triggered gc"]
 fn test_fs_promises_file_handle_close() {
     test_js_file("test/fs/test-fs-promises-file-handle-close.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_op_errors() {
     test_js_file("test/fs/test-fs-promises-file-handle-op-errors.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_read_file() {
     test_js_file("test/fs/test-fs-promises-file-handle-readFile.js");
 }
@@ -351,7 +344,6 @@ fn test_fs_promises_file_handle_stream() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_sync() {
     test_js_file("test/fs/test-fs-promises-file-handle-sync.js");
 }
@@ -543,7 +535,6 @@ fn test_fs_readfile_zero_byte_liar() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read() {
     test_js_file("test/fs/test-fs-read.js");
 }

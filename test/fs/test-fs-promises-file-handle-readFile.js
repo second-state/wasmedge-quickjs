@@ -15,7 +15,7 @@ const {
 } = fs.promises;
 import path from 'path';
 import tmpdir from '../common/tmpdir';
-import tick from '../common/tick';
+// import tick from '../common/tick';
 import assert from 'assert';
 const tmpDir = tmpdir.path;
 
@@ -53,6 +53,8 @@ async function validateReadFileProc() {
 }
 
 async function doReadAndCancel() {
+  // unsupport AbortController
+  /*
   // Signal aborted from the start
   {
     const filePathForHandle = path.resolve(tmpDir, 'dogs-running.txt');
@@ -100,7 +102,7 @@ async function doReadAndCancel() {
     }, 'tick-1');
 
     await fileHandle.close();
-  }
+  }*/
 
   // Validate file size is within range for reading
   {

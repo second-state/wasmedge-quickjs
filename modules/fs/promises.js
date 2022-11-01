@@ -32,7 +32,13 @@ export const open = (path, flag, mode) => {
 };
 export const opendir = promisify(fs.opendir);
 export const readdir = promisify(fs.readdir);
-export const readFile = promisify(fs.readFile);
+export const readFile = async (path, ...args) => {
+    let file = await open(path, "r");
+    let res = await file.readFile(...args);
+    await file.close();
+    return res;
+}
+
 export const readlink = promisify(fs.readlink);
 export const realpath = promisify(fs.realpath);
 export const rename = promisify(fs.rename);
@@ -41,14 +47,20 @@ export const rm = promisify(fs.rm);
 export const stat = promisify(fs.stat);
 export const symlink = promisify(fs.symlink);
 export const truncate = async (path, len) => {
-    let file = await open(path, "r+");
+    let file = await open(path, "w");
     await file.truncate(len);
     await file.close();
 };
+
 export const unlink = promisify(fs.unlink);
 export const utimes = promisify(fs.utimes);
 export const watch = promisify(fs.watch);
-export const writeFile = promisify(fs.writeFile);
+export const writeFile = async (path, ...args) => {
+    let file = await open(path, "w");
+    await file.writeFile(...args);
+    await file.close();
+};
+
 export const constants = fs.constants;
 
 const promises = {
