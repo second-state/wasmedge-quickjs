@@ -589,7 +589,7 @@ fn fread_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue
     if let Some(JsValue::Int(fd)) = arg.get(0) {
         if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
-                if position != -1 {
+                if position >= 0 {
                     let res =
                         unsafe { wasi_fs::fd_seek(*fd as u32, position, wasi_fs::WHENCE_SET) };
                     if let Err(e) = res {
@@ -755,7 +755,7 @@ fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValu
     if let Some(JsValue::Int(fd)) = arg.get(0) {
         if let Some(JsValue::Int(position)) = arg.get(1) {
             if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
-                if *position != 0 {
+                if *position >= 0 {
                     let res = unsafe {
                         wasi_fs::fd_seek(*fd as u32, *position as i64, wasi_fs::WHENCE_SET)
                     };

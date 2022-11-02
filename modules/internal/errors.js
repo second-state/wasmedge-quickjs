@@ -665,19 +665,6 @@ export const ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY = makeSystemErrorWithCode('ERR_FS
     'Cannot overwrite symlink in subdirectory of self');
 export const ERR_FS_CP_UNKNOWN = makeSystemErrorWithCode('ERR_FS_CP_UNKNOWN', 'Cannot copy an unknown file type');
 
-export class ERR_FS_INVALID_SYMLINK_TYPE extends Error {
-    /**
-     * 
-     * @param {string} x 
-     */
-    constructor(x) {
-        super(
-            "ERR_FS_INVALID_SYMLINK_TYPE",
-            `Symlink type must be one of "dir", "file", or "junction". Received "${x}"`,
-        );
-    }
-}
-
 /**
  * 
  * @param {number} name 
@@ -812,3 +799,20 @@ export class ERR_FS_FILE_TOO_LARGE extends RangeError {
     }
 }
 
+export class AggregateError extends Error {
+    constructor(errs) {
+        super();
+        this.name = "AggregateError";
+        this.code = errs[0].code;
+        this.errors = errs;
+    }
+}
+
+export class ERR_FS_INVALID_SYMLINK_TYPE extends Error {
+    constructor(x) {
+        super(
+            `Symlink type must be one of "dir", "file", or "junction". Received "${x}"`,
+        );
+        this.code = "ERR_FS_INVALID_SYMLINK_TYPE";
+    }
+}

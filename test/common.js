@@ -250,6 +250,9 @@ export function expectsError(validator, exact) {
     return true;
   }, exact);
 }
+export function canCreateSymLink() {
+  return true;
+}
 
 const common = {
   isDumbTerminal,
@@ -272,7 +275,8 @@ const common = {
   platformTimeout,
   runWithInvalidFD,
   expectWarning,
-  expectsError
+  expectsError,
+  canCreateSymLink
 };
 
 export default common;

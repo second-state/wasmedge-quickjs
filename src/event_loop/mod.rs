@@ -442,7 +442,12 @@ impl IoSelector {
                         };
                     }
                     (
-                        PollTask::FdRead(FdReadTask { fd,pos, len, callback }),
+                        PollTask::FdRead(FdReadTask {
+                            fd,
+                            pos,
+                            len,
+                            callback,
+                        }),
                         poll::EVENTTYPE_FD_READ,
                     ) => {
                         if event.error > 0 {
@@ -456,7 +461,7 @@ impl IoSelector {
                             if let Err(e) = res {
                                 callback(
                                     ctx,
-                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32)),
                                 );
                                 continue;
                             }
@@ -486,7 +491,12 @@ impl IoSelector {
                         );
                     }
                     (
-                        PollTask::FdWrite(FdWriteTask { fd,pos, buf, callback }),
+                        PollTask::FdWrite(FdWriteTask {
+                            fd,
+                            pos,
+                            buf,
+                            callback,
+                        }),
                         poll::EVENTTYPE_FD_WRITE,
                     ) => {
                         if event.error > 0 {
@@ -500,7 +510,7 @@ impl IoSelector {
                             if let Err(e) = res {
                                 callback(
                                     ctx,
-                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32)),
                                 );
                                 continue;
                             }
@@ -658,8 +668,12 @@ impl EventLoop {
         len: u64,
         callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
     ) {
-        self.io_selector
-            .add_task(PollTask::FdRead(FdReadTask { fd, pos, len, callback }));
+        self.io_selector.add_task(PollTask::FdRead(FdReadTask {
+            fd,
+            pos,
+            len,
+            callback,
+        }));
     }
 
     pub fn fd_write(
@@ -669,7 +683,11 @@ impl EventLoop {
         buf: Vec<u8>,
         callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
     ) {
-        self.io_selector
-            .add_task(PollTask::FdWrite(FdWriteTask { fd, pos, buf, callback }));
+        self.io_selector.add_task(PollTask::FdWrite(FdWriteTask {
+            fd,
+            pos,
+            buf,
+            callback,
+        }));
     }
 }

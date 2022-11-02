@@ -14,7 +14,7 @@ async function validate() {
     copyFile(fixtures.path('baz.js'), dest, 'r'),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      message: /mode(.*integer.*string)|(.*string.*integer)/
+      message: /mode.*number.*string/
     }
   );
   await copyFile(fixtures.path('baz.js'), dest);

@@ -14,6 +14,7 @@ import EventEmitter from "../events"
 import { normalize, join as pathJoin } from "path"
 import uv from "../internal_binding/uv"
 import { URL } from "../url"
+import { relative, dirname } from "../path"
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -380,6 +381,9 @@ function wasiFsSyscallErrorMap(err, syscall, path, dest) {
     e.syscall = syscall;
     e.path = path;
     e.dest = dest;
+    if (err.stack) {
+        e.stack = err.stack;
+    }
     return e;
 }
 
@@ -913,7 +917,13 @@ function truncate(path, len, callback) {
         callback = len;
         len = 0;
     }
+    len = len === undefined ? 0 : len;
+    validateInteger(len, "len");
+
     validateFunction(callback, "callback");
+    if (len < 0) {
+        len = 0;
+    }
     setTimeout(() => {
         try {
             if (typeof (path) === "number") {
@@ -930,13 +940,15 @@ function truncate(path, len, callback) {
 }
 
 function truncateSync(path, len = 0) {
-    validateInteger(len);
+    validateInteger(len, "len");
     if (typeof (path) !== "number") {
         path = getValidatedPath(path);
     } else {
         validateInteger(path);
     }
-
+    if (len < 0) {
+        len = 0;
+    }
     try {
         if (typeof (path) === "number") {
             binding.ftruncateSync(path, len);
@@ -949,11 +961,18 @@ function truncateSync(path, len = 0) {
 }
 
 function ftruncate(fd, len, callback) {
+    validateInteger(fd, "fd");
+
     if (typeof (len) === "function") {
         callback = len;
         len = 0;
     }
+    len = (len === undefined) ? 0 : len;
+    validateInteger(len, "len");
     validateFunction(callback, "callback");
+    if (len < 0) {
+        len = 0;
+    }
     setTimeout(() => {
         try {
             ftruncateSync(fd, len);
@@ -969,7 +988,9 @@ function ftruncateSync(fd, len = 0) {
     validateInteger(len, "len");
 
     validateInteger(fd, "fd");
-
+    if (len < 0) {
+        len = 0;
+    }
     try {
         binding.ftruncateSync(fd, len);
     } catch (err) {
@@ -1106,12 +1127,6 @@ function copyFile(src, dest, mode, callback) {
     }
     src = getValidatedPath(src, "src");
     dest = getValidatedPath(dest, "dest");
-    if (typeof (mode) !== "string" || !(typeof (mode) === "number" && Number.isInteger(mode))) {
-        throw new errors.ERR_INVALID_ARG_TYPE("mode", ["integer", "string"], mode);
-    }
-    if (typeof (mode) === "string") {
-        mode = stringToFlags(mode, "mode");
-    }
     validateInteger(mode, "mode", 0, 7);
     validateFunction(callback, "callback");
     setTimeout(() => {
@@ -1175,10 +1190,19 @@ function linkSync(existingPath, newPath) {
     }
 }
 
-function symlink(target, path, callback) {
+function symlink(target, path, type, callback) {
+    if (typeof (type) === "function") {
+        callback = type;
+        type = "file";
+    }
+
     target = getValidatedPath(target);
     path = getValidatedPath(path);
+
     validateFunction(callback, "callback");
+    if (!["dir", "file", "junction"].includes(type)) {
+        throw new errors.ERR_FS_INVALID_SYMLINK_TYPE(type);
+    }
 
     setTimeout(() => {
         try {
@@ -1190,12 +1214,24 @@ function symlink(target, path, callback) {
     }, 0);
 }
 
-function symlinkSync(target, path) {
+function symlinkSync(target, path, type) {
+    type = type ?? "file";
+    if (!["dir", "file", "junction"].includes(type)) {
+        throw new errors.ERR_FS_INVALID_SYMLINK_TYPE(type);
+    }
+
     target = getValidatedPath(target);
     path = getValidatedPath(path);
+    
+    let reTarget;
+    if (dirname(target) === "." || dirname(target) === "") {
+        reTarget = target;
+    } else {
+        reTarget = relative(dirname(path), target);
+    }
 
     try {
-        binding.symlinkSync(target, path);
+        binding.symlinkSync(reTarget, path);
     } catch (err) {
         throw wasiFsSyscallErrorMap(err, "symlink", target, path);
     }
@@ -1315,12 +1351,12 @@ function read(fd, buffer, offset, length, position, callback) {
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
-        offset = option.offset ?? 0;
-        length = option.length ?? buffer.byteLength - offset;
-        if (option.position === null) {
+        offset = (option && option.offset) ?? 0;
+        length = (option && option.length) ?? buffer.byteLength - offset;
+        if ((option && option.position) === null) {
             position = -1;
         }
-        position = position ?? option.position ?? -1;
+        position = position ?? (option && option.position) ?? -1;
     } else if (typeof (offset) === "function") {
         callback = offset;
         offset = 0;
@@ -1357,16 +1393,18 @@ function read(fd, buffer, offset, length, position, callback) {
             "is empty and cannot be written",
         );
     }
-
     fread(fd, position, length).then((data) => {
+        let len = data.byteLength;
         if (buffer instanceof Buffer) {
-            Buffer.from(data).copy(buffer, offset, 0, data.byteLength);
+            Buffer.from(data).copy(buffer, offset, 0, len);
+            if (buffer.byteLength !== len) {
+                buffer = Buffer.from(buffer.slice(0, len));
+            }
         } else {
-            buffer.set(new Uint8Array(data), offset);
+            buffer.set(new Uint8Array(data.slice(0, len)), offset);
         }
-        callback(null, data.byteLength, buffer)
+        callback(null, len, buffer)
     }).catch((e) => {
-        print(e);
         callback(wasiFsSyscallErrorMap(e, "read"));
     })
 }
@@ -1750,42 +1788,63 @@ function fwrite(fd, position, buffer) {
 
 function write(fd, buffer, offset, length, position, callback) {
     let oriStr = null;
+    if (buffer === null || buffer === undefined) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffer", ["string", "Buffer", "DataView"], buffer);
+    }
     if (typeof (buffer) === "string") {
         oriStr = buffer;
         if (typeof (offset) === "function") {
             callback = offset;
-            position = 0;
+            position = -1;
             buffer = Buffer.from(buffer);
         } else if (typeof (length) === "function") {
             callback = length;
             position = offset;
             buffer = Buffer.from(buffer);
         } else {
-            buffer = Buffer.from(buffer, position);
+            callback = position;
+            position = offset;
+            if (length === "hex" && buffer.length % 2 == 1) {
+                throw new errors.ERR_INVALID_ARG_VALUE_RANGE("encoding", length, `is invalid for data of length ${buffer.length}`)
+            }
+            buffer = Buffer.from(buffer, length);
+            position = -1;
         }
         offset = 0;
         length = buffer.byteLength - offset;
     } else if (typeof (offset) === "object") {
         callback = length;
         let option = offset;
-        offset = option.offset ?? 0;
-        length = option.length ?? buffer.byteLength - offset;
-        position = option.position ?? 0;
+        offset = (option && option.offset) ?? 0;
+        validateInteger(offset, "offset", 0, buffer.byteLength);
+        length = (option && option.length) ?? buffer.byteLength - offset;
+        position = (option && option.position) ?? -1;
     } else if (typeof (offset) === "function") {
         callback = offset;
         offset = 0;
         length = buffer.byteLength - offset;
-        position = 0;
+        position = -1;
     } else if (typeof (position) === "function") {
         callback = position;
-        position = 0;
+        position = -1;
+    } else if (typeof (length) === "function") {
+        callback = length;
+        validateInteger(offset, "offset", 0, buffer.byteLength);
+        length = buffer.byteLength - offset;
+        position = -1;
+    }
+
+    if (typeof (buffer) !== "string" && !(buffer instanceof Buffer)) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffer", ["string", "Buffer", "DataView"], buffer);
     }
 
     validateFunction(callback, "callback");
-    validateInteger(offset, "offset");
+    validateInteger(offset, "offset", 0, buffer.byteLength);
     validateInteger(position, "position");
-    validateInteger(length, "length");
+    validateInteger(length, "length", 0, buffer.byteLength);
     validateInteger(fd, "fd");
+    validateInteger(offset + length, "length + offset", 0, buffer.byteLength);
+
 
     fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
         if (oriStr === null) {
@@ -1809,28 +1868,29 @@ function writeSync(fd, buffer, offset, length, position) {
     if (typeof (buffer) === "string") {
         oriStr = buffer;
         let encoding = length ?? "utf8";
+        if (encoding === "hex" && buffer.length % 2 == 1) {
+            throw new errors.ERR_INVALID_ARG_VALUE_RANGE("encoding", encoding, `is invalid for data of length ${buffer.length}`)
+        }
         buffer = Buffer.from(buffer, encoding);
-        position = offset ?? 0;
+        position = offset ?? -1;
         offset = 0;
         length = buffer.byteLength - offset;
     } else if (typeof (offset) === "object") {
         let option = offset;
-        offset = option.offset ?? 0;
-        length = option.length ?? buffer.byteLength - offset;
-        position = option.position ?? 0;
-    } else if (typeof (offset) === "number") {
-        length = buffer.byteLength - offset;
-        position = 0;
+        offset = (option && option.offset) ?? 0;
+        length = (option && option.length) ?? buffer.byteLength - offset;
+        position = (option && option.position) ?? -1;
     } else {
         offset = offset ?? 0;
         length = length ?? buffer.byteLength - offset
-        position = position ?? 0;
+        position = position ?? -1;
     }
 
-    validateInteger(offset, "offset");
+    validateInteger(offset, "offset", 0, buffer.byteLength);
     validateInteger(position, "position");
-    validateInteger(length, "length");
+    validateInteger(length, "length", 0, buffer.byteLength);
     validateInteger(fd, "fd");
+    validateInteger(length + offset, "length + offset", 0, buffer.byteLength);
 
     try {
         let len = binding.fwriteSync(fd, position, buffer.buffer.slice(offset, offset + length));

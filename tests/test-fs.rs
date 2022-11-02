@@ -852,7 +852,6 @@ fn test_fs_stream_options() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_symlink_buffer_path() {
     test_js_file("test/fs/test-fs-symlink-buffer-path.js");
 }
@@ -876,7 +875,6 @@ fn test_fs_symlink_dir_junction_relative() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_symlink() {
     test_js_file("test/fs/test-fs-symlink.js");
 }
@@ -888,7 +886,7 @@ fn test_fs_symlink_longpath() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "nodejs implement specific"]
 fn test_fs_sync_fd_leak() {
     test_js_file("test/fs/test-fs-sync-fd-leak.js");
 }
@@ -916,7 +914,6 @@ fn test_fs_truncate_fd() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_truncate() {
     test_js_file("test/fs/test-fs-truncate.js");
 }
@@ -1085,13 +1082,11 @@ fn test_fs_writefile_with_fd() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write() {
     test_js_file("test/fs/test-fs-write.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_negativeoffset() {
     test_js_file("test/fs/test-fs-write-negativeoffset.js");
 }
@@ -1108,13 +1103,13 @@ fn test_fs_write_optional_params() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupport, v8 specific"]
 fn test_fs_write_reuse_callback() {
     test_js_file("test/fs/test-fs-write-reuse-callback.js");
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "unsupport, child_process"]
 fn test_fs_write_sigxfsz() {
     test_js_file("test/fs/test-fs-write-sigxfsz.js");
 }
@@ -1144,7 +1139,6 @@ fn test_fs_write_stream_double_close() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_stream_encoding() {
     test_js_file("test/fs/test-fs-write-stream-encoding.js");
 }
@@ -1201,7 +1195,6 @@ fn test_fs_write_sync() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_sync_optional_params() {
     test_js_file("test/fs/test-fs-write-sync-optional-params.js");
 }

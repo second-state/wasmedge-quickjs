@@ -5,16 +5,16 @@
 
 import common from '../common';
 
-const {
+import {
   join,
-} = require('path');
+} from 'path';
 
-const {
+import {
   closeSync,
   open,
   write,
   writeSync,
-} = require('fs');
+} from 'fs';
 
 import assert from 'assert';
 

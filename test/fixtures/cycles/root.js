@@ -19,42 +19,12 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-'use strict';
-import common from '../common';
-if (!common.canCreateSymLink())
-  common.skip('insufficient privileges');
+const foo = exports.foo = require('./folder/foo');
 
-import fixtures from '../common/fixtures';
-
-import assert from 'assert';
-import path from 'path';
-import fs from 'fs';
-
-import tmpdir from '../common/tmpdir';
-tmpdir.refresh();
-
-// Test creating and reading symbolic link
-const linkData = fixtures.path('/cycles/root.js');
-const linkPath = path.join(tmpdir.path, 'symlink1.js');
-
-let linkTime;
-let fileTime;
-
-// Refs: https://github.com/nodejs/node/issues/34514
-fs.symlinkSync(Buffer.from(linkData), linkPath);
-
-fs.lstat(linkPath, common.mustSucceed((stats) => {
-  linkTime = stats.mtime.getTime();
-}));
-
-fs.stat(linkPath, common.mustSucceed((stats) => {
-  fileTime = stats.mtime.getTime();
-}));
-/*
-fs.readlink(linkPath, common.mustSucceed((destination) => {
-  assert.strictEqual(destination, linkData);
-}));
-*/
-globalThis.commonExitCheck = () => {
-  assert.notStrictEqual(linkTime, fileTime);
+exports.hello = 'hello';
+exports.sayHello = function() {
+  return foo.hello();
+};
+exports.calledFromFoo = function() {
+  return exports.hello;
 };

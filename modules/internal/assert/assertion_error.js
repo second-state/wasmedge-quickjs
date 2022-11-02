@@ -55,7 +55,7 @@ function inspectValue(val) {
       // Inspect getters as we also check them when comparing entries.
       getters: true,
     }
-  );
+  ) ?? JSON.stringify(val);
 }
 
 function createErrDiff(actual, expected, operator) {

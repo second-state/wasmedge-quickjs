@@ -36,7 +36,7 @@ const fn4 = path.join(tmpdir.path, 'write4.txt');
 const fn5 = path.join(tmpdir.path, 'write5.txt');
 const expected = 'ümlaut.';
 const constants = fs.constants;
-
+/*
 const { externalizeString, isOneByteString } = global;
 
 // Account for extra globals exposed by --expose_externalize_string.
@@ -81,7 +81,7 @@ common.allowGlobals(externalizeString, isOneByteString, global.x);
   fs.closeSync(fd);
   assert.strictEqual(fs.readFileSync(fn, 'utf8'), expected);
 }
-
+*/
 fs.open(fn, 'w', 0o644, common.mustSucceed((fd) => {
   const done = common.mustSucceed((written) => {
     assert.strictEqual(written, Buffer.byteLength(expected));
@@ -126,7 +126,7 @@ fs.open(fn3, 'w', 0o644, common.mustSucceed((fd) => {
   fs.write(fd, expected, done);
 }));
 
-
+/* It's deprecated, so I don't decide to implement.
 // Test write with an object with an own toString function
 // Runtime deprecated by DEP0162
 common.expectWarning('DeprecationWarning',
@@ -143,7 +143,7 @@ fs.open(fn4, 'w', 0o644, common.mustSucceed((fd) => {
   };
   fs.write(fd, data, done);
 }));
-
+*/
 [false, 'test', {}, [], null, undefined].forEach((i) => {
   assert.throws(
     () => fs.write(i, common.mustNotCall()),
