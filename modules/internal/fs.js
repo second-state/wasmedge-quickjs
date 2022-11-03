@@ -1222,7 +1222,7 @@ function symlinkSync(target, path, type) {
 
     target = getValidatedPath(target);
     path = getValidatedPath(path);
-    
+
     let reTarget;
     if (dirname(target) === "." || dirname(target) === "") {
         reTarget = target;
@@ -1925,6 +1925,11 @@ function writeFile(file, data, options, callback) {
         file = getValidatedPath(file);
     }
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
+    if (!(buffer instanceof Buffer) &&
+        (Object.prototype.toString.call(data).endsWith("Array]") || Object.prototype.toString.call(data) === "[object DataView]")) {
+        let enc = new TextDecoder(options.encoding);
+        buffer = Buffer.from(enc.decode(data));
+    }
     try {
         let fd;
         if (typeof (file) === "number") {
@@ -1964,7 +1969,11 @@ function writeFileSync(file, data, options = {}) {
         signal: null
     });
     let buffer = typeof (data) === "string" ? Buffer.from(data, options.encoding) : data;
-    if (!(buffer instanceof Buffer) && buffer.toString() !== undefined) {
+    if (!(buffer instanceof Buffer)
+        && (Object.prototype.toString.call(data).endsWith("Array]") || Object.prototype.toString.call(data) === "[object DataView]")) {
+        let enc = new TextDecoder(options.encoding);
+        buffer = Buffer.from(enc.decode(data));
+    } else if (!(buffer instanceof Buffer) && data.toString !== undefined) {
         buffer = Buffer.from(data.toString(), options.encoding);
     }
     let fd;

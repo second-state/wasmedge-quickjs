@@ -1049,7 +1049,6 @@ fn test_fs_write_buffer_large() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_file_buffer() {
     test_js_file("test/fs/test-fs-write-file-buffer.js");
 }
@@ -1071,7 +1070,6 @@ fn test_fs_write_file_sync() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_file_typedarrays() {
     test_js_file("test/fs/test-fs-write-file-typedarrays.js");
 }

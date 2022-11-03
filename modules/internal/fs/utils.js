@@ -189,7 +189,7 @@ export function copyObject(source) {
   return target;
 }
 
-const bufferSep = Buffer.from(pathModule.sep);
+const bufferSep = Buffer.from(pathModule.sep ?? '/');
 
 function join(path, name) {
   if (
