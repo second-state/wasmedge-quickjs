@@ -321,7 +321,6 @@ fn test_fs_promises_file_handle_read_file() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_read() {
     test_js_file("test/fs/test-fs-promises-file-handle-read.js");
 }

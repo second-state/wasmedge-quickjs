@@ -174,6 +174,7 @@ export class ReadStream extends Readable {
         }
         const buffer = Buffer.alloc(16 * 1024);
         let curPos = 0;
+        const notClose = true;
         if (opts.fd) {
             setTimeout(() => {
                 if (this.file === undefined) {
@@ -185,6 +186,7 @@ export class ReadStream extends Readable {
         } else {
             fs.promises.open(path, fs.constants.O_RDONLY).then(f => {
                 if (this.file === undefined) {
+                    notClose = false;
                     this.file = f;
                     this.pending = false;
                     this.emit("ready");
@@ -199,16 +201,21 @@ export class ReadStream extends Readable {
                 try {
                     if (this.file === undefined) {
                         if (opts.fd) {
-                            this.file = new fs.FileHandle(opts.fd, path);
+                            if (opts.fd instanceof fs.FileHandle) {
+                                this.file = opts.fd;
+                            } else {
+                                this.file = new fs.FileHandle(opts.fd, path);
+                            }
                         } else {
                             this.file = new fs.FileHandle(fs.openSync(path, fs.constants.O_RDONLY), path);
+                            notClose = false;
                         }
                         this.pending = false;
                         this.emit("ready");
                     }
-                    opts.end = opts.end || fs.fstatSync(this.file.fd).size;
-                    opts.start = opts.start || 0;
-                    const n = await this.file.read(buffer, 0, opts.end - opts.start - curPos + 1, curPos === 0 ? opts.start : -1);
+                    opts.end = opts.end ?? fs.fstatSync(this.file.fd).size;
+                    opts.start = opts.start ?? 0;
+                    const { bytesRead: n } = await this.file.read(buffer, 0, opts.end - opts.start - curPos + 1, curPos === 0 ? opts.start : -1);
                     curPos += n;
                     if (n === 0) {
                         this.emit("end");
@@ -221,7 +228,9 @@ export class ReadStream extends Readable {
             },
             destroy: (err, cb) => {
                 try {
-                    this.file.close();
+                    if (!notClose) {
+                        this.file.close();
+                    }
                     // deno-lint-ignore no-empty
                 } catch { }
                 cb(err);

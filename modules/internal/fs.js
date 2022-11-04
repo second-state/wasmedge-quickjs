@@ -6,7 +6,7 @@ import { hideStackFrames } from "../internal/errors"
 export { fs as constants } from "../internal_binding/constants"
 import { fs as constants, fs } from "../internal_binding/constants"
 import { Buffer } from 'buffer';
-import { kCustomPromisifiedSymbol, promisify } from "../internal/util"
+import { kCustomPromisifiedSymbol, promisify, customPromisifyArgs } from "../internal/util"
 import { cpFn } from "../internal/fs/cp/cp";
 import cpSyncFn from "../internal/fs/cp/cp-sync";
 import { createWriteStream, WriteStream, createReadStream, ReadStream } from "../internal/fs/stream"
@@ -1408,6 +1408,8 @@ function read(fd, buffer, offset, length, position, callback) {
         callback(wasiFsSyscallErrorMap(e, "read"));
     })
 }
+
+read[customPromisifyArgs] = ["bytesRead", "buffer"];
 
 function readSync(fd, buffer, offset, length, position) {
     if (typeof (offset) === "object" && offset !== null) {
