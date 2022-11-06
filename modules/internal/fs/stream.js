@@ -174,7 +174,7 @@ export class ReadStream extends Readable {
         }
         const buffer = Buffer.alloc(16 * 1024);
         let curPos = 0;
-        const notClose = true;
+        let notClose = true;
         if (opts.fd) {
             setTimeout(() => {
                 if (this.file === undefined) {

@@ -46,4 +46,4 @@ async function validateRead() {
 Promise.all([
   validateWrite(),
   validateRead(),
-]).then(common.mustCall());
+]).then(common.mustCall()).catch(err => print(err, err.stack));

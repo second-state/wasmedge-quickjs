@@ -74,7 +74,7 @@ async function validateWrongSignalParam() {
   await createLargeFile();
   await validateReadFile();
   await validateReadFileProc();
-  await validateReadFileAbortLogicBefore();
-  await validateReadFileAbortLogicDuring();
-  await validateWrongSignalParam();
+  //await validateReadFileAbortLogicBefore();
+  //await validateReadFileAbortLogicDuring();
+  //await validateWrongSignalParam();
 })().then(common.mustCall());

@@ -164,7 +164,7 @@ async function doReadWithEncoding() {
 
 (async () => {
   await doWrite();
-  await doWriteWithCancel();
+  //await doWriteWithCancel();
   await doAppend();
   await doRead();
   await doReadWithEncoding();

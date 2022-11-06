@@ -75,4 +75,4 @@ Promise.all([
   validateEmptyWrite(),
   validateNonUint8ArrayWrite(),
   validateNonStringValuesWrite(),
-]).then(common.mustCall());
+]).then(common.mustCall()).catch(err => print(err, err.stack));

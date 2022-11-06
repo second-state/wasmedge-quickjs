@@ -359,7 +359,6 @@ fn test_fs_promises_file_handle_write_file() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_write() {
     test_js_file("test/fs/test-fs-promises-file-handle-write.js");
 }
@@ -371,19 +370,16 @@ fn test_fs_promises() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_readfile_empty() {
     test_js_file("test/fs/test-fs-promises-readfile-empty.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_readfile() {
     test_js_file("test/fs/test-fs-promises-readfile.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_readfile_with_fd() {
     test_js_file("test/fs/test-fs-promises-readfile-with-fd.js");
 }
