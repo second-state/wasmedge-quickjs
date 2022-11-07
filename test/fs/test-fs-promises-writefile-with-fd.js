@@ -34,4 +34,4 @@ async function writeFileTest() {
 
 
 writeFileTest()
-  .then(common.mustCall());
+  .then(common.mustCall()).catch(err => print(err, err.stack));

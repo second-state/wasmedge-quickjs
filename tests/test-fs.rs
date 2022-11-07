@@ -397,13 +397,11 @@ fn test_fs_promises_writefile() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_writefile_typedarray() {
     test_js_file("test/fs/test-fs-promises-writefile-typedarray.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_writefile_with_fd() {
     test_js_file("test/fs/test-fs-promises-writefile-with-fd.js");
 }
@@ -930,7 +928,7 @@ fn test_fs_utils_get_dirents() {
 }
 
 #[test]
-#[ignore = "working"]
+#[ignore = "nodejs implement specific"]
 fn test_fs_util_validateoffsetlength() {
     test_js_file("test/fs/test-fs-util-validateoffsetlength.js");
 }

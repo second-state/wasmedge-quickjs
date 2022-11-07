@@ -33,6 +33,15 @@ function applyDefaultValue(dest, def) {
     return res;
 }
 
+function applyDefaultValueAlsoNull(dest, def) {
+    let res = {};
+    for (const [key, val] of Object.entries(def)) {
+        res[key] = dest[key] ?? val;
+    }
+    return res;
+}
+
+
 /**
  * @typedef {Object} Stats
  * @property {number | null} dev
@@ -1836,6 +1845,8 @@ function write(fd, buffer, offset, length, position, callback) {
         position = -1;
     }
 
+    position = position ?? -1;
+
     if (typeof (buffer) !== "string" && !(buffer instanceof Buffer)) {
         throw new errors.ERR_INVALID_ARG_TYPE("buffer", ["string", "Buffer", "DataView"], buffer);
     }
@@ -1846,7 +1857,6 @@ function write(fd, buffer, offset, length, position, callback) {
     validateInteger(length, "length", 0, buffer.byteLength);
     validateInteger(fd, "fd");
     validateInteger(offset + length, "length + offset", 0, buffer.byteLength);
-
 
     fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
         if (oriStr === null) {
@@ -2007,7 +2017,7 @@ function appendFile(file, data, options, callback) {
             encoding: options
         };
     }
-    options = applyDefaultValue(options ?? {}, {
+    options = applyDefaultValueAlsoNull(options ?? {}, {
         encoding: "utf8",
         mode: 0o666,
         flag: "a",
@@ -2600,7 +2610,7 @@ class FileHandle extends EventEmitter {
     }
 
     write(...args) {
-        return promisify(write)(this.fd, ...args);
+        return promisify(write)(this.fd, ...args).then(len => ({ bytesWritten: len }));
     }
 
     async writeFile(data, options) {
