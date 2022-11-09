@@ -42,6 +42,8 @@ function nextdir() {
   return `test${++dirc}`;
 }
 
+const __filename = args[0];
+
 // fs.promises should be enumerable.
 assert.strictEqual(
   Object.prototype.propertyIsEnumerable.call(fs, 'promises'),

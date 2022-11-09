@@ -221,7 +221,7 @@ function removeAsync(dir) {
 
 // It should not pass recursive option to rmdirSync, when called from
 // rimraf (see: #35566)
-{
+/*{
   // Make a non-empty directory:
   const original = fs.rmdirSync;
   const dir = `${nextDirPath()}/foo/bar`;
@@ -242,4 +242,4 @@ function removeAsync(dir) {
   fs.rmdirSync(dir, { recursive: true });
   fs.rmdirSync = original;
   assert.strictEqual(rmdirSyncOptionsFromRimraf.recursive, undefined);
-}
+}*/

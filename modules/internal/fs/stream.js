@@ -221,6 +221,9 @@ export class ReadStream extends Readable {
                         this.emit("end");
                     } else {
                         this.push(n ? Buffer.from(buffer.slice(0, n)) : null);
+                        if (curPos >= opts.end) {
+                            this.emit("end");
+                        }
                     }
                 } catch (err) {
                     this.destroy(err);

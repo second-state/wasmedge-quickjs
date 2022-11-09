@@ -15,6 +15,7 @@ import { normalize, join as pathJoin } from "path"
 import uv from "../internal_binding/uv"
 import { URL } from "../url"
 import { relative, dirname } from "../path"
+import { Readable } from 'stream';
 
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
@@ -727,22 +728,24 @@ function getValidTime(time, name) {
 
 function utimes(path, atime, mtime, callback) {
     path = getValidatedPath(path);
-    validateFunction(callback);
-
+    atime = getValidTime(atime);
+    mtime = getValidTime(mtime);
     validateFunction(callback, "callback");
     setTimeout(() => {
         try {
             utimesSync(path, atime, mtime);
-            callback(null);
         } catch (err) {
             callback(err);
+            return;
         }
+        callback(null);
     }, 0);
 }
 
 function utimesSync(path, atime, mtime) {
     path = getValidatedPath(path);
     atime = getValidTime(atime);
+    mtime = getValidTime(mtime);
     if (atime instanceof Date) {
         atime = atime.getTime();
     }
@@ -759,28 +762,62 @@ function utimesSync(path, atime, mtime) {
 }
 
 function lutimes(path, atime, mtime, callback) {
-    utimes(path, atime, mtime, callback);
-}
+    callback(wasiFsSyscallErrorMap("ENOSYS", "lutime", path));
+    return;
 
-function lutimesSync(path, atime, mtime) {
-    utimesSync(path, atime, mtime);
-}
+    path = getValidatedPath(path);
 
-function futimes(fd, atime, mtime, callback) {
     validateFunction(callback, "callback");
-
     setTimeout(() => {
         try {
-            futimesSync(fd, atime, mtime);
+            lutimesSync(path, atime, mtime);
             callback(null);
         } catch (err) {
+            print(err, err.stack);
             callback(err);
         }
     }, 0);
 }
 
+function lutimesSync(path, atime, mtime) {
+    throw wasiFsSyscallErrorMap("ENOSYS", "lutime", path);
+
+    path = getValidatedPath(path);
+    atime = getValidTime(atime);
+    if (atime instanceof Date) {
+        atime = atime.getTime();
+    }
+    mtime = getValidTime(mtime);
+    if (mtime instanceof Date) {
+        mtime = mtime.getTime();
+    }
+
+    try {
+        binding.lutimeSync(path, atime, mtime);
+    } catch (err) {
+        throw wasiFsSyscallErrorMap(err, "utime", path);
+    }
+}
+
+function futimes(fd, atime, mtime, callback) {
+    validateFunction(callback, "callback");
+    validateInteger(fd, "fd", 0, 2147483647);
+    atime = getValidTime(atime, "atime");
+    mtime = getValidTime(mtime, "mtime");
+
+    setTimeout(() => {
+        try {
+            futimesSync(fd, atime, mtime);
+        } catch (err) {
+            callback(err);
+            return;
+        }
+        callback(null);
+    }, 0);
+}
+
 function futimesSync(fd, atime, mtime) {
-    validateInteger(fd, "fd");
+    validateInteger(fd, "fd", 0, 2147483647);
     atime = getValidTime(atime, "atime");
     mtime = getValidTime(mtime, "mtime");
 
@@ -832,6 +869,15 @@ function rm(path, options, callback) {
         options = {};
     }
     validateFunction(callback, "callback");
+    validateObject(options, options);
+
+    options = applyDefaultValue(options, { force: false, maxRetries: 1, recursive: false, retryDelay: 100 });
+
+    validateBoolean(options.force, "options.force");
+    validateBoolean(options.recursive, "options.recursive");
+    validateInteger(options.maxRetries, "options.maxRetries", 0);
+    validateInteger(options.retryDelay, "options.retryDelay", 0);
+
     setTimeout(() => {
         try {
             rmSync(path, options);
@@ -845,8 +891,14 @@ function rm(path, options, callback) {
 
 function rmSync(path, options = { force: false, maxRetries: 1, recursive: false, retryDelay: 100 }) {
     path = getValidatedPath(path);
+    validateObject(options, options);
 
     options = applyDefaultValue(options, { force: false, maxRetries: 1, recursive: false, retryDelay: 100 });
+
+    validateBoolean(options.force, "options.force");
+    validateBoolean(options.recursive, "options.recursive");
+    validateInteger(options.maxRetries, "options.maxRetries", 0);
+    validateInteger(options.retryDelay, "options.retryDelay", 0);
 
     for (let i = 0; i < options.maxRetries; i++) {
         try {
@@ -1714,16 +1766,28 @@ function readlink(path, option, callback) {
 function readv(fd, buffer, position, callback) {
     if (typeof (position) === "function") {
         callback = position;
-        position = 0;
+        position = -1;
     }
+
+    position = position ?? -1;
 
     validateFunction(callback, "callback");
     validateInteger(position, "position");
+    validateInteger(fd, "fd");
+    if (!buffer || !Array.isArray(buffer) || (buffer.length > 0 && !isArrayBufferView(buffer[0]))) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffers", "ArrayBufferView[]", buffer);
+    }
 
     let length = 0;
     for (const buf of buffer) {
         length += buf.byteLength;
     }
+
+    if (length === 0) {
+        callback(null, 0, buffer);
+        return;
+    }
+
     fread(fd, position, length).then((data) => {
         let off = 0;
         let databuf = Buffer.from(data);
@@ -1742,25 +1806,26 @@ function readv(fd, buffer, position, callback) {
     })
 }
 
-readv[kCustomPromisifiedSymbol] = (fd, buffer, position) => {
-    return new Promise((res, rej) => {
-        readv(fd, buffer, position, (err, bytesRead, buffers) => {
-            if (err !== null) {
-                rej(err);
-            } else {
-                res({ bytesRead, buffers });
-            }
-        })
-    })
-}
+readv[customPromisifyArgs] = ["bytesRead", "buffers"];
 
-function readvSync(fd, buffer, position = 0) {
+function readvSync(fd, buffer, position = -1) {
     validateInteger(fd, "fd");
+
+    position = position ?? -1;
+
     validateInteger(position, "position");
+    
+    if (!buffer || !Array.isArray(buffer) || (buffer.length > 0 && !isArrayBufferView(buffer[0]))) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffers", "ArrayBufferView[]", buffer);
+    }
 
     let length = 0;
     for (const buf of buffer) {
         length += buf.byteLength;
+    }
+
+    if (length === 0) {
+        return 0;
     }
 
     let data = binding.freadSync(fd, position, length);
@@ -1869,6 +1934,8 @@ function write(fd, buffer, offset, length, position, callback) {
     })
 }
 
+write[customPromisifyArgs] = ["bytesWritten", "buffer"];
+
 function writeSync(fd, buffer, offset, length, position) {
     if (typeof (buffer) !== "string") {
         if (typeof (buffer) !== "object" || !(buffer instanceof Buffer)) {
@@ -1919,7 +1986,7 @@ function writeFile(file, data, options, callback) {
     }
     options = options ?? {};
     if (typeof (options) === "string") {
-        validateEncoding(options, "option");
+        validateEncoding(options, "option.encoding");
         options = {
             encoding: options
         };
@@ -1962,6 +2029,62 @@ function writeFile(file, data, options, callback) {
     } catch (err) {
         callback(err);
     }
+}
+
+function isAsyncIterable(obj) {
+    // checks for null and undefined
+    if (obj == null) {
+        return false;
+    }
+    return typeof obj[Symbol.asyncIterator] === 'function';
+}
+
+function isIterable(obj) {
+    // checks for null and undefined
+    if (obj == null) {
+        return false;
+    }
+    return typeof obj[Symbol.iterator] === 'function';
+}
+
+function writeDataCheck(data) {
+    let ok = data && (typeof (data) === "string" || isArrayBufferView(data));
+    if (!ok) {
+        throw new errors.ERR_INVALID_ARG_TYPE("data", ["string", "Buffer", "TypedArray", "DataView"], data);
+    }
+}
+
+writeFile[kCustomPromisifiedSymbol] = (file, data, options) => {
+    return new Promise(async (res, rej) => {
+        try {
+            if (!(typeof (data) === "string" || isArrayBufferView(data))) {
+                if (data instanceof Readable || isAsyncIterable(data)) {
+                    const arr = [];
+                    for await (const i of data) {
+                        writeDataCheck(i);
+                        arr.push(Buffer.from(i));
+                    }
+                    data = Buffer.concat(arr);
+                } else if (isIterable(data)) {
+                    const arr = [];
+                    for (const i of data) {
+                        writeDataCheck(i);
+                        arr.push(Buffer.from(i));
+                    }
+                    data = Buffer.concat(arr);
+                }
+            }
+            writeFile(file, data, options, (err) => {
+                if (err !== null) {
+                    rej(err);
+                } else {
+                    res();
+                }
+            })
+        } catch (err) {
+            rej(err);
+        }
+    })
 }
 
 function writeFileSync(file, data, options = {}) {
@@ -2083,44 +2206,62 @@ function appendFileSync(file, data, options = {}) {
     }
 }
 
+
+function isArrayBufferView(value) {
+    return value && value.buffer instanceof ArrayBuffer && value.byteLength !== undefined;
+}
+
 function writev(fd, buffer, position, callback) {
     if (typeof (position) === "function") {
         callback = position;
-        position = 0;
+        position = -1;
     }
+
+    position = position ?? -1;
 
     validateFunction(callback, "callback");
     validateInteger(position, "position");
+
+    if (!buffer || !Array.isArray(buffer) || (buffer.length > 0 && !isArrayBufferView(buffer[0]))) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffers", "ArrayBufferView[]", buffer);
+    }
+
+    validateInteger(fd, "fd");
 
     let length = 0;
     for (const buf of buffer) {
         length += buf.byteLength;
     }
 
-    let buf = new Blob([...buffer])
-
-    fwrite(fd, position, buf.arrayBuffer()).then((len) => {
+    fwrite(fd, position, Buffer.concat(buffer).buffer).then((len) => {
         callback(null, len, buffer)
     }).catch((e) => {
         callback(e)
     })
 }
 
-function writevSync(fd, buffer, position = 0) {
+writev[customPromisifyArgs] = ["bytesWritten", "buffers"];
+
+function writevSync(fd, buffer, position = -1) {
+    position = position ?? -1;
     validateInteger(position, "position");
+
+    if (!buffer || !Array.isArray(buffer) || (buffer.length > 0 && !isArrayBufferView(buffer[0]))) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffers", "ArrayBufferView[]", buffer);
+    }
+
+    validateInteger(fd, "fd");
 
     let length = 0;
     for (const buf of buffer) {
         length += buf.byteLength;
     }
 
-    let buf = new Blob([...buffer])
-
     try {
-        let len = binding.fwriteSync(fd, position, buf.arrayBuffer());
+        let len = binding.fwriteSync(fd, position, Buffer.concat(buffer).buffer);
         return len;
     } catch (err) {
-        throw new Error(err.message);
+        throw wasiFsSyscallErrorMap(err, "write");
     }
 }
 
@@ -2610,7 +2751,7 @@ class FileHandle extends EventEmitter {
     }
 
     write(...args) {
-        return promisify(write)(this.fd, ...args).then(len => ({ bytesWritten: len }));
+        return promisify(write)(this.fd, ...args);
     }
 
     async writeFile(data, options) {

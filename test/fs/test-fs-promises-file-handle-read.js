@@ -98,7 +98,7 @@ async function validateReadLength(len) {
 }
 
 
-(async function() {
+(async function () {
   tmpdir.refresh();
   await validateRead('Hello world', 'read-file', { useConf: false });
   await validateRead('', 'read-empty-file', { useConf: false });

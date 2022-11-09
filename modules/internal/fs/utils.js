@@ -33,8 +33,8 @@ import * as pathModule from "../../path";
 const kType = Symbol("type");
 const kStats = Symbol("stats");
 import { assert } from "../assert";
-import { lstat, lstatSync } from "../../fs";
-import { stat, statSync } from "../../fs";
+import { lstat, lstatSync } from "../fs";
+import { stat, statSync } from "../fs";
 const isWindows = false;
 import * as process from "../../process";
 
@@ -1022,7 +1022,7 @@ export const validateEncoding = hideStackFrames((value, name) => {
       'iso-8859-2', 'iso-8859-3', 'iso-8859-4', 'iso-8859-5', 'iso-8859-6', 'iso-8859-7', 'iso-8859-8',
       'iso-8859-8i', 'iso-8859-10', 'iso-8859-13', 'iso-8859-14', 'iso-8859-15', 'iso-8859-16',
       'windows-874', 'windows-1250', 'windows-1251', 'windows-1252', 'windows-1253', 'windows-1254',
-      'windows-1255', 'windows-1256', 'windows-1257', 'windows-1258', '', 'hex', 'base64'
+      'windows-1255', 'windows-1256', 'windows-1257', 'windows-1258', '', 'hex', 'base64', 'latin1'
   ].indexOf(value);
 
   if (exist < 0) {

@@ -455,27 +455,29 @@ impl IoSelector {
                             callback(ctx, PollResult::Error(e));
                             continue;
                         }
-                        if pos != -1 {
-                            let res =
-                                unsafe { wasi_fs::fd_seek(fd as u32, pos, wasi_fs::WHENCE_SET) };
-                            if let Err(e) = res {
-                                callback(
-                                    ctx,
-                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32)),
-                                );
-                                continue;
-                            }
-                        }
                         let len = len as usize; // len.min(event.fd_readwrite.nbytes) as usize;
                         let mut buf = vec![0u8; len];
-                        let res = unsafe {
-                            wasi_fs::fd_read(
-                                fd as u32,
-                                &[wasi_fs::Iovec {
-                                    buf: buf.as_mut_ptr(),
-                                    buf_len: len,
-                                }],
-                            )
+                        let res = if pos >= 0 {
+                            unsafe {
+                                wasi_fs::fd_pread(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                    pos as u64,
+                                )
+                            }
+                        } else {
+                            unsafe {
+                                wasi_fs::fd_read(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                )
+                            }
                         };
                         callback(
                             ctx,
