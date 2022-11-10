@@ -189,9 +189,9 @@ async function doWriteInvalidValues() {
 
 (async () => {
   await validateWriteFile();
-  await doWriteAndCancel();
+  //await doWriteAndCancel();
   await doWriteStream();
-  await doWriteStreamWithCancel();
+  //await doWriteStreamWithCancel();
   await doWriteIterable();
   await doWriteInvalidIterable();
   await doWriteIterableWithEncoding();

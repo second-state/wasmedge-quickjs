@@ -46,7 +46,7 @@ function testValidCb(buffer, options, index, callback) {
         if (offset === undefined || offset === 0) {
           assert.deepStrictEqual(writeBufCopy, readBufCopy);
         }
-        // assert.deepStrictEqual(bufferWritten, bufferRead);
+        assert.deepStrictEqual(bufferWritten, bufferRead);
         fs.close(fd, common.mustSucceed(callback));
       }));
     }));

@@ -10,6 +10,8 @@ const read = promisify(fs.read);
 const write = promisify(fs.write);
 const exists = promisify(fs.exists);
 
+const __filename = args[0];
+
 {
   const fd = fs.openSync(__filename, 'r');
   read(fd, Buffer.alloc(1024), 0, 1024, null).then(common.mustCall((obj) => {

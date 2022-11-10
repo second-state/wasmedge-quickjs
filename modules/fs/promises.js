@@ -47,7 +47,7 @@ export const rm = promisify(fs.rm);
 export const stat = promisify(fs.stat);
 export const symlink = promisify(fs.symlink);
 export const truncate = async (path, len) => {
-    let file = await open(path, "w");
+    let file = await open(path, "r+");
     await file.truncate(len);
     await file.close();
 };

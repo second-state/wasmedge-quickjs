@@ -19,8 +19,8 @@ const __filename = args[0];
 fs.readFile(__filename, options, common.mustSucceed());
 fs.readFileSync(__filename, options);
 
-fs.readdir(__dirname, options, common.mustSucceed());
-fs.readdirSync(__dirname, options);
+fs.readdir("./", options, common.mustSucceed());
+fs.readdirSync("./", options);
 
 if (false /*common.canCreateSymLink()*/) {
   const sourceFile = path.resolve(tmpdir.path, 'test-readlink');

@@ -98,9 +98,9 @@ async function doWriteInvalidIterable() {
 }
 
 async function doWriteIterableWithEncoding() {
-  await fsPromises.writeFile(dest, stream2, 'base64');
+  await fsPromises.writeFile(dest, stream2, 'latin1');
   const expected = 'ümlaut sechzig';
-  const data = fs.readFileSync(dest, 'base64');
+  const data = fs.readFileSync(dest, 'latin1');
   assert.deepStrictEqual(data, expected);
 }
 
@@ -163,18 +163,18 @@ async function doReadWithEncoding() {
 }
 
 (async () => {
-  //await doWrite();
+  await doWrite();
   // await doWriteWithCancel();
-  //await doAppend();
-  //await doRead();
-  //await doReadWithEncoding();
-  //await doWriteStream();
-  // await doWriteStreamWithCancel();
-  //await doWriteIterable();
-  //await doWriteInvalidIterable();
+  await doAppend();
+  await doRead();
+  await doReadWithEncoding();
+  await doWriteStream();
+  // await doWriteStreamWithCancel(); signal is unsupported
+  await doWriteIterable();
+  await doWriteInvalidIterable();
   await doWriteIterableWithEncoding();
-  //await doWriteBufferIterable();
-  //await doWriteAsyncIterable();
-  //await doWriteAsyncLargeIterable();
-  //await doWriteInvalidValues();
-})().then(common.mustCall()).catch(err => print(err, err.stack));
+  await doWriteBufferIterable();
+  await doWriteAsyncIterable();
+  // await doWriteAsyncLargeIterable(); cost to much time
+  await doWriteInvalidValues();
+})().then(common.mustCall());

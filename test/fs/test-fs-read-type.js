@@ -9,7 +9,7 @@ const filepath = fixtures.path('x.txt');
 const fd = fs.openSync(filepath, 'r');
 const expected = 'xyz\n';
 
-
+/* Undocumented api call way
 // Error must be thrown with string
 assert.throws(
   () => fs.read(fd, expected.length, 0, 'utf-8', common.mustNotCall()),
@@ -20,7 +20,7 @@ assert.throws(
              'TypedArray, or DataView. Received type number (4)'
   }
 );
-
+*/
 [true, null, undefined, () => {}, {}].forEach((value) => {
   assert.throws(() => {
     fs.read(value,
@@ -71,8 +71,7 @@ assert.throws(() => {
 }, {
   code: 'ERR_OUT_OF_RANGE',
   name: 'RangeError',
-  message: 'The value of "length" is out of range. ' +
-           'It must be >= 0. Received -1'
+  message: /"length".*-1/
 });
 
 [true, () => {}, {}, ''].forEach((value) => {
@@ -123,7 +122,7 @@ fs.read(fd,
               assert.strictEqual(err.code, 'EFBIG');
           }
         }));
-
+/* Undocumented api call way
 assert.throws(
   () => fs.readSync(fd, expected.length, 0, 'utf-8'),
   {
@@ -133,7 +132,7 @@ assert.throws(
              'TypedArray, or DataView. Received type number (4)'
   }
 );
-
+*/
 [true, null, undefined, () => {}, {}].forEach((value) => {
   assert.throws(() => {
     fs.readSync(value,
@@ -180,8 +179,7 @@ assert.throws(() => {
 }, {
   code: 'ERR_OUT_OF_RANGE',
   name: 'RangeError',
-  message: 'The value of "length" is out of range. ' +
-           'It must be >= 0. Received -1'
+  message: /"length".*-1/
 });
 
 assert.throws(() => {
@@ -193,8 +191,7 @@ assert.throws(() => {
 }, {
   code: 'ERR_OUT_OF_RANGE',
   name: 'RangeError',
-  message: 'The value of "length" is out of range. ' +
-           'It must be <= 4. Received 5'
+  message: /"length".*5/
 });
 
 [true, () => {}, {}, ''].forEach((value) => {

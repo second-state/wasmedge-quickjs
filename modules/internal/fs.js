@@ -571,6 +571,12 @@ function exists(path, callback) {
     }, 0);
 }
 
+exists[kCustomPromisifiedSymbol] = (path) => {
+    return new Promise((res, rej) => {
+        exists(path, res);
+    });
+}
+
 function existsSync(path) {
     try {
         path = getValidatedPath(path);
@@ -1399,9 +1405,9 @@ function read(fd, buffer, offset, length, position, callback) {
         offset = 0;
         length = buffer.byteLength - offset;
         position = -1;
-    } else if (!(buffer instanceof Buffer) && !Object.prototype.toString.call(buffer).endsWith("Array]")) {
+    } else if (!(buffer instanceof Buffer) && !Object.prototype.toString.call(buffer).endsWith("Array]") && arguments.length === 3) {
         callback = offset;
-        let option = buffer;
+        let option = buffer ?? {};
         buffer = option.buffer !== undefined ? option.buffer : Buffer.alloc(16384);
         offset = option.offset ?? 0;
         length = option.length ?? buffer.byteLength - offset;
@@ -1409,7 +1415,7 @@ function read(fd, buffer, offset, length, position, callback) {
             position = -1;
         }
         position = position ?? option.position ?? -1;
-    } else if (typeof (offset) === "object") {
+    } else if (arguments.length === 4) {
         callback = length;
         let option = offset;
         offset = (option && option.offset) ?? 0;
@@ -1425,13 +1431,27 @@ function read(fd, buffer, offset, length, position, callback) {
         position = -1;
     }
 
+    offset = offset ?? 0;
     position = position ?? -1;
 
+    if (!isArrayBufferView(buffer)) {
+        throw new errors.ERR_INVALID_ARG_TYPE("buffer", ["Buffer", "TypedArray", "DataView"], buffer);
+    }
     validateInteger(fd, "fd");
     validateFunction(callback, "callback");
-    validateInteger(offset, "offset");
-    validateInteger(position, "position");
-    validateInteger(length, "length");
+    validateInteger(offset, "offset", 0);
+
+    const nodePositionMin = -9223372036854775808n;
+    const nodePositionMax = 9223372036854775807n;
+    if (typeof (position) === "bigint") {
+        if (position < nodePositionMin || position > nodePositionMax) {
+            throw new errors.ERR_OUT_OF_RANGE("position", `>= ${nodePositionMin} && <= ${nodePositionMax}`, position);
+        } else {
+            position = Number(position);
+        }
+    } else {
+        validateInteger(position, "position");
+    }
 
     if (length === 0) {
         callback(null, 0, buffer);
@@ -1454,18 +1474,22 @@ function read(fd, buffer, offset, length, position, callback) {
             "is empty and cannot be written",
         );
     }
+    validateInteger(length, "length", 0, buffer.byteLength);
+
     fread(fd, position, length).then((data) => {
         let len = data.byteLength;
         if (buffer instanceof Buffer) {
             Buffer.from(data).copy(buffer, offset, 0, len);
-            if (buffer.byteLength !== len) {
-                buffer = Buffer.from(buffer.slice(0, len));
-            }
         } else {
             buffer.set(new Uint8Array(data.slice(0, len)), offset);
         }
         callback(null, len, buffer)
     }).catch((e) => {
+        if (err.code === "INVAL") {
+            let e = new Error(err.message);
+            e.code = "EOVERFLOW";
+            callback(e);
+        }
         callback(wasiFsSyscallErrorMap(e, "read"));
     })
 }
@@ -1506,7 +1530,7 @@ function readSync(fd, buffer, offset, length, position) {
     }
 
     validateInteger(fd, "fd");
-    validateInteger(offset, "offset");
+    validateInteger(offset, "offset", 0);
 
     if (length === 0) {
         return 0;
@@ -1518,6 +1542,7 @@ function readSync(fd, buffer, offset, length, position) {
             "is empty and cannot be written",
         );
     }
+    validateInteger(length, "length", 0, buffer.byteLength);
 
     const nodePositionMin = -9223372036854775808n;
     const nodePositionMax = 9223372036854775807n;
@@ -1814,7 +1839,7 @@ function readvSync(fd, buffer, position = -1) {
     position = position ?? -1;
 
     validateInteger(position, "position");
-    
+
     if (!buffer || !Array.isArray(buffer) || (buffer.length > 0 && !isArrayBufferView(buffer[0]))) {
         throw new errors.ERR_INVALID_ARG_TYPE("buffers", "ArrayBufferView[]", buffer);
     }
@@ -1902,15 +1927,22 @@ function write(fd, buffer, offset, length, position, callback) {
         position = -1;
     } else if (typeof (position) === "function") {
         callback = position;
+        offset = offset ?? 0;
+        length = length ?? buffer.byteLength - offset;
         position = -1;
     } else if (typeof (length) === "function") {
         callback = length;
+        offset = offset ?? 0;
         validateInteger(offset, "offset", 0, buffer.byteLength);
         length = buffer.byteLength - offset;
         position = -1;
     }
 
     position = position ?? -1;
+
+    if (isArrayBufferView(buffer) && !(buffer instanceof Buffer)) {
+        buffer = Buffer.from(buffer.buffer);
+    }
 
     if (typeof (buffer) !== "string" && !(buffer instanceof Buffer)) {
         throw new errors.ERR_INVALID_ARG_TYPE("buffer", ["string", "Buffer", "DataView"], buffer);
@@ -1924,11 +1956,7 @@ function write(fd, buffer, offset, length, position, callback) {
     validateInteger(offset + length, "length + offset", 0, buffer.byteLength);
 
     fwrite(fd, position, buffer.buffer.slice(offset, offset + length)).then((len) => {
-        if (oriStr === null) {
-            callback(null, len, buffer.buffer.slice(offset, offset + len));
-        } else {
-            callback(null, len, oriStr.slice(offset, offset + len));
-        }
+        callback(null, len, buffer);
     }).catch((e) => {
         callback(wasiFsSyscallErrorMap(e, "write"));
     })
@@ -2055,6 +2083,12 @@ function writeDataCheck(data) {
 }
 
 writeFile[kCustomPromisifiedSymbol] = (file, data, options) => {
+    let encoding;
+    if (typeof (options) === "string") {
+        encoding = options;
+    } else {
+        encoding = options && options.encoding;
+    }
     return new Promise(async (res, rej) => {
         try {
             if (!(typeof (data) === "string" || isArrayBufferView(data))) {
@@ -2062,14 +2096,22 @@ writeFile[kCustomPromisifiedSymbol] = (file, data, options) => {
                     const arr = [];
                     for await (const i of data) {
                         writeDataCheck(i);
-                        arr.push(Buffer.from(i));
+                        if (typeof (i) === "string") {
+                            arr.push(Buffer.from(i, encoding ?? "utf8"));
+                        } else {
+                            arr.push(Buffer.from(i));
+                        }
                     }
                     data = Buffer.concat(arr);
                 } else if (isIterable(data)) {
                     const arr = [];
                     for (const i of data) {
                         writeDataCheck(i);
-                        arr.push(Buffer.from(i));
+                        if (typeof (i) === "string") {
+                            arr.push(Buffer.from(i, encoding ?? "utf8"));
+                        } else {
+                            arr.push(Buffer.from(i));
+                        }
                     }
                     data = Buffer.concat(arr);
                 }
@@ -2688,11 +2730,14 @@ class FileHandle extends EventEmitter {
         return createWriteStream(this.#path, options);
     }
 
-    async dataSync() {
+    async datasync() {
         return await promisify(fdatasync)(this.fd);
     }
 
     async read(...args) {
+        if (args.length === 3) {
+            args.push(-1);
+        }
         return await promisify(read)(this.fd, ...args);
     }
 

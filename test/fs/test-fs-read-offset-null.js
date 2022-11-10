@@ -22,44 +22,45 @@ const buf = Buffer.alloc(1);
 // Tests for callback API.
 fs.open(filepath, 'r', common.mustSucceed((fd) => {
   fs.read(fd, { offset: null, buffer: buf },
-          common.mustSucceed((bytesRead, buffer) => {
-            assert.strictEqual(buffer[0], 120);
-            fs.close(fd, common.mustSucceed(() => {}));
-          }));
+    common.mustSucceed((bytesRead, buffer) => {
+      assert.strictEqual(buffer[0], 120);
+      fs.close(fd, common.mustSucceed(() => { }));
+    }));
 }));
 
 fs.open(filepath, 'r', common.mustSucceed((fd) => {
   fs.read(fd, buf, { offset: null },
-          common.mustSucceed((bytesRead, buffer) => {
-            assert.strictEqual(buffer[0], 120);
-            fs.close(fd, common.mustSucceed(() => {}));
-          }));
+    common.mustSucceed((bytesRead, buffer) => {
+      assert.strictEqual(buffer[0], 120);
+      fs.close(fd, common.mustSucceed(() => { }));
+    }));
 }));
 
 let filehandle = null;
-
-// Tests for promises api
 (async () => {
-  filehandle = await fsPromises.open(filepath, 'r');
-  const readObject = await filehandle.read(buf, { offset: null });
-  assert.strictEqual(readObject.buffer[0], 120);
-})()
-.finally(() => filehandle?.close())
-.then(common.mustCall());
+  // Tests for promises api
+  await (async () => {
+    filehandle = await fsPromises.open(filepath, 'r');
+    const readObject = await filehandle.read(buf, { offset: null });
+    assert.strictEqual(readObject.buffer[0], 120);
+  })()
+    .finally(() => filehandle?.close())
+    .then(common.mustCall());
 
-// Undocumented: omitted position works the same as position === null
-(async () => {
-  filehandle = await fsPromises.open(filepath, 'r');
-  const readObject = await filehandle.read(buf, null, buf.length);
-  assert.strictEqual(readObject.buffer[0], 120);
-})()
-.finally(() => filehandle?.close())
-.then(common.mustCall());
+  // Undocumented: omitted position works the same as position === null
+  await (async () => {
+    filehandle = await fsPromises.open(filepath, 'r');
+    const readObject = await filehandle.read(buf, null, buf.length);
+    assert.strictEqual(readObject.buffer[0], 120);
+  })()
+    .finally(() => filehandle?.close())
+    .then(common.mustCall());
 
-(async () => {
-  filehandle = await fsPromises.open(filepath, 'r');
-  const readObject = await filehandle.read(buf, null, buf.length, 0);
-  assert.strictEqual(readObject.buffer[0], 120);
-})()
-.finally(() => filehandle?.close())
-.then(common.mustCall());
+  await (async () => {
+    filehandle = await fsPromises.open(filepath, 'r');
+    const readObject = await filehandle.read(buf, null, buf.length, 0);
+    assert.strictEqual(readObject.buffer[0], 120);
+  })()
+    .finally(() => filehandle?.close())
+    .then(common.mustCall());
+})();

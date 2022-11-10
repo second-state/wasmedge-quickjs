@@ -1,6 +1,6 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
-import * as common from '../common/index.mjs';
-import * as fixtures from '../common/fixtures.mjs';
+import * as common from '../common';
+import * as fixtures from '../common/fixtures';
 import fs from 'fs';
 import assert from 'assert';
 
@@ -60,7 +60,7 @@ async function testInvalid(code, position) {
   });
 }
 
-{
+(async () => {
   await testValid(undefined);
   await testValid(null);
   await testValid(-1);
@@ -72,9 +72,9 @@ async function testInvalid(code, position) {
   await testValid(1n);
   await testValid(9);
   await testValid(9n);
-  await testValid(Number.MAX_SAFE_INTEGER, [ 'EFBIG', 'EOVERFLOW' ]);
+  await testValid(Number.MAX_SAFE_INTEGER, ['EFBIG', 'EOVERFLOW']);
 
-  await testValid(2n ** 63n - 1n - BigInt(length), [ 'EFBIG', 'EOVERFLOW' ]);
+  await testValid(2n ** 63n - 1n - BigInt(length), ['EFBIG', 'EOVERFLOW']);
   await testInvalid('ERR_OUT_OF_RANGE', 2n ** 63n);
 
   // TODO(LiviaMedeiros): test `2n ** 63n - BigInt(length)`
@@ -88,8 +88,8 @@ async function testInvalid(code, position) {
   await testInvalid('ERR_OUT_OF_RANGE', Number.MAX_VALUE);
 
   for (const badTypeValue of [
-    false, true, '1', Symbol(1), {}, [], () => {}, Promise.resolve(1),
+    false, true, '1', Symbol(1), {}, [], () => { }, Promise.resolve(1),
   ]) {
     await testInvalid('ERR_INVALID_ARG_TYPE', badTypeValue);
   }
-}
+})();

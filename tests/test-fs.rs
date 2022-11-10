@@ -336,7 +336,6 @@ fn test_fs_promises_file_handle_truncate() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_file_handle_write_file() {
     test_js_file("test/fs/test-fs-promises-file-handle-writeFile.js");
 }
@@ -347,7 +346,6 @@ fn test_fs_promises_file_handle_write() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises() {
     test_js_file("test/fs/test-fs-promises.js");
 }
@@ -373,7 +371,6 @@ fn test_fs_promises_watch() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_writefile() {
     test_js_file("test/fs/test-fs-promises-writefile.js");
 }
@@ -389,13 +386,11 @@ fn test_fs_promises_writefile_with_fd() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promises_write_optional_params() {
     test_js_file("test/fs/test-fs-promises-write-optional-params.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_promisified() {
     test_js_file("test/fs/test-fs-promisified.js");
 }
@@ -511,25 +506,21 @@ fn test_fs_readlink_type_check() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_offset_null() {
     test_js_file("test/fs/test-fs-read-offset-null.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_optional_params() {
     test_js_file("test/fs/test-fs-read-optional-params.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_position_validation() {
-    test_js_file("test/fs/test-fs-read-position-validation.mjs");
+    test_js_file("test/fs/test-fs-read-position-validation.js");
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_promises_optional_params() {
     test_js_file("test/fs/test-fs-read-promises-optional-params.js");
 }
@@ -629,7 +620,6 @@ fn test_fs_read_sync_position_validation() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_read_type() {
     test_js_file("test/fs/test-fs-read-type.js");
 }
@@ -974,13 +964,11 @@ fn test_fs_whatwg_url() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_buffer() {
     test_js_file("test/fs/test-fs-write-buffer.js");
 }
 
-#[test]
-#[ignore = "working"]
+#[ignore = "unsupported, 64bit"]
 fn test_fs_write_buffer_large() {
     test_js_file("test/fs/test-fs-write-buffer-large.js");
 }
@@ -1031,7 +1019,6 @@ fn test_fs_write_no_fd() {
 }
 
 #[test]
-#[ignore = "working"]
 fn test_fs_write_optional_params() {
     test_js_file("test/fs/test-fs-write-optional-params.js");
 }

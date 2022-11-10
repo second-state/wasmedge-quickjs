@@ -21,9 +21,9 @@
 
 'use strict';
 
-import { join } from 'path';
 import util from 'util';
 import fs from 'fs';
+import { join } from 'path';
 
 let data = [
   '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcH',

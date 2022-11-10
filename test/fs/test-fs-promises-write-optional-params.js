@@ -38,9 +38,11 @@ async function testValid(dest, buffer, options) {
   try {
     fh = await fsPromises.open(dest, 'w+');
     const writeResult = await fh.write(buffer, options);
+    writeResult.buffer = new Uint8Array(writeResult.buffer);
     const writeBufCopy = Uint8Array.prototype.slice.call(writeResult.buffer);
 
     const readResult = await fh.read(buffer, options);
+    readResult.buffer = new Uint8Array(readResult.buffer);
     const readBufCopy = Uint8Array.prototype.slice.call(readResult.buffer);
 
     assert.ok(writeResult.bytesWritten >= readResult.bytesRead);
