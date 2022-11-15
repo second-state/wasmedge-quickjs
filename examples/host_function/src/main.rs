@@ -27,5 +27,5 @@ fn main() {
     let mut ctx = Context::new();
     let f = ctx.new_function::<host_extern::HostIncFn>("host_inc");
     ctx.get_global().set("host_inc", f.into());
-    ctx.eval_global_str("print('js=> host_inc(2)=',host_inc(2))");
+    ctx.eval_global_str("print('js=> host_inc(2)=',host_inc(2))", true);
 }

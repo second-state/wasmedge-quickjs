@@ -8,7 +8,7 @@ fn main() {
     m
     "#;
 
-    let p = ctx.eval_global_str(code);
+    let p = ctx.eval_global_str(code, true);
     println!("before poll:{:?}", p);
     ctx.promise_loop_poll();
     println!("after poll:{:?}", p);

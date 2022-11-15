@@ -21,6 +21,9 @@ fn args_parse() -> (String, Vec<String>) {
 
 fn main() {
     use wasmedge_quickjs as q;
+
+   test_errors();
+
     let mut rt = q::Runtime::new();
     rt.run_with_context(|ctx| {
         let (file_path, mut rest_arg) = args_parse();
@@ -36,5 +39,45 @@ fn main() {
             }
         }
         ctx.js_loop().unwrap();
+    });
+}
+
+fn test_errors() {
+    use wasmedge_quickjs as q;
+
+    let mut rt = q::Runtime::new();
+    rt.run_with_context(|ctx| {
+        let code = String::from("const x = {};x.hello.world;");
+        let r = ctx.eval_global_str(code, false);
+        match r {
+            JsValue::Exception(exception) => {
+                println!("Exception value:{:?}", exception.get_message());
+            }
+            _ => {
+                println!("return value:{:?}", r);
+            }
+        }
+
+        let code = String::from("throw new Error('x.hello');");
+        let r = ctx.eval_global_str(code, false);
+        match r {
+            JsValue::Exception(exception) => {
+                println!("Exception value:{:?}", exception.get_message());
+            }
+            _ => {
+                println!("return value:{:?}", r);
+            }
+        }
+
+        let code = String::from("throw 6;");
+        let r = ctx.eval_global_str(code, false);
+        match r {
+            JsValue::Exception(exception) => {
+                println!("Exception value:{:?}", exception.get_message());
+            }
+            _ => {
+                println!("return value:{:?}", r);
+            }
+        }
     });
 }

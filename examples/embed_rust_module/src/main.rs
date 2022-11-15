@@ -111,6 +111,6 @@ fn main() {
     })
     "#;
 
-    ctx.eval_global_str(code);
+    ctx.eval_global_str(code, true);
     ctx.promise_loop_poll();
 }

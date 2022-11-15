@@ -9,6 +9,7 @@ In general, this version strips down the WASMEdge QuickJS implementation to allo
   - Enables functions like `setTimeout`, `setImmediate`.
   - Enables http support and socket support, among others that require IO access granted by the preview1 WASI snapshot.
 - Added `inherit_env` feature. Disabled by default for security. If enabled, the process env of the `Context`-instantiating Rust code will be passed down to executed JS.
+- Added `get_message` on `JsException` to get the error message of the exception if it follows a common JS error structure.
 
 ## Prerequisites
 

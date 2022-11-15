@@ -4,6 +4,8 @@ pub mod js_class;
 pub mod js_module;
 
 use std::collections::HashMap;
+use std::ffi::CString;
+use std::os::raw::c_char;
 
 pub use js_class::*;
 pub use js_module::{JsModuleDef, ModuleInit};
@@ -375,7 +377,13 @@ impl Context {
         global.set("args", args_obj.into());
     }
 
-    pub fn eval_buf(&mut self, code: Vec<u8>, filename: &str, eval_flags: u32) -> JsValue {
+    pub fn eval_buf(
+        &mut self,
+        code: Vec<u8>,
+        filename: &str,
+        eval_flags: u32,
+        dump_error: bool,
+    ) -> JsValue {
         unsafe {
             let ctx = self.ctx;
             let len = code.len();
@@ -401,19 +409,27 @@ impl Context {
                     eval_flags as i32,
                 )
             };
-            if JS_IsException_real(val) > 0 {
+            if dump_error && JS_IsException_real(val) > 0 {
                 js_std_dump_error(ctx);
+            } else {
+                let str = JS_ToString(ctx, val);
+                return JsValue::from_qjs_value(ctx, str);
             }
             JsValue::from_qjs_value(ctx, val)
         }
     }
 
-    pub fn eval_global_str(&mut self, code: String) -> JsValue {
-        self.eval_buf(code.into_bytes(), "<evalScript>", JS_EVAL_TYPE_GLOBAL)
+    pub fn eval_global_str(&mut self, code: String, dump_error: bool) -> JsValue {
+        self.eval_buf(
+            code.into_bytes(),
+            "<evalScript>",
+            JS_EVAL_TYPE_GLOBAL,
+            dump_error,
+        )
     }
 
     pub fn eval_module_str(&mut self, code: String, filename: &str) {
-        self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE);
+        self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE, true);
         self.promise_loop_poll();
     }
 
@@ -997,6 +1013,39 @@ pub struct JsException(JsRef);
 impl JsException {
     pub fn dump_error(&self) {
         unsafe { js_std_dump_error(self.0.ctx) }
+    }
+
+    /// Attempts to retrieve the error message of the exception.
+    /// Returns `None` if the exception is not following the common JS `Error` structure (message, stack) or conversions fail in between.
+    pub fn get_message(&self) -> Option<String> {
+        let ctx = self.0.ctx;
+        unsafe {
+            let exception = JS_GetException(ctx);
+
+            // Assumption: Boolean is transported over the FFI boundary as 32-bit integer.
+            let is_error = JS_IsError(ctx, exception);
+            if is_error > 0 {
+                // Unwrap is safe as we do not have a zero-byte in the middle of it.
+                let c_message_prop = CString::new("message").unwrap();
+                let error_message = JS_GetPropertyStr(ctx, exception, c_message_prop.as_ptr());
+                let js_error_message = JsValue::from_qjs_value(ctx, error_message).to_string();
+
+                // We must ensure that the allocated references in the JS runtime are freed regardless of processing outcome,
+                // else the finalizer of the runtime will panic (which checks if all objects have been GC'ed).
+                match js_error_message {
+                    Some(x) => {
+                        JS_FreeValue_real(ctx, exception);
+                        Some(x.to_string())
+                    }
+                    _ => {
+                        JS_FreeValue_real(ctx, exception);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        }
     }
 }
 

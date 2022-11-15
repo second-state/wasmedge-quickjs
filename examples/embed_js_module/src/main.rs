@@ -9,7 +9,7 @@ fn main() {
     })
     "#;
 
-    let p = ctx.eval_global_str(code);
+    let p = ctx.eval_global_str(code, true);
     println!("before poll:{:?}", p);
     if let JsValue::Promise(ref p) = p {
         let v = p.get_result();

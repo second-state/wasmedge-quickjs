@@ -157,6 +157,6 @@ fn main() {
 
         print('b instanceof ClassA =',b instanceof ClassA)
         "#;
-        ctx.eval_global_str(code.to_string());
+        ctx.eval_global_str(code.to_string(), true);
     })
 }

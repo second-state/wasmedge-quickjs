@@ -14,7 +14,7 @@ fn main() {
 fn js_hello(ctx: &mut Context) {
     println!("\n<----run_simple_js---->");
     let code = r#"print('hello quickjs')"#;
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     println!("return value:{:?}", r);
 }
 
@@ -25,7 +25,7 @@ fn run_js_code(ctx: &mut Context) {
     print('js print: 1+1=',a);
     'hello'; // eval_return
     "#;
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     println!("return value:{:?}", r);
 }
 
@@ -36,7 +36,7 @@ fn run_js_function(ctx: &mut Context) {
         print("js print: x=",x)
     }
     "#;
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     println!("return value:{:?}", r);
     if let JsValue::Function(f) = r {
         let hello_str = ctx.new_string("hello");
@@ -53,7 +53,7 @@ fn run_js_function(ctx: &mut Context) {
         return old_value
     }
     "#;
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     if let JsValue::Function(f) = r {
         let mut x = ctx.new_array();
         x.set(0, 0.into());
@@ -81,7 +81,7 @@ fn run_rust_function(ctx: &mut Context) {
     let f = ctx.new_function::<HelloFn>("hello");
     ctx.get_global().set("hi", f.into());
     let code = r#"hi(1,2,3)"#;
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     println!("return value:{:?}", r);
 }
 
@@ -116,7 +116,7 @@ fn rust_new_object_and_js_call(ctx: &mut Context) {
     test_obj.f(1,2,3,"hi")
     "#;
 
-    ctx.eval_global_str(code);
+    ctx.eval_global_str(code, true);
 }
 
 fn js_new_object_and_rust_call(ctx: &mut Context) {
@@ -133,7 +133,7 @@ fn js_new_object_and_rust_call(ctx: &mut Context) {
     }
     obj
     "#;
-    if let JsValue::Object(mut obj) = ctx.eval_global_str(code) {
+    if let JsValue::Object(mut obj) = ctx.eval_global_str(code, true) {
         let mut args = vec![ctx.new_string("rust_args_string").into()];
 
         let obj_map = obj.to_map();
@@ -167,7 +167,7 @@ fn js_promise(ctx: &mut Context) {
     f
     "#;
 
-    let r = ctx.eval_global_str(code);
+    let r = ctx.eval_global_str(code, true);
     println!("{:?}", r);
     if let JsValue::Function(f) = r {
         let mut args = vec![];
