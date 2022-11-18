@@ -80,4 +80,20 @@ fn test_errors() {
             }
         }
     });
+
+    let mut rt = q::Runtime::new();
+    rt.run_with_context(|ctx| {
+        let code = String::from("(() => {
+            return { crazy: 'shit here my friend' };
+        })()");
+        let r = ctx.eval_global_str(code, false);
+        match r {
+            JsValue::Exception(exception) => {
+                println!("Exception value:{:?}", exception.get_message());
+            }
+            _ => {
+                println!("return value:{:?}", r);
+            }
+        }
+    });
 }

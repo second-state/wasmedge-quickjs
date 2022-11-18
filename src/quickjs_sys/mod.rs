@@ -409,12 +409,16 @@ impl Context {
                     eval_flags as i32,
                 )
             };
-            if dump_error && JS_IsException_real(val) > 0 {
-                js_std_dump_error(ctx);
-            } else {
-                let str = JS_ToString(ctx, val);
-                return JsValue::from_qjs_value(ctx, str);
+
+            if JS_IsException_real(val) > 0  {
+                if dump_error {
+                    js_std_dump_error(ctx);
+                } else {
+                    let str = JS_ToString(ctx, val);
+                    return JsValue::from_qjs_value(ctx, str);
+                }
             }
+
             JsValue::from_qjs_value(ctx, val)
         }
     }
