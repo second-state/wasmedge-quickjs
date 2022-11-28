@@ -143,6 +143,8 @@ export function promisify(
 
 promisify.custom = kCustomPromisifiedSymbol;
 
+export const kEmptyObject = Object.freeze(Object.create(null));
+
 export default {
     createDeferredPromise,
     customInspectSymbol,
@@ -151,4 +153,5 @@ export default {
     once,
     deprecate,
     promisify,
+    kEmptyObject
 };

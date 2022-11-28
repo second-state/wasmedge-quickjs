@@ -236,6 +236,12 @@ export class ERR_STREAM_NULL_VALUES extends TypeError {
     }
 }
 
+export class ERR_INVALID_CURSOR_POS extends TypeError {
+    constructor() {
+        super("ERR_INVALID_CURSOR_POS", `Cannot set cursor row without setting its column`);
+    }
+}
+
 export class ERR_STREAM_DESTROYED extends Error {
     constructor(x) {
         super(
