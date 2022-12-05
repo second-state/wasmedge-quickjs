@@ -1,4 +1,5 @@
 mod poll;
+pub mod wasi_fs;
 mod wasi_sock;
 
 use crate::event_loop::poll::{Eventtype, Subscription};
@@ -132,6 +133,7 @@ pub enum PollResult {
     Read(Vec<u8>),
     Connect(AsyncTcpConn),
     Error(io::Error),
+    Write(usize),
 }
 
 struct TimeoutTask {
@@ -248,10 +250,58 @@ impl SocketTimeoutTask {
     }
 }
 
+struct FdReadTask {
+    fd: std::os::wasi::io::RawFd,
+    pos: i64,
+    len: u64,
+    callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+}
+
+impl FdReadTask {
+    fn as_subscription(&self, index: usize) -> Subscription {
+        poll::Subscription {
+            userdata: index as u64,
+            u: poll::SubscriptionU {
+                tag: poll::EVENTTYPE_FD_READ,
+                u: poll::SubscriptionUU {
+                    fd_read: poll::SubscriptionFdReadwrite {
+                        file_descriptor: self.fd as u32,
+                    },
+                },
+            },
+        }
+    }
+}
+
+struct FdWriteTask {
+    fd: std::os::wasi::io::RawFd,
+    pos: i64,
+    buf: Vec<u8>,
+    callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+}
+
+impl FdWriteTask {
+    fn as_subscription(&self, index: usize) -> Subscription {
+        poll::Subscription {
+            userdata: index as u64,
+            u: poll::SubscriptionU {
+                tag: poll::EVENTTYPE_FD_WRITE,
+                u: poll::SubscriptionUU {
+                    fd_write: poll::SubscriptionFdReadwrite {
+                        file_descriptor: self.fd as u32,
+                    },
+                },
+            },
+        }
+    }
+}
+
 enum PollTask {
     Timeout(TimeoutTask),
     Socket(SocketTask),
     SocketTimeout(SocketTimeoutTask),
+    FdRead(FdReadTask),
+    FdWrite(FdWriteTask),
 }
 
 #[derive(Default)]
@@ -292,6 +342,12 @@ impl IoSelector {
                         let (task1, task2) = task.as_subscription(i);
                         subscription_vec.push(task1);
                         subscription_vec.push(task2);
+                    }
+                    PollTask::FdRead(task) => {
+                        subscription_vec.push(task.as_subscription(i));
+                    }
+                    PollTask::FdWrite(task) => {
+                        subscription_vec.push(task.as_subscription(i));
                     }
                 }
             }
@@ -384,6 +440,101 @@ impl IoSelector {
                                 }
                             }
                         };
+                    }
+                    (
+                        PollTask::FdRead(FdReadTask {
+                            fd,
+                            pos,
+                            len,
+                            callback,
+                        }),
+                        poll::EVENTTYPE_FD_READ,
+                    ) => {
+                        if event.error > 0 {
+                            let e = io::Error::from_raw_os_error(event.error as i32);
+                            callback(ctx, PollResult::Error(e));
+                            continue;
+                        }
+                        let len = len as usize; // len.min(event.fd_readwrite.nbytes) as usize;
+                        let mut buf = vec![0u8; len];
+                        let res = if pos >= 0 {
+                            unsafe {
+                                wasi_fs::fd_pread(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                    pos as u64,
+                                )
+                            }
+                        } else {
+                            unsafe {
+                                wasi_fs::fd_read(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                )
+                            }
+                        };
+                        callback(
+                            ctx,
+                            match res {
+                                Ok(rlen) => {
+                                    buf.resize(rlen, 0);
+                                    PollResult::Read(buf)
+                                }
+                                Err(e) => {
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                }
+                            },
+                        );
+                    }
+                    (
+                        PollTask::FdWrite(FdWriteTask {
+                            fd,
+                            pos,
+                            buf,
+                            callback,
+                        }),
+                        poll::EVENTTYPE_FD_WRITE,
+                    ) => {
+                        if event.error > 0 {
+                            let e = io::Error::from_raw_os_error(event.error as i32);
+                            callback(ctx, PollResult::Error(e));
+                            continue;
+                        }
+                        if pos != -1 {
+                            let res =
+                                unsafe { wasi_fs::fd_seek(fd as u32, pos, wasi_fs::WHENCE_SET) };
+                            if let Err(e) = res {
+                                callback(
+                                    ctx,
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32)),
+                                );
+                                continue;
+                            }
+                        }
+                        let res = unsafe {
+                            wasi_fs::fd_write(
+                                fd as u32,
+                                &[wasi_fs::Ciovec {
+                                    buf: buf.as_ptr(),
+                                    buf_len: buf.len(),
+                                }],
+                            )
+                        };
+                        callback(
+                            ctx,
+                            match res {
+                                Ok(len) => PollResult::Write(len),
+                                Err(e) => {
+                                    PollResult::Error(io::Error::from_raw_os_error(e.raw() as i32))
+                                }
+                            },
+                        );
                     }
                     (_, _) => {}
                 }
@@ -510,5 +661,35 @@ impl EventLoop {
         }
         std::mem::forget(s);
         Ok(())
+    }
+
+    pub fn fd_read(
+        &mut self,
+        fd: std::os::wasi::io::RawFd,
+        pos: i64,
+        len: u64,
+        callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+    ) {
+        self.io_selector.add_task(PollTask::FdRead(FdReadTask {
+            fd,
+            pos,
+            len,
+            callback,
+        }));
+    }
+
+    pub fn fd_write(
+        &mut self,
+        fd: std::os::wasi::io::RawFd,
+        pos: i64,
+        buf: Vec<u8>,
+        callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
+    ) {
+        self.io_selector.add_task(PollTask::FdWrite(FdWriteTask {
+            fd,
+            pos,
+            buf,
+            callback,
+        }));
     }
 }

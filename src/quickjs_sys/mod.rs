@@ -343,6 +343,7 @@ impl Context {
         super::internal_module::wasi_net_module::init_module(&mut ctx);
         super::internal_module::httpx::init_module(&mut ctx);
         super::internal_module::os::init_module(&mut ctx);
+        super::internal_module::fs::init_module(&mut ctx);
 
         ctx
     }

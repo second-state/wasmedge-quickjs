@@ -1,4 +1,6 @@
 import process from 'process';
+import { ERR_INVALID_ARG_TYPE } from './internal/errors';
+import { getValidatedPath } from './internal/fs/utils';
 
 var exports$1 = {},
     _dewExec = false;
@@ -9,7 +11,7 @@ function dew() {
 
   function assertPath(path) {
     if (typeof path !== "string") {
-      throw new TypeError("Path must be a string. Received " + JSON.stringify(path));
+      throw new ERR_INVALID_ARG_TYPE("path", "string", path);
     }
   } // Resolves . and .. elements in a path with directory names
 
@@ -307,7 +309,7 @@ function dew() {
       return path.slice(0, end);
     },
     basename: function basename(path, ext) {
-      if (ext !== undefined && typeof ext !== "string") { throw new TypeError("\"ext\" argument must be a string"); }
+      if (ext !== undefined && typeof ext !== "string") { throw new ERR_INVALID_ARG_TYPE("ext", "string", ext); }
       assertPath(path);
       var start = 0;
       var end = -1;
@@ -437,7 +439,7 @@ function dew() {
     },
     format: function format(pathObject) {
       if (pathObject === null || typeof pathObject !== "object") {
-        throw new TypeError("The \"pathObject\" argument must be of type Object. Received type " + typeof pathObject);
+        throw new ERR_INVALID_ARG_TYPE("pathObject", "object", pathObject);
       }
 
       return _format("/", pathObject);
@@ -530,6 +532,7 @@ function dew() {
       if (startPart > 0) { ret.dir = path.slice(0, startPart - 1); }else if (isAbsolute) { ret.dir = "/"; }
       return ret;
     },
+    toNamespacedPath: (val) => val,
     sep: "/",
     delimiter: ":",
     win32: null,
@@ -557,5 +560,6 @@ var relative = exports.relative;
 var resolve = exports.resolve;
 var sep = exports.sep;
 var win32 = exports.win32;
+var toNamespacedPath = exports.toNamespacedPath;
 
-export { _makeLong, basename, exports as default, delimiter, dirname, extname, format, isAbsolute, join, normalize, parse, posix, relative, resolve, sep, win32 };
+export { _makeLong, basename, exports as default, delimiter, dirname, extname, format, isAbsolute, join, normalize, parse, posix, relative, resolve, sep, win32, toNamespacedPath };

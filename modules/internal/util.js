@@ -78,7 +78,7 @@ export function deprecate(fn, msg, code) {
 // In addition to being accessible through util.promisify.custom,
 // this symbol is registered globally and can be accessed in any environment as
 // Symbol.for('nodejs.util.promisify.custom').
-const kCustomPromisifiedSymbol = Symbol.for("nodejs.util.promisify.custom");
+export const kCustomPromisifiedSymbol = Symbol.for("nodejs.util.promisify.custom");
 // This is an internal Node symbol used by functions returning multiple
 // arguments, e.g. ['bytesRead', 'buffer'] for fs.read().
 const kCustomPromisifyArgsSymbol = Symbol.for(
@@ -123,7 +123,11 @@ export function promisify(
                     resolve(values[0]);
                 }
             });
-            Reflect.apply(original, this, args);
+            try {
+                Reflect.apply(original, this, args);
+            } catch (err) {
+                return reject(err);
+            }
         });
     }
 
@@ -143,6 +147,20 @@ export function promisify(
 
 promisify.custom = kCustomPromisifiedSymbol;
 
+const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
+
+export function removeColors(str) {
+    return String.prototype.replace(str, colorRegExp, '');
+}
+
+export function isError(e) {
+    // An error could be an instance of Error while not being a native error
+    // or could be from a different realm and not be instance of Error but still
+    // be a native error.
+    return e instanceof Error;
+}
+
+
 export default {
     createDeferredPromise,
     customInspectSymbol,
@@ -151,4 +169,6 @@ export default {
     once,
     deprecate,
     promisify,
+    removeColors,
+    isError
 };

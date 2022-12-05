@@ -175,3 +175,14 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --release --example=js_extend
         wasmedge --dir .:. target/wasm32-wasi/release/examples/js_extend.wasm
+
+    - name: Node fs module test
+      #timeout-minutes: 10
+      run: |
+        cargo test test_fs --target=wasm32-wasi --release
+
+    #- name: Node fs module test (maybe timeout)
+    #  timeout-minutes: 5
+    #  continue-on-error: true
+    #  run: |
+    #    cargo test test_fs --target=wasm32-wasi --release -- --ignored

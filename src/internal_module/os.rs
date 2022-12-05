@@ -17,11 +17,5 @@ impl ModuleInit for OS {
 }
 
 pub fn init_module(ctx: &mut Context) {
-    ctx.register_module(
-        "_node:os\0", 
-        OS, 
-        &[
-            "_memorySize\0"
-        ]
-    )
+    ctx.register_module("_node:os\0", OS, &["_memorySize\0"])
 }
