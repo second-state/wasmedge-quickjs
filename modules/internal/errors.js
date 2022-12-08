@@ -816,3 +816,12 @@ export class ERR_FS_INVALID_SYMLINK_TYPE extends Error {
         this.code = "ERR_FS_INVALID_SYMLINK_TYPE";
     }
 }
+
+export class ERR_CRYPTO_FIPS_FORCED extends Error {
+    constructor() {
+        super(
+            'Cannot set FIPS mode, it was forced with --force-fips at startup.',
+        );
+        this.code = "ERR_CRYPTO_FIPS_FORCED";
+    }
+}
