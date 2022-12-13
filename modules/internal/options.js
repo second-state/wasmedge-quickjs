@@ -2,10 +2,14 @@
 
 'use strict';
 
-const {
-  getCLIOptions,
-  getEmbedderOptions: getEmbedderOptionsFromBinding,
-} = internalBinding('options');
+function getCLIOptions() {
+  let options = new Map();
+  let aliases = new Map();
+  return { options, aliases };
+}
+function getEmbedderOptionsFromBinding() {
+  return new Map();
+}
 
 let warnOnAllowUnauthorized = true;
 

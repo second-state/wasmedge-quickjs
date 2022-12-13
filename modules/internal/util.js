@@ -160,6 +160,7 @@ export function isError(e) {
     return e instanceof Error;
 }
 
+export const kEmptyObject = Object.freeze(Object.create(null));
 
 export default {
     createDeferredPromise,
@@ -170,5 +171,6 @@ export default {
     deprecate,
     promisify,
     removeColors,
-    isError
+    isError,
+    kEmptyObject
 };

@@ -76,7 +76,7 @@ fn err_to_js_object(ctx: &mut Context, e: io::Error) -> JsValue {
     errno_to_js_object(ctx, wasi_fs::Errno(e.raw_os_error().unwrap() as u16))
 }
 
-fn errno_to_js_object(ctx: &mut Context, e: wasi_fs::Errno) -> JsValue {
+pub fn errno_to_js_object(ctx: &mut Context, e: wasi_fs::Errno) -> JsValue {
     let mut res = ctx.new_object();
     res.set("message", JsValue::String(ctx.new_string(e.message())));
     res.set("code", JsValue::String(ctx.new_string(e.name())));

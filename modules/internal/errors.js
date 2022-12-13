@@ -825,3 +825,21 @@ export class ERR_CRYPTO_FIPS_FORCED extends Error {
         this.code = "ERR_CRYPTO_FIPS_FORCED";
     }
 }
+
+export class ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH extends RangeError {
+    constructor() {
+        super(
+            'Input buffers must have the same byte length',
+        );
+        this.code = "ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH";
+    }
+}
+
+export class ERR_OPERATION_FAILED extends Error {
+    constructor(x) {
+        super(
+            `Operation failed: ${x}`,
+        );
+        this.code = "ERR_OPERATION_FAILED";
+    }
+}

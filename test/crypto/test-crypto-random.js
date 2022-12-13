@@ -21,15 +21,15 @@
 
 // Flags: --pending-deprecation
 'use strict';
-const common = require('../common');
+import common from '../common';
 
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const assert = require('assert');
-const crypto = require('crypto');
-const cryptop = require('crypto').webcrypto;
-const { kMaxLength } = require('buffer');
+import assert from 'assert';
+import crypto from 'crypto';
+// const cryptop = require('crypto').webcrypto;
+import { kMaxLength } from 'buffer';
 
 const kMaxInt32 = 2 ** 31 - 1;
 const kMaxPossibleLength = Math.min(kMaxLength, kMaxInt32);
@@ -38,7 +38,7 @@ common.expectWarning('DeprecationWarning',
                      'crypto.pseudoRandomBytes is deprecated.', 'DEP0115');
 
 {
-  [crypto.randomBytes, crypto.pseudoRandomBytes].forEach((f) => {
+  [crypto.randomBytes/*, crypto.pseudoRandomBytes*/].forEach((f) => {
     [undefined, null, false, true, {}, []].forEach((value) => {
       const errObj = {
         code: 'ERR_INVALID_ARG_TYPE',
@@ -101,7 +101,7 @@ common.expectWarning('DeprecationWarning',
   });
 }
 
-{
+/*{
   [
     new Uint16Array(10),
     new Uint32Array(10),
@@ -111,7 +111,7 @@ common.expectWarning('DeprecationWarning',
     const after = Buffer.from(buf.buffer).toString('hex');
     assert.notStrictEqual(before, after);
   });
-}
+}*/
 
 {
   [
@@ -334,12 +334,12 @@ assert.throws(
   );
 });
 
-['pseudoRandomBytes', 'prng', 'rng'].forEach((f) => {
+/*['pseudoRandomBytes', 'prng', 'rng'].forEach((f) => {
   const desc = Object.getOwnPropertyDescriptor(crypto, f);
   assert.ok(desc);
   assert.strictEqual(desc.configurable, true);
   assert.strictEqual(desc.enumerable, false);
-});
+});*/
 
 
 {

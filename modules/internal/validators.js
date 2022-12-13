@@ -191,6 +191,29 @@ export const getValidMode = hideStackFrames((mode, type) => {
     );
 });
 
+/**
+ * @callback validateNumber
+ * @param {*} value
+ * @param {string} name
+ * @param {number} [min]
+ * @param {number} [max]
+ * @returns {asserts value is number}
+ */
+
+/** @type {validateNumber} */
+export function validateNumber(value, name, min = undefined, max) {
+    if (typeof value !== 'number')
+        throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+
+    if ((min != null && value < min) || (max != null && value > max) ||
+        ((min != null || max != null) && Number.isNaN(value))) {
+        throw new ERR_OUT_OF_RANGE(
+            name,
+            `${min != null ? `>= ${min}` : ''}${min != null && max != null ? ' && ' : ''}${max != null ? `<= ${max}` : ''}`,
+            value);
+    }
+}
+
 export default {
     validatePort,
     validateFunction,
@@ -200,5 +223,6 @@ export default {
     validateAbortSignal,
     validateCallback,
     validateInteger,
+    validateNumber,
     getValidMode
 }

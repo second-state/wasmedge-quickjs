@@ -1,12 +1,12 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 
 'use strict';
-const common = require('../common');
+import common from '../common';
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const { randomFillSync } = require('crypto');
-const { notStrictEqual } = require('assert');
+import { randomFillSync } from 'crypto';
+import assert from 'assert';
 
 const ab = new ArrayBuffer(20);
 const buf = Buffer.from(ab, 10);
@@ -17,4 +17,4 @@ randomFillSync(buf);
 
 const after = buf.toString('hex');
 
-notStrictEqual(before, after);
+assert.notStrictEqual(before, after);

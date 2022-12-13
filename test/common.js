@@ -283,6 +283,8 @@ export function getArrayBufferViews(buf) {
   return out;
 }
 
+export const hasCrypto = true;
+
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -294,6 +296,7 @@ const common = {
   isWindows,
   isAIX,
   isMainThread,
+  hasCrypto,
   mustCall,
   mustCallAtLeast,
   mustNotCall,

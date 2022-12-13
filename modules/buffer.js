@@ -2328,4 +2328,13 @@ var kMaxLength = exports.kMaxLength;
 
 globalThis.Buffer = Buffer
 
-export { Buffer, INSPECT_MAX_BYTES, exports as default, kMaxLength };
+class FastBuffer extends Uint8Array {
+  // Using an explicit constructor here is necessary to avoid relying on
+  // `Array.prototype[Symbol.iterator]`, which can be mutated by users.
+  // eslint-disable-next-line no-useless-constructor
+  constructor(bufferOrLength, byteOffset, length) {
+    super(bufferOrLength, byteOffset, length);
+  }
+}
+
+export { Buffer, INSPECT_MAX_BYTES, exports as default, kMaxLength, FastBuffer };

@@ -344,6 +344,7 @@ impl Context {
         super::internal_module::httpx::init_module(&mut ctx);
         super::internal_module::os::init_module(&mut ctx);
         super::internal_module::fs::init_module(&mut ctx);
+        super::internal_module::crypto::init_module(&mut ctx);
 
         ctx
     }

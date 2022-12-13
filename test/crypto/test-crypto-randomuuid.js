@@ -2,15 +2,15 @@
 
 'use strict';
 
-const common = require('../common');
+import common from '../common';
 
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const assert = require('assert');
-const {
+import assert from 'assert';
+import {
   randomUUID,
-} = require('crypto');
+} from 'crypto';
 
 const last = new Set([
   '00000000-0000-0000-0000-000000000000',

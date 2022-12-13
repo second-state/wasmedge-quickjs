@@ -1,13 +1,26 @@
 // Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
 // Copyright Joyent, Inc. and Node.js contributors. All rights reserved. MIT license.
 
-import { ERR_CRYPTO_FIPS_FORCED } from "./internal/errors";
+import { ERR_CRYPTO_FIPS_FORCED, ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH, ERR_INVALID_ARG_TYPE } from "./internal/errors";
 import { crypto as constants } from "./internal_binding/constants";
 import { getOptionValue } from "./internal/options";
+import { isAnyArrayBuffer, isArrayBufferView } from "./internal/util/types";
 import {
-  timingSafeEqual,
-} from "./internal_binding/crypto";
-/*
+  timing_safe_equal,
+} from "_node:crypto";
+function timingSafeEqual(a, b) {
+  if (!isAnyArrayBuffer(a) && !isArrayBufferView(a)) {
+    throw new ERR_INVALID_ARG_TYPE("buf1", ["ArrayBuffer", "Buffer", "TypedArray", "DataView"], a);
+  }
+  if (!isAnyArrayBuffer(b) && !isArrayBufferView(b)) {
+    throw new ERR_INVALID_ARG_TYPE("buf2", ["ArrayBuffer", "Buffer", "TypedArray", "DataView"], b);
+  }
+  if (a.byteLength != b.byteLength) {
+    throw new ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH();
+  }
+  return timing_safe_equal(a.buffer, b.buffer);
+}
+
 import {
   checkPrime,
   checkPrimeSync,
@@ -19,7 +32,7 @@ import {
   randomInt,
   randomUUID,
 } from "./internal/crypto/random";
-import { pbkdf2, pbkdf2Sync } from "./internal/crypto/pbkdf2";
+/*import { pbkdf2, pbkdf2Sync } from "./internal/crypto/pbkdf2";
 import { scrypt, scryptSync } from "./internal/crypto/scrypt";
 import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
 import {
@@ -125,10 +138,10 @@ Object.defineProperty(constants, "defaultCipherList", {
 /*
 const getDiffieHellman = createDiffieHellmanGroup;
 */
-function getFipsCrypto () {
+function getFipsCrypto() {
   throw new Error("crypto.getFipsCrypto is unimplemented")
 }
-function setFipsCrypto (_val) {
+function setFipsCrypto(_val) {
   throw new Error("crypto.setFipsCrypto is unimplemented")
 }
 const getFips = fipsForced ? getFipsForced : getFipsCrypto;
@@ -136,11 +149,11 @@ const setFips = fipsForced ? setFipsForced : setFipsCrypto;
 /*
 const sign = signOneShot;
 const verify = verifyOneShot;
-
+*/
 export default {
-  Certificate,
+  /*Certificate,*/
   checkPrime,
-  checkPrimeSync,
+  checkPrimeSync,/*
   Cipheriv,
   constants,
   createCipheriv,
@@ -163,9 +176,9 @@ export default {
   generateKey,
   generateKeyPair,
   generateKeyPairSync,
-  generateKeySync,
+  generateKeySync,*/
   generatePrime,
-  generatePrimeSync,
+  generatePrimeSync,/*
   getCipherInfo,
   getCiphers,
   getCurves,
@@ -182,30 +195,30 @@ export default {
   privateDecrypt,
   privateEncrypt,
   publicDecrypt,
-  publicEncrypt,
+  publicEncrypt,*/
   randomBytes,
   randomFill,
   randomFillSync,
   randomInt,
-  randomUUID,
+  randomUUID,/*
   scrypt,
   scryptSync,
   secureHeapUsed,
   setEngine,
   setFips,
   Sign,
-  sign,
+  sign,*/
   timingSafeEqual,
-  Verify,
+  /*Verify,
   verify,
   webcrypto,
-  X509Certificate,
+  X509Certificate,*/
 };
-*/
+
 export {
-  /*Certificate,
+  /*Certificate,*/
   checkPrime,
-  checkPrimeSync,
+  checkPrimeSync,/*
   Cipheriv,*/
   constants,
   /*createCipheriv,
@@ -228,9 +241,9 @@ export {
   generateKey,
   generateKeyPair,
   generateKeyPairSync,
-  generateKeySync,
+  generateKeySync,*/
   generatePrime,
-  generatePrimeSync,
+  generatePrimeSync,/*
   getCipherInfo,
   getCiphers,
   getCurves,
@@ -247,12 +260,12 @@ export {
   privateDecrypt,
   privateEncrypt,
   publicDecrypt,
-  publicEncrypt,
+  publicEncrypt,*/
   randomBytes,
   randomFill,
   randomFillSync,
   randomInt,
-  randomUUID,
+  randomUUID,/*
   scrypt,
   scryptSync,
   secureHeapUsed,
