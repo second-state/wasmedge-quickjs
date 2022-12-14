@@ -12,6 +12,8 @@ import { isArrayBufferView, isAnyArrayBuffer, isTypedArray, isFloat32Array, isFl
 
 import { random_fill } from "_node:crypto";
 
+import process from "process";
+
 const kMaxInt32 = 2 ** 31 - 1;
 const kMaxPossibleLength = Math.min(kMaxLength, kMaxInt32);
 
@@ -84,7 +86,7 @@ function randomFillSync(buf, offset = 0, size) {
   if (size === 0)
     return buf;
 
-  random_fill(buf.buffer, offset + (buf.byteOffset ?? 0), size);
+  random_fill(buf.buffer ?? buf, offset + (buf.byteOffset ?? 0), size);
   return buf;
 }
 
@@ -124,7 +126,7 @@ function randomFill(buf, offset, size, callback) {
   }
 
   setTimeout(() => {
-    random_fill(buf.buffer, offset + (buf.byteOffset ?? 0), size);
+    random_fill(buf.buffer ?? buf, offset + (buf.byteOffset ?? 0), size);
     callback(null, buf);
   }, 0);
 }

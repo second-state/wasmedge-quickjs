@@ -243,8 +243,8 @@ fn test_crypto_padding() {
 fn test_crypto_pbkdf2() {
     test_js_file("test/crypto/test-crypto-pbkdf2.js");
 }
-#[test]
-#[ignore = "working"]
+
+#[ignore = "unsupported, prime"]
 fn test_crypto_prime() {
     test_js_file("test/crypto/test-crypto-prime.js");
 }
@@ -263,7 +263,6 @@ fn test_crypto_randomfillsync_regression() {
     test_js_file("test/crypto/test-crypto-randomfillsync-regression.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_random() {
     test_js_file("test/crypto/test-crypto-random.js");
 }
@@ -286,8 +285,8 @@ fn test_crypto_scrypt() {
 fn test_crypto_secret_keygen() {
     test_js_file("test/crypto/test-crypto-secret-keygen.js");
 }
-#[test]
-#[ignore = "working"]
+
+#[ignore = "unsupported, child_process"]
 fn test_crypto_secure_heap() {
     test_js_file("test/crypto/test-crypto-secure-heap.js");
 }
@@ -320,12 +319,12 @@ fn test_crypto_update_encoding() {
 fn test_crypto_verify_failure() {
     test_js_file("test/crypto/test-crypto-verify-failure.js");
 }
-#[test]
-#[ignore = "working"]
+
+#[ignore = "unsupport, webcrypto"]
 fn test_crypto_webcrypto_aes_decrypt_tag_too_small() {
     test_js_file("test/crypto/test-crypto-webcrypto-aes-decrypt-tag-too-small.js");
 }
-#[test]
+
 #[ignore = "unsupport, worker thread"]
 fn test_crypto_worker_thread() {
     test_js_file("test/crypto/test-crypto-worker-thread.js");
