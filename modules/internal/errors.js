@@ -843,3 +843,12 @@ export class ERR_OPERATION_FAILED extends Error {
         this.code = "ERR_OPERATION_FAILED";
     }
 }
+
+export class ERR_CRYPTO_ENGINE_UNKNOWN extends Error {
+    constructor(x) {
+        super(
+            `Engine "${x}" was not found`,
+        );
+        this.code = "ERR_CRYPTO_ENGINE_UNKNOWN";
+    }
+}

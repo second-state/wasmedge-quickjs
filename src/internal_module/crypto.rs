@@ -77,6 +77,51 @@ fn random_fill(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     JsValue::UnDefined
 }
 
+use wasi_crypto_guest::error::Error;
+use wasi_crypto_guest::symmetric::*;
+
+fn pbkdf2(
+    alg: &'static str,
+    password: &[u8],
+    salt: &[u8],
+    iters: usize,
+    key_len: usize,
+) -> Result<Vec<u8>, Error> {
+    let tag_len = match alg {
+        "HMAC/SHA-256" => 32,
+        "HMAC/SHA-512" => 64,
+        _ => unreachable!(),
+    };
+    fn pass(alg: &'static str, key: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
+        let mut h = SymmetricState::new(alg, Some(&SymmetricKey::from_raw(alg, key)?), None)?;
+        h.absorb(salt)?;
+        h.squeeze_tag()
+    }
+    let res = (0..(key_len + tag_len - 1) / tag_len)
+        .map(|idx| -> Result<Vec<u8>, Error> {
+            let mut salt_2 = salt.to_vec();
+            let idx = idx + 1;
+            salt_2.push(((idx >> 24) & 0xff) as u8);
+            salt_2.push(((idx >> 16) & 0xff) as u8);
+            salt_2.push(((idx >> 8) & 0xff) as u8);
+            salt_2.push(((idx) & 0xff) as u8);
+            let mut res_t = pass(alg, password, &salt_2)?;
+            let mut res_u = res_t.clone();
+            for _ in 0..iters - 1 {
+                res_u = pass(alg, password, &res_u)?;
+                for k in 0..res_t.len() {
+                    res_t[k] ^= res_u[k];
+                }
+            }
+            Ok(res_t)
+        })
+        .filter_map(|v| v.ok())
+        .flatten()
+        .take(key_len)
+        .collect::<Vec<_>>();
+    Ok(res)
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {

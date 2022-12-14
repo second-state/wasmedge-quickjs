@@ -1,3 +1,4 @@
+// Copyright Joyent and Node contributors. All rights reserved. MIT license.
 'use strict';
 
 import { kEmptyObject } from '../util';
@@ -9,6 +10,8 @@ import { ERR_INVALID_ARG_TYPE, ERR_OUT_OF_RANGE, ERR_OPERATION_FAILED } from '..
 import { validateNumber, validateBoolean, validateFunction, validateInt32, validateObject, validateUint32 } from '../validators';
 
 import { isArrayBufferView, isAnyArrayBuffer, isTypedArray, isFloat32Array, isFloat64Array } from '../util/types';
+
+import { lazyDOMException } from '../util';
 
 import { random_fill } from "_node:crypto";
 
@@ -239,12 +242,6 @@ function asyncRefillRandomIntCache() {
     if (errorReceiver)
       errorReceiver.callback(err);
   });
-}
-
-function lazyDOMException(msg, name) {
-    let e = new Error(msg)
-    e.name = name;
-    return e;
 }
 
 // Really just the Web Crypto API alternative

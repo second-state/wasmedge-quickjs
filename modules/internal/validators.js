@@ -3,7 +3,8 @@ import {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_CALLBACK,
     ERR_OUT_OF_RANGE,
-    hideStackFrames
+    hideStackFrames,
+    ERR_INVALID_ARG_VALUE
 } from './errors'
 
 export function validatePort(port, name = "Port", allowZero = true) {
@@ -214,6 +215,25 @@ export function validateNumber(value, name, min = undefined, max) {
     }
 }
 
+/**
+ * @callback validateArray
+ * @param {*} value
+ * @param {string} name
+ * @param {number} [minLength]
+ * @returns {asserts value is any[]}
+ */
+
+/** @type {validateArray} */
+const validateArray = hideStackFrames((value, name, minLength = 0) => {
+    if (!Array.isArray(value)) {
+        throw new ERR_INVALID_ARG_TYPE(name, 'Array', value);
+    }
+    if (value.length < minLength) {
+        const reason = `must be longer than ${minLength}`;
+        throw new ERR_INVALID_ARG_VALUE(name, value, reason);
+    }
+});
+
 export default {
     validatePort,
     validateFunction,
@@ -224,5 +244,6 @@ export default {
     validateCallback,
     validateInteger,
     validateNumber,
+    validateArray,
     getValidMode
 }

@@ -162,6 +162,12 @@ export function isError(e) {
 
 export const kEmptyObject = Object.freeze(Object.create(null));
 
+export function lazyDOMException(msg, name) {
+    let e = new Error(msg)
+    e.name = name;
+    return e;
+}
+
 export default {
     createDeferredPromise,
     customInspectSymbol,
