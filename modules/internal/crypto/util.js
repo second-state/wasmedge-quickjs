@@ -1,13 +1,13 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 'use strict';
 
-const {
+/*const {
   getCiphers: _getCiphers,
   getCurves: _getCurves,
   getHashes: _getHashes,
   setEngine: _setEngine,
   secureHeapUsed: _secureHeapUsed,
-} = internalBinding('crypto');
+} = internalBinding('crypto');*/
 
 import { getOptionValue } from '../options';
 
@@ -67,9 +67,9 @@ function toBuf(val, encoding) {
   return val;
 }
 
-const getCiphers = cachedResult(() => filterDuplicateStrings(_getCiphers()));
-const getHashes = cachedResult(() => filterDuplicateStrings(_getHashes()));
-const getCurves = cachedResult(() => filterDuplicateStrings(_getCurves()));
+const getCiphers = {}; //cachedResult(() => filterDuplicateStrings(_getCiphers()));
+const getHashes = {}; //cachedResult(() => filterDuplicateStrings(_getHashes()));
+const getCurves = {}; //cachedResult(() => filterDuplicateStrings(_getCurves()));
 
 function setEngine(id, flags) {
   validateString(id, 'id');
@@ -81,8 +81,8 @@ function setEngine(id, flags) {
   if (flags === 0)
     flags = ENGINE_METHOD_ALL;
 
-  if (!_setEngine(id, flags))
-    throw new ERR_CRYPTO_ENGINE_UNKNOWN(id);
+  /*if (!_setEngine(id, flags))
+    throw new ERR_CRYPTO_ENGINE_UNKNOWN(id);*/
 }
 
 const getArrayBufferOrView = hideStackFrames((buffer, name, encoding) => {
@@ -367,14 +367,14 @@ function validateKeyOps(keyOps, usagesSet) {
 }
 
 function secureHeapUsed() {
-  const val = _secureHeapUsed();
+  /*const val = _secureHeapUsed();
   if (val === undefined)
     return { total: 0, used: 0, utilization: 0, min: 0 };
   const used = Number(_secureHeapUsed());
   const total = Number(getOptionValue('--secure-heap'));
   const min = Number(getOptionValue('--secure-heap-min'));
   const utilization = used / total;
-  return { total, used, utilization, min };
+  return { total, used, utilization, min };*/
 }
 
 export {

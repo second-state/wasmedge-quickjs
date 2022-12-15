@@ -168,6 +168,29 @@ export function lazyDOMException(msg, name) {
     return e;
 }
 
+export function filterDuplicateStrings(items, low) {
+    const map = new SafeMap();
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const key = String.prototype.toLowerCase.call(item);
+        if (low) {
+            map.set(key, key);
+        } else {
+            map.set(key, item);
+        }
+    }
+    return Array.prototype.sort.call(Array.from(map.values()));
+}
+
+export function cachedResult(fn) {
+    let result;
+    return () => {
+        if (result === undefined)
+            result = fn();
+        return Array.prototype.slice.call(result);
+    };
+}
+
 export default {
     createDeferredPromise,
     customInspectSymbol,
@@ -178,5 +201,7 @@ export default {
     promisify,
     removeColors,
     isError,
-    kEmptyObject
+    kEmptyObject,
+    cachedResult,
+    filterDuplicateStrings
 };

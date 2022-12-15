@@ -224,7 +224,7 @@ export function validateNumber(value, name, min = undefined, max) {
  */
 
 /** @type {validateArray} */
-const validateArray = hideStackFrames((value, name, minLength = 0) => {
+export const validateArray = hideStackFrames((value, name, minLength = 0) => {
     if (!Array.isArray(value)) {
         throw new ERR_INVALID_ARG_TYPE(name, 'Array', value);
     }

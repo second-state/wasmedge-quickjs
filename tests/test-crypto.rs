@@ -239,7 +239,6 @@ fn test_crypto_padding() {
     test_js_file("test/crypto/test-crypto-padding.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_pbkdf2() {
     test_js_file("test/crypto/test-crypto-pbkdf2.js");
 }

@@ -852,3 +852,9 @@ export class ERR_CRYPTO_ENGINE_UNKNOWN extends Error {
         this.code = "ERR_CRYPTO_ENGINE_UNKNOWN";
     }
 }
+export class ERR_CRYPTO_INVALID_DIGEST extends TypeError {
+    constructor(x) {
+        super(`Invalid digest: ${x}`);
+        this.code = "ERR_CRYPTO_INVALID_DIGEST";
+    }
+}

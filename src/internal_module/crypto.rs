@@ -51,7 +51,6 @@ fn timing_safe_equal(_ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -
 }
 
 fn random_fill(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-    println!("{:?}", argv);
     if let Some(JsValue::ArrayBuffer(buf)) = argv.get(0) {
         if let Some(JsValue::Int(offset)) = argv.get(1) {
             if let Some(JsValue::Int(size)) = argv.get(2) {
@@ -122,6 +121,36 @@ fn pbkdf2(
     Ok(res)
 }
 
+fn pbkdf2_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    if let Some(JsValue::ArrayBuffer(password)) = argv.get(0) {
+        if let Some(JsValue::ArrayBuffer(salt)) = argv.get(1) {
+            if let Some(JsValue::Int(iters)) = argv.get(2) {
+                if let Some(JsValue::Int(key_len)) = argv.get(3) {
+                    if let Some(JsValue::String(alg)) = argv.get(4) {
+                        return match {
+                            pbkdf2(match alg.as_str() {
+                                "SHA256" => "HMAC/SHA-256",
+                                "SHA512" => "HMAC/SHA-512",
+                                _ => unreachable!()
+                            }, password.as_ref(), salt.as_ref(), *iters as usize, *key_len as usize)
+                        } {
+                            Ok(res) => {
+                                println!("{:?}", res.to_vec());
+                                ctx.new_array_buffer(res.as_slice()).into()
+                            }
+                            Err(_e) => {
+                                // TODO
+                                JsValue::UnDefined
+                            }
+                        };
+                    }
+                }
+            }
+        }
+    }
+    JsValue::UnDefined
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {
@@ -135,6 +164,10 @@ impl ModuleInit for Crypto {
             "random_fill\0",
             ctx.wrap_function("random_fill", random_fill).into(),
         );
+        m.add_export(
+            "pbkdf2_sync\0",
+            ctx.wrap_function("pbkdf2_sync", pbkdf2_sync).into(),
+        );
     }
 }
 
@@ -142,6 +175,6 @@ pub fn init_module(ctx: &mut Context) {
     ctx.register_module(
         "_node:crypto\0",
         Crypto,
-        &["timing_safe_equal\0", "random_fill\0"],
+        &["timing_safe_equal\0", "random_fill\0", "pbkdf2_sync\0"],
     )
 }

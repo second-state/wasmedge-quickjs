@@ -6,14 +6,15 @@ import { Buffer } from 'buffer';
 
 import { validateFunction, validateInteger, validateString, validateUint32 } from '../validators';
 
-import { codes } from '../errors';
-const { ERR_MISSING_OPTION } = codes;
+import { ERR_CRYPTO_INVALID_DIGEST, ERR_MISSING_OPTION } from '../errors';
 
 import { getArrayBufferOrView, getDefaultEncoding, normalizeHashName, kKeyObject } from './util';
 
 import { lazyDOMException } from '../util';
 
-function pbkdf2(password, salt, iterations, keylen, digest, callback) {
+import { pbkdf2_sync } from "_node:crypto";
+
+export function pbkdf2(password, salt, iterations, keylen, digest, callback) {
   if (typeof digest === 'function') {
     callback = digest;
     digest = undefined;
@@ -24,42 +25,32 @@ function pbkdf2(password, salt, iterations, keylen, digest, callback) {
 
   validateFunction(callback, 'callback');
 
-  const job = new PBKDF2Job(
-    kCryptoJobAsync,
-    password,
-    salt,
-    iterations,
-    keylen,
-    digest);
+  if (!["SHA256", "SHA512"].includes(digest.toUpperCase())) {
+    throw new ERR_CRYPTO_INVALID_DIGEST(digest);
+  }
 
   const encoding = getDefaultEncoding();
-  job.ondone = (err, result) => {
-    if (err !== undefined)
-      return Function.prototype.call.call(callback, job, err);
-    const buf = Buffer.from(result);
-    if (encoding === 'buffer')
-      return Function.prototype.call.call(callback, job, null, buf);
-    Function.prototype.call.call(callback, job, null, buf.toString(encoding));
-  };
 
-  job.run();
+  setTimeout(() => {
+    let result = pbkdf2_sync(password.buffer ?? password, salt.buffer ?? salt, iterations, keylen, digest.toUpperCase());
+    const buf = Buffer.from(result);
+    if (encoding === 'buffer') {
+      callback(null, buf);
+    } else {
+      callback(null, buf.toString(encoding));
+    }
+  }, 0);
 }
 
-function pbkdf2Sync(password, salt, iterations, keylen, digest) {
+export function pbkdf2Sync(password, salt, iterations, keylen, digest) {
   ({ password, salt, iterations, keylen, digest } =
     check(password, salt, iterations, keylen, digest));
 
-  const job = new PBKDF2Job(
-    kCryptoJobSync,
-    password,
-    salt,
-    iterations,
-    keylen,
-    digest);
+  if (!["SHA256", "SHA512"].includes(digest.toUpperCase())) {
+    throw new ERR_CRYPTO_INVALID_DIGEST(digest);
+  }
 
-  const { 0: err, 1: result } = job.run();
-  if (err !== undefined)
-    throw err;
+  let result = pbkdf2_sync(password.buffer ?? password, salt.buffer ?? salt, iterations, keylen, digest.toUpperCase());
 
   const buf = Buffer.from(result);
   const encoding = getDefaultEncoding();
@@ -77,7 +68,7 @@ function check(password, salt, iterations, keylen, digest) {
   return { password, salt, iterations, keylen, digest };
 }
 
-async function pbkdf2DeriveBits(algorithm, baseKey, length) {
+export async function pbkdf2DeriveBits(algorithm, baseKey, length) {
   const { iterations } = algorithm;
   let { hash } = algorithm;
   const salt = getArrayBufferOrView(algorithm.salt, 'algorithm.salt');
