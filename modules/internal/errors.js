@@ -852,9 +852,24 @@ export class ERR_CRYPTO_ENGINE_UNKNOWN extends Error {
         this.code = "ERR_CRYPTO_ENGINE_UNKNOWN";
     }
 }
+
 export class ERR_CRYPTO_INVALID_DIGEST extends TypeError {
     constructor(x) {
         super(`Invalid digest: ${x}`);
         this.code = "ERR_CRYPTO_INVALID_DIGEST";
+    }
+}
+
+export class ERR_CRYPTO_SCRYPT_INVALID_PARAMETER extends Error {
+    constructor() {
+        super(`Invalid scrypt parameter`);
+        this.code = "ERR_CRYPTO_SCRYPT_INVALID_PARAMETER";
+    }
+}
+
+export class ERR_CRYPTO_SCRYPT_NOT_SUPPORTED extends Error {
+    constructor() {
+        super(`Scrypt algorithm not supported`);
+        this.code = "ERR_CRYPTO_SCRYPT_NOT_SUPPORTED";
     }
 }
