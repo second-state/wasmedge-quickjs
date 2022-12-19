@@ -33,8 +33,8 @@ import {
   randomUUID,
 } from "./internal/crypto/random";
 import { pbkdf2, pbkdf2Sync } from "./internal/crypto/pbkdf2";
-/*import { scrypt, scryptSync } from "./internal/crypto/scrypt";
-import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
+import { scrypt, scryptSync } from "./internal/crypto/scrypt";
+/*import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
 import {
   generateKey,
   generateKeyPair,
@@ -200,9 +200,9 @@ export default {
   randomFill,
   randomFillSync,
   randomInt,
-  randomUUID,/*
+  randomUUID,
   scrypt,
-  scryptSync,
+  scryptSync,/*
   secureHeapUsed,
   setEngine,
   setFips,
@@ -265,9 +265,9 @@ export {
   randomFill,
   randomFillSync,
   randomInt,
-  randomUUID,/*
+  randomUUID,
   scrypt,
-  scryptSync,
+  scryptSync,/*
   secureHeapUsed,
   setEngine,*/
   setFips,

@@ -2,16 +2,12 @@
 
 // Flags: --expose-internals
 'use strict';
-const common = require('../common');
+import common from '../common';
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const assert = require('assert');
-const crypto = require('crypto');
-
-const { internalBinding } = require('internal/test/binding');
-if (typeof internalBinding('crypto').ScryptJob !== 'function')
-  common.skip('no scrypt support');
+import assert from'assert';
+import crypto from 'crypto';
 
 const good = [
   // Zero-length key is legal, functions as a parameter validation check.
@@ -189,7 +185,7 @@ for (const options of toobig) {
     assert.deepStrictEqual(actual.toString('hex'), expected.toString('hex'));
   }));
 }
-
+/* deprecated
 {
   const defaultEncoding = crypto.DEFAULT_ENCODING;
   const defaults = { N: 16384, p: 1, r: 8 };
@@ -206,7 +202,7 @@ for (const options of toobig) {
 
   crypto.DEFAULT_ENCODING = defaultEncoding;
 }
-
+*/
 for (const { args, expected } of badargs) {
   assert.throws(() => crypto.scrypt(...args), expected);
   assert.throws(() => crypto.scryptSync(...args), expected);

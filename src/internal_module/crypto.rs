@@ -61,10 +61,7 @@ fn random_fill(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
                         (buf_len - *offset as usize).min(*size as usize),
                     )
                 } {
-                    Ok(()) => {
-                        println!("{:?}", buf.to_vec());
-                        JsValue::UnDefined
-                    }
+                    Ok(()) => JsValue::UnDefined,
                     Err(e) => {
                         let err = super::fs::errno_to_js_object(ctx, e);
                         JsValue::Exception(ctx.throw_error(err))
@@ -121,34 +118,41 @@ fn pbkdf2(
     Ok(res)
 }
 
+macro_rules! get_arg {
+    ($argv:ident, $m:path, $i:expr) => {
+        if let Some($m(val)) = $argv.get($i) {
+            val
+        } else {
+            return JsValue::UnDefined;
+        }
+    };
+}
+
 fn pbkdf2_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-    if let Some(JsValue::ArrayBuffer(password)) = argv.get(0) {
-        if let Some(JsValue::ArrayBuffer(salt)) = argv.get(1) {
-            if let Some(JsValue::Int(iters)) = argv.get(2) {
-                if let Some(JsValue::Int(key_len)) = argv.get(3) {
-                    if let Some(JsValue::String(alg)) = argv.get(4) {
-                        return match {
-                            pbkdf2(match alg.as_str() {
-                                "SHA256" => "HMAC/SHA-256",
-                                "SHA512" => "HMAC/SHA-512",
-                                _ => unreachable!()
-                            }, password.as_ref(), salt.as_ref(), *iters as usize, *key_len as usize)
-                        } {
-                            Ok(res) => {
-                                println!("{:?}", res.to_vec());
-                                ctx.new_array_buffer(res.as_slice()).into()
-                            }
-                            Err(_e) => {
-                                // TODO
-                                JsValue::UnDefined
-                            }
-                        };
-                    }
-                }
-            }
+    let password = get_arg!(argv, JsValue::ArrayBuffer, 0);
+    let salt = get_arg!(argv, JsValue::ArrayBuffer, 1);
+    let iters = get_arg!(argv, JsValue::Int, 2);
+    let key_len = get_arg!(argv, JsValue::Int, 3);
+    let alg = get_arg!(argv, JsValue::String, 4);
+    match {
+        pbkdf2(
+            match alg.as_str() {
+                "SHA256" => "HMAC/SHA-256",
+                "SHA512" => "HMAC/SHA-512",
+                _ => unreachable!(),
+            },
+            password.as_ref(),
+            salt.as_ref(),
+            *iters as usize,
+            *key_len as usize,
+        )
+    } {
+        Ok(res) => ctx.new_array_buffer(res.as_slice()).into(),
+        Err(_e) => {
+            // TODO
+            JsValue::UnDefined
         }
     }
-    JsValue::UnDefined
 }
 
 struct ScryptRom {
@@ -169,26 +173,19 @@ fn blockxor(a: &[u8], b: &mut [u8]) {
     }
 }
 
-fn read_u32le(p: &[u8]) -> u32 {
-    (p[0] as u32) + ((p[1] as u32) << 8) + ((p[2] as u32) << 16) + ((p[3] as u32) << 24)
-}
-
-#[inline(always)]
-#[allow(non_snake_case)]
-fn R(i: i32, r: i32) -> i32 {
-    i.rotate_left(r as u32)
-}
-
 impl ScryptRom {
     fn romix(&mut self, i: usize, r: usize) {
         let block_start = i * 128 * r;
         let offset = (2 * r - 1) * 64;
         let block_len = 128 * r;
-        self.xy[0..block_len]
-            .copy_from_slice(&self.b[block_start..(block_start + block_len)]);
+        self.xy[0..block_len].copy_from_slice(&self.b[block_start..(block_start + block_len)]);
         for i1 in 0..self.n {
             self.v[i1 * block_len..(i1 + 1) * block_len].copy_from_slice(&self.xy[0..block_len]);
             self.blockmix(block_len);
+        }
+
+        fn read_u32le(p: &[u8]) -> u32 {
+            (p[0] as u32) + ((p[1] as u32) << 8) + ((p[2] as u32) << 16) + ((p[3] as u32) << 24)
         }
 
         for _ in 0..self.n {
@@ -223,6 +220,12 @@ impl ScryptRom {
     }
 
     fn salsa20_8(&mut self) {
+        #[inline(always)]
+        #[allow(non_snake_case)]
+        fn R(i: i32, r: i32) -> i32 {
+            i.rotate_left(r as u32)
+        }
+
         for i in 0..16 {
             self.b32[i] = ((self.xx[i * 4 + 0] & 0xff) as i32) << 0;
             self.b32[i] |= ((self.xx[i * 4 + 1] & 0xff) as i32) << 8;
@@ -313,6 +316,34 @@ fn scrypt(
     Ok(f)
 }
 
+fn scrypt_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    let password = get_arg!(argv, JsValue::ArrayBuffer, 0);
+    let salt = get_arg!(argv, JsValue::ArrayBuffer, 1);
+    let n = *get_arg!(argv, JsValue::Int, 2);
+    let r = *get_arg!(argv, JsValue::Int, 3);
+    let p = *get_arg!(argv, JsValue::Int, 4);
+    let key_len = *get_arg!(argv, JsValue::Int, 5);
+    if key_len == 0 {
+        return ctx.new_array_buffer(&vec![0; 0]).into();
+    }
+    match {
+        scrypt(
+            password.as_ref(),
+            salt.as_ref(),
+            n as usize,
+            r as usize,
+            p as usize,
+            key_len as usize,
+        )
+    } {
+        Ok(res) => ctx.new_array_buffer(res.as_slice()).into(),
+        Err(_e) => {
+            // TODO
+            JsValue::UnDefined
+        }
+    }
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {
@@ -330,6 +361,10 @@ impl ModuleInit for Crypto {
             "pbkdf2_sync\0",
             ctx.wrap_function("pbkdf2_sync", pbkdf2_sync).into(),
         );
+        m.add_export(
+            "scrypt_sync\0",
+            ctx.wrap_function("scrypt_sync", scrypt_sync).into(),
+        );
     }
 }
 
@@ -337,6 +372,11 @@ pub fn init_module(ctx: &mut Context) {
     ctx.register_module(
         "_node:crypto\0",
         Crypto,
-        &["timing_safe_equal\0", "random_fill\0", "pbkdf2_sync\0"],
+        &[
+            "timing_safe_equal\0",
+            "random_fill\0",
+            "pbkdf2_sync\0",
+            "scrypt_sync\0",
+        ],
     )
 }

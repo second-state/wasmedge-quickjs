@@ -20,6 +20,8 @@ import {
   getDefaultEncoding,
 } from './util';
 
+import { scrypt_sync } from "_node:crypto";
+
 const defaults = {
   N: 16384,
   r: 8,
@@ -38,33 +40,24 @@ function scrypt(password, salt, keylen, options, callback = defaults) {
   ({ password, salt, keylen } = options);
 
   validateFunction(callback, 'callback');
-
-  const job = new ScryptJob(
-    kCryptoJobAsync, password, salt, N, r, p, maxmem, keylen);
-
   const encoding = getDefaultEncoding();
-  job.ondone = (error, result) => {
-    if (error !== undefined)
-      return Function.prototype.call.call(callback, job, error);
+  setTimeout(() => {
+    let result = scrypt_sync(password.buffer ?? password, salt.buffer ?? salt, N, r, p, keylen);
     const buf = Buffer.from(result);
-    if (encoding === 'buffer')
-      return Function.prototype.call.call(callback, job, null, buf);
-    Function.prototype.call.call(callback, job, null, buf.toString(encoding));
-  };
-
-  job.run();
+    if (encoding === 'buffer') {
+      callback(null, buf);
+    } else {
+      callback(null, buf.toString(encoding));
+    }
+  }, 0);
 }
 
 function scryptSync(password, salt, keylen, options = defaults) {
   options = check(password, salt, keylen, options);
   const { N, r, p, maxmem } = options;
   ({ password, salt, keylen } = options);
-  const job = new ScryptJob(
-    kCryptoJobSync, password, salt, N, r, p, maxmem, keylen);
-  const { 0: err, 1: result } = job.run();
 
-  if (err !== undefined)
-    throw err;
+  let result = scrypt_sync(password.buffer ?? password, salt.buffer ?? salt, N, r, p, keylen);
 
   const buf = Buffer.from(result);
   const encoding = getDefaultEncoding();
@@ -121,10 +114,20 @@ function check(password, salt, keylen, options) {
     if (maxmem === 0) maxmem = defaults.maxmem;
   }
 
+  if (Math.log2(N) % 1 !== 0 || N <= 1) {
+    throw new ERR_CRYPTO_SCRYPT_INVALID_PARAMETER();
+  }
+
+  let blen = p * 128 * r
+  let vlen = 32 * r * (N + 2) * 4
+  if (vlen + blen > maxmem || 128 * N * r > maxmem || N >= 2 ** (r * 16) || p > (2 ** 30 - 1) / r) {
+    throw new ERR_CRYPTO_SCRYPT_INVALID_PARAMETER();
+  }
+
   return { password, salt, keylen, N, r, p, maxmem };
 }
 
-module.exports = {
+export {
   scrypt,
   scryptSync,
 };
