@@ -873,3 +873,31 @@ export class ERR_CRYPTO_SCRYPT_NOT_SUPPORTED extends Error {
         this.code = "ERR_CRYPTO_SCRYPT_NOT_SUPPORTED";
     }
 }
+
+export class ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS extends Error {
+    constructor(a, b) {
+        super(`The selected key encoding ${a} ${b}.`);
+        this.code = "ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE extends TypeError {
+    constructor(t, e) {
+        super(`Invalid key object type ${t}, expected ${e}.`);
+        this.code = "ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_JWK extends TypeError {
+    constructor() {
+        super(`Invalid JWK data`);
+        this.code = "ERR_CRYPTO_INVALID_JWK";
+    }
+}
+
+export class ERR_ILLEGAL_CONSTRUCTOR extends TypeError {
+    constructor() {
+        super(`Illegal constructor`);
+        this.code = "ERR_ILLEGAL_CONSTRUCTOR";
+    }
+}

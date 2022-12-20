@@ -67,9 +67,9 @@ function toBuf(val, encoding) {
   return val;
 }
 
-const getCiphers = {}; //cachedResult(() => filterDuplicateStrings(_getCiphers()));
-const getHashes = {}; //cachedResult(() => filterDuplicateStrings(_getHashes()));
-const getCurves = {}; //cachedResult(() => filterDuplicateStrings(_getCurves()));
+const getCiphers = () => ["aes-128-gcm", "aes-256-gcm"];
+const getHashes = () => ["sha256", "sha512", "sha512-256"];
+const getCurves = () => [];
 
 function setEngine(id, flags) {
   validateString(id, 'id');

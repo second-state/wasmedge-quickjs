@@ -37,7 +37,7 @@ const isOSX = process.platform === 'darwin';
 const isPi = false;
 const isMainThread = true;
 const isDumbTerminal = process.env.TERM === 'dumb';
-
+const hasOpenSSL3 = false;
 const mustCallChecks = [];
 
 function runCallChecks() {
@@ -297,6 +297,7 @@ const common = {
   isAIX,
   isMainThread,
   hasCrypto,
+  hasOpenSSL3,
   mustCall,
   mustCallAtLeast,
   mustNotCall,

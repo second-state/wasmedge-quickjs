@@ -208,8 +208,7 @@ fn test_crypto_keygen() {
 fn test_crypto_key_objects() {
     test_js_file("test/crypto/test-crypto-key-objects.js");
 }
-#[test]
-#[ignore = "working"]
+#[ignore = "unsupported, work_thread"]
 fn test_crypto_key_objects_messageport() {
     test_js_file("test/crypto/test-crypto-key-objects-messageport.js");
 }
@@ -275,7 +274,6 @@ fn test_crypto_rsa_dsa() {
     test_js_file("test/crypto/test-crypto-rsa-dsa.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_scrypt() {
     test_js_file("test/crypto/test-crypto-scrypt.js");
 }

@@ -71,13 +71,13 @@ import {
 } from "./internal/crypto/sig";
 import { createHash, Hash, Hmac } from "./internal/crypto/hash";
 import { X509Certificate } from "./internal/crypto/x509";
-import {
+*/import {
   getCiphers,
   getCurves,
   getHashes,
   secureHeapUsed,
   setEngine,
-} from "./internal/crypto/util";
+} from "./internal/crypto/util";/*
 import Certificate from "./internal/crypto/certificate";
 */
 const webcrypto = undefined;
@@ -179,12 +179,12 @@ export default {
   generateKeySync,*/
   generatePrime,
   generatePrimeSync,/*
-  getCipherInfo,
+  getCipherInfo,*/
   getCiphers,
-  getCurves,
-  getDiffieHellman,
+  getCurves,/*
+  getDiffieHellman,*/
   getFips,
-  getHashes,
+  getHashes,/*
   Hash,
   hkdf,
   hkdfSync,
@@ -202,10 +202,10 @@ export default {
   randomInt,
   randomUUID,
   scrypt,
-  scryptSync,/*
+  scryptSync,
   secureHeapUsed,
   setEngine,
-  setFips,
+  setFips,/*
   Sign,
   sign,*/
   timingSafeEqual,
@@ -244,12 +244,12 @@ export {
   generateKeySync,*/
   generatePrime,
   generatePrimeSync,/*
-  getCipherInfo,
+  getCipherInfo,*/
   getCiphers,
-  getCurves,
+  getCurves,/*
   getDiffieHellman,*/
   getFips,
-  /*getHashes,
+  getHashes,/*
   Hash,
   hkdf,
   hkdfSync,
@@ -267,9 +267,9 @@ export {
   randomInt,
   randomUUID,
   scrypt,
-  scryptSync,/*
+  scryptSync,
   secureHeapUsed,
-  setEngine,*/
+  setEngine,
   setFips,
   /*Sign,
   sign,*/

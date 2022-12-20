@@ -344,6 +344,19 @@ fn scrypt_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     }
 }
 
+fn hkdf(key: &[u8], salt: &[u8], info: &[u8], key_len: usize) -> Result<Vec<u8>, Error> {
+    let mut h = SymmetricState::new(
+        "HKDF-EXTRACT/SHA-256",
+        Some(&SymmetricKey::from_raw("HKDF-EXTRACT/SHA-256", key)?),
+        None,
+    )?;
+    h.absorb(salt)?;
+    let pk = h.squeeze_key("HKDF-EXPAND/SHA-256")?;
+    let mut p = SymmetricState::new("HKDF-EXPAND/SHA-256", Some(&pk), None)?;
+    p.absorb(info)?;
+    p.squeeze(key_len)
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {

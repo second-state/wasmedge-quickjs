@@ -2,19 +2,19 @@
 
 'use strict';
 
-const common = require('../common');
+import common from '../common';
 
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const { kMaxLength } = require('buffer');
-const assert = require('assert');
-const {
+import { kMaxLength } from 'buffer';
+import assert from 'assert';
+import {
   createSecretKey,
   hkdf,
   hkdfSync,
   getHashes
-} = require('crypto');
+} from 'crypto';
 
 {
   assert.throws(() => hkdf(), {

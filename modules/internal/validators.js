@@ -234,6 +234,26 @@ export const validateArray = hideStackFrames((value, name, minLength = 0) => {
     }
 });
 
+/**
+ * @callback validateOneOf
+ * @template T
+ * @param {T} value
+ * @param {string} name
+ * @param {T[]} oneOf
+ */
+
+/** @type {validateOneOf} */
+export const validateOneOf = hideStackFrames((value, name, oneOf) => {
+    if (!Array.prototype.includes.call(oneOf, value)) {
+        const allowed = Array.prototype.join.call(
+            Array.prototype.map.call(oneOf, (v) =>
+                (typeof v === 'string' ? `'${v}'` : String(v))),
+            ', ');
+        const reason = 'must be one of: ' + allowed;
+        throw new ERR_INVALID_ARG_VALUE(name, value, reason);
+    }
+});
+
 export default {
     validatePort,
     validateFunction,
@@ -245,5 +265,6 @@ export default {
     validateInteger,
     validateNumber,
     validateArray,
-    getValidMode
+    getValidMode,
+    validateOneOf
 }
