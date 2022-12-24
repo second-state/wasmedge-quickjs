@@ -34,8 +34,8 @@ import {
 } from "./internal/crypto/random";
 import { pbkdf2, pbkdf2Sync } from "./internal/crypto/pbkdf2";
 import { scrypt, scryptSync } from "./internal/crypto/scrypt";
-/*import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
-import {
+import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
+/*import {
   generateKey,
   generateKeyPair,
   generateKeyPairSync,
@@ -185,9 +185,9 @@ export default {
   getDiffieHellman,*/
   getFips,
   getHashes,/*
-  Hash,
+  Hash,*/
   hkdf,
-  hkdfSync,
+  hkdfSync,/*
   Hmac,
   KeyObject,*/
   pbkdf2,
@@ -250,9 +250,9 @@ export {
   getDiffieHellman,*/
   getFips,
   getHashes,/*
-  Hash,
+  Hash,*/
   hkdf,
-  hkdfSync,
+  hkdfSync,/*
   Hmac,
   KeyObject,*/
   pbkdf2,

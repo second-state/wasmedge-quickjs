@@ -16,12 +16,13 @@ import {
   toBuf,
   validateByteSource,
   kKeyObject,
+  getHashes,
 } from '../crypto/util';
 
 import {
   createSecretKey,
   isKeyObject,
-} from '../keys';
+} from './keys';
 
 import {
   lazyDOMException,
@@ -37,21 +38,35 @@ import {
   ERR_OUT_OF_RANGE,
   ERR_MISSING_OPTION,
   hideStackFrames,
+  ERR_CRYPTO_INVALID_DIGEST,
+  ERR_CRYPTO_INVALID_KEYLEN,
 } from '../errors';
+
+import { hkdf_sync } from "_node:crypto";
 
 const validateParameters = hideStackFrames((hash, key, salt, info, length) => {
   validateString(hash, 'digest');
+
   key = prepareKey(key);
   salt = validateByteSource(salt, 'salt');
   info = validateByteSource(info, 'info');
 
   validateInteger(length, 'length', 0, kMaxLength);
-
   if (info.byteLength > 1024) {
-    throw ERR_OUT_OF_RANGE(
+    throw new ERR_OUT_OF_RANGE(
       'info',
       'must not contain more than 1024 bytes',
       info.byteLength);
+  }
+
+  if (!getHashes().includes(hash)) {
+    throw new ERR_CRYPTO_INVALID_DIGEST(hash);
+  }
+
+  if (hash === "sha256" && length > 255 * 32) {
+    throw new ERR_CRYPTO_INVALID_KEYLEN()
+  } else if (hash === "sha512" && length > 255 * 64) {
+    throw new ERR_CRYPTO_INVALID_KEYLEN()
   }
 
   return {
@@ -68,7 +83,7 @@ function prepareKey(key) {
     return key;
 
   if (isAnyArrayBuffer(key))
-    return createSecretKey(key);
+    return getArrayBufferOrView(key);
 
   key = toBuf(key);
 
@@ -86,7 +101,7 @@ function prepareKey(key) {
       key);
   }
 
-  return createSecretKey(key);
+  return getArrayBufferOrView(key);
 }
 
 function hkdf(hash, key, salt, info, length, callback) {
@@ -100,14 +115,10 @@ function hkdf(hash, key, salt, info, length, callback) {
 
   validateFunction(callback, 'callback');
 
-  const job = new HKDFJob(kCryptoJobAsync, hash, key, salt, info, length);
-
-  job.ondone = (error, bits) => {
-    if (error) return Function.prototype.call.call(callback, job, error);
-    Function.prototype.call.call(callback, job, null, bits);
-  };
-
-  job.run();
+  setTimeout(() => {
+    let result = hkdf_sync(key.buffer ?? key, salt.buffer ?? salt, info.buffer ?? info, length, hash.toUpperCase());
+    callback(null, result);
+  }, 0);
 }
 
 function hkdfSync(hash, key, salt, info, length) {
@@ -118,13 +129,8 @@ function hkdfSync(hash, key, salt, info, length) {
     info,
     length,
   } = validateParameters(hash, key, salt, info, length));
-
-  const job = new HKDFJob(kCryptoJobSync, hash, key, salt, info, length);
-  const { 0: err, 1: bits } = job.run();
-  if (err !== undefined)
-    throw err;
-
-  return bits;
+  let result = hkdf_sync(key.buffer ?? key, salt.buffer ?? salt, info.buffer ?? info, length, hash.toUpperCase());
+  return result;
 }
 
 async function hkdfDeriveBits(algorithm, baseKey, length) {
@@ -163,7 +169,7 @@ async function hkdfDeriveBits(algorithm, baseKey, length) {
   });
 }
 
-module.exports = {
+export {
   hkdf,
   hkdfSync,
   hkdfDeriveBits,

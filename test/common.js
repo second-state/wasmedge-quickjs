@@ -37,7 +37,7 @@ const isOSX = process.platform === 'darwin';
 const isPi = false;
 const isMainThread = true;
 const isDumbTerminal = process.env.TERM === 'dumb';
-const hasOpenSSL3 = false;
+const hasOpenSSL3 = true;
 const mustCallChecks = [];
 
 function runCallChecks() {

@@ -1,9 +1,9 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 'use strict';
 
-const {
-  KeyObjectHandle,
-} = internalBinding('crypto');
+class KeyObjectHandle {
+  // TODO
+}
 
 const kKeyTypeSecret = Symbol("kKeyTypeSecret");
 const kKeyTypePublic = Symbol("kKeyTypePublic");
@@ -43,11 +43,14 @@ import {
   isArrayBufferView,
 } from '../util/types';
 
-const {
+/*const {
   JSTransferable,
   kClone,
   kDeserialize,
-} = require('internal/worker/js_transferable');
+} = require('internal/worker/js_transferable');*/
+
+const kClone = Symbol('kClone');
+const kDeserialize = Symbol('kDeserialize');
 
 import {
   customInspectSymbol as kInspect,
@@ -624,7 +627,7 @@ function isKeyObject(obj) {
 // here similar to other things like URL. A chromium provided CryptoKey
 // will not be recognized as a Node.js CryptoKey, and vice versa. It
 // would be fantastic if we could find a way of making those interop.
-class CryptoKey extends JSTransferable {
+class CryptoKey /*extends JSTransferable*/ {
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
   }
@@ -690,13 +693,13 @@ class CryptoKey extends JSTransferable {
 // All internal code must use new InternalCryptoKey to create
 // CryptoKey instances. The CryptoKey class is exposed to end
 // user code but is not permitted to be constructed directly.
-class InternalCryptoKey extends JSTransferable {
+class InternalCryptoKey /*extends JSTransferable*/ {
   constructor(
     keyObject,
     algorithm,
     keyUsages,
     extractable) {
-    super();
+    // super();
     // Using symbol properties here currently instead of private
     // properties because (for now) the performance penalty of
     // private fields is still too high.

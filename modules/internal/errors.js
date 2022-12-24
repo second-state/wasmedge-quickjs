@@ -901,3 +901,10 @@ export class ERR_ILLEGAL_CONSTRUCTOR extends TypeError {
         this.code = "ERR_ILLEGAL_CONSTRUCTOR";
     }
 }
+
+export class ERR_CRYPTO_INVALID_KEYLEN extends RangeError {
+    constructor() {
+        super(`Invalid key length`);
+        this.code = "ERR_CRYPTO_INVALID_KEYLEN";
+    }
+}
