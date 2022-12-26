@@ -5,6 +5,120 @@ const NONE_OPTS: raw::OptOptions = raw::OptOptions {
     u: raw::OptOptionsUnion { none: () },
 };
 
+const NONE_KEY: raw::OptSymmetricKey = raw::OptSymmetricKey {
+    tag: raw::OPT_SYMMETRIC_KEY_U_NONE.raw(),
+    u: raw::OptSymmetricKeyUnion { none: () },
+};
+
+pub struct Hmac {
+    handle: raw::SymmetricState,
+}
+
+impl Hmac {
+    pub fn create<T>(alg: &str, key: T) -> Result<Self, raw::CryptoErrno>
+    where
+        T: AsRef<[u8]>,
+    {
+        let alg = match alg {
+            "sha256" | "SHA256" | "HMAC/SHA-256" => "HMAC/SHA-256",
+            "sha512" | "SHA512" | "HMAC/SHA-512" => "HMAC/SHA-512",
+            _ => return Err(raw::CRYPTO_ERRNO_UNSUPPORTED_ALGORITHM),
+        };
+        let handle = {
+            let key = key.as_ref();
+            unsafe {
+                let key = raw::symmetric_key_import(alg, key.as_ptr(), key.len())?;
+                let opt = raw::OptSymmetricKey {
+                    tag: raw::OPT_SYMMETRIC_KEY_U_SOME.raw(),
+                    u: raw::OptSymmetricKeyUnion { some: key },
+                };
+                let state = raw::symmetric_state_open(alg, opt, NONE_OPTS)?;
+                raw::symmetric_key_close(key)?;
+                state
+            }
+        };
+        Ok(Self { handle })
+    }
+
+    pub fn update(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let data = data.as_ref();
+        unsafe { raw::symmetric_state_absorb(self.handle, data.as_ptr(), data.len()) }
+    }
+
+    pub fn digest(&mut self) -> Result<Vec<u8>, raw::CryptoErrno> {
+        unsafe {
+            let tag = raw::symmetric_state_squeeze_tag(self.handle)?;
+            let len = raw::symmetric_tag_len(tag)?;
+            let mut out = vec![0; len];
+            raw::symmetric_tag_pull(tag, out.as_mut_ptr(), out.len())?;
+            raw::symmetric_tag_close(tag)?;
+            Ok(out)
+        }
+    }
+
+    pub fn digest_into(&mut self, mut buf: impl AsMut<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let buf = buf.as_mut();
+        unsafe {
+            let tag = raw::symmetric_state_squeeze_tag(self.handle)?;
+            raw::symmetric_tag_pull(tag, buf.as_mut_ptr(), buf.len())?;
+            raw::symmetric_tag_close(tag)?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Hmac {
+    fn drop(&mut self) {
+        unsafe {
+            raw::symmetric_state_close(self.handle).unwrap();
+        }
+    }
+}
+
+pub struct Hash {
+    handle: raw::SymmetricState,
+    hash_len: usize
+}
+
+impl Hash {
+    pub fn create(alg: &str) -> Result<Self, raw::CryptoErrno> {
+        let (alg, hash_len) = match alg {
+            "sha256" | "SHA256" | "SHA-256" => ("SHA-256", 32),
+            "sha512" | "SHA512" | "SHA-512" => ("SHA-512", 64),
+            _ => return Err(raw::CRYPTO_ERRNO_UNSUPPORTED_ALGORITHM),
+        };
+        let handle = { unsafe { raw::symmetric_state_open(alg, NONE_KEY, NONE_OPTS)? } };
+        Ok(Self { handle, hash_len })
+    }
+
+    pub fn update(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let data = data.as_ref();
+        unsafe { raw::symmetric_state_absorb(self.handle, data.as_ptr(), data.len()) }
+    }
+
+    pub fn digest(&mut self) -> Result<Vec<u8>, raw::CryptoErrno> {
+        let mut out = vec![0; self.hash_len];
+        self.digest_into(&mut out)?;
+        Ok(out)
+    }
+
+    pub fn digest_into(&mut self, mut buf: impl AsMut<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let buf = buf.as_mut();
+        unsafe {
+            raw::symmetric_state_squeeze(self.handle, buf.as_mut_ptr(), buf.len())?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Hash {
+    fn drop(&mut self) {
+        unsafe {
+            raw::symmetric_state_close(self.handle).unwrap();
+        }
+    }
+}
+
 /// Behaviour like
 ///
 /// ```js
@@ -17,35 +131,26 @@ pub fn hmac(
     key: impl AsRef<[u8]>,
     infos: &[impl AsRef<[u8]>],
 ) -> Result<Vec<u8>, raw::CryptoErrno> {
-    let key = key.as_ref();
-    let hmac_alg = match alg {
-        "sha256" | "SHA256" | "HMAC/SHA-256" => "HMAC/SHA-256",
-        "sha512" | "SHA512" | "HMAC/SHA-512" => "HMAC/SHA-512",
-        _ => unreachable!(),
-    };
-    unsafe {
-        let hmac_key = raw::symmetric_key_import(hmac_alg, key.as_ptr(), key.len())?;
-        let hmac_handle = raw::symmetric_state_open(
-            hmac_alg,
-            raw::OptSymmetricKey {
-                tag: raw::OPT_SYMMETRIC_KEY_U_SOME.raw(),
-                u: raw::OptSymmetricKeyUnion { some: hmac_key },
-            },
-            NONE_OPTS,
-        )?;
-        for info in infos {
-            let info = info.as_ref();
-            raw::symmetric_state_absorb(hmac_handle, info.as_ptr(), info.len())?;
-        }
-        let tag = raw::symmetric_state_squeeze_tag(hmac_handle)?;
-        raw::symmetric_state_close(hmac_handle)?;
-        raw::symmetric_key_close(hmac_key)?;
-        let len = raw::symmetric_tag_len(tag)?;
-        let mut out = vec![0; len];
-        raw::symmetric_tag_pull(tag, out.as_mut_ptr(), out.len())?;
-        raw::symmetric_tag_close(tag)?;
-        Ok(out)
+    let mut hash = Hmac::create(alg, key)?;
+    for info in infos {
+        hash.update(info)?;
     }
+    hash.digest()
+}
+
+/// Behaviour like
+///
+/// ```js
+/// let hash = createHash(alg);
+/// infos.forEach(info => hash.update(info));
+/// let return = hash.digest();
+/// ```
+pub fn hash(alg: &str, infos: &[impl AsRef<[u8]>]) -> Result<Vec<u8>, raw::CryptoErrno> {
+    let mut hash = Hash::create(alg)?;
+    for info in infos {
+        hash.update(info)?;
+    }
+    hash.digest()
 }
 
 fn hkdf_extract(
@@ -267,42 +372,42 @@ impl ScryptRom {
         self.x.copy_from_slice(&self.b32);
 
         for _ in 0..4 {
-            self.x[4] ^= R(self.x[0] + self.x[12], 7);
-            self.x[8] ^= R(self.x[4] + self.x[0], 9);
-            self.x[12] ^= R(self.x[8] + self.x[4], 13);
-            self.x[0] ^= R(self.x[12] + self.x[8], 18);
-            self.x[9] ^= R(self.x[5] + self.x[1], 7);
-            self.x[13] ^= R(self.x[9] + self.x[5], 9);
-            self.x[1] ^= R(self.x[13] + self.x[9], 13);
-            self.x[5] ^= R(self.x[1] + self.x[13], 18);
-            self.x[14] ^= R(self.x[10] + self.x[6], 7);
-            self.x[2] ^= R(self.x[14] + self.x[10], 9);
-            self.x[6] ^= R(self.x[2] + self.x[14], 13);
-            self.x[10] ^= R(self.x[6] + self.x[2], 18);
-            self.x[3] ^= R(self.x[15] + self.x[11], 7);
-            self.x[7] ^= R(self.x[3] + self.x[15], 9);
-            self.x[11] ^= R(self.x[7] + self.x[3], 13);
-            self.x[15] ^= R(self.x[11] + self.x[7], 18);
-            self.x[1] ^= R(self.x[0] + self.x[3], 7);
-            self.x[2] ^= R(self.x[1] + self.x[0], 9);
-            self.x[3] ^= R(self.x[2] + self.x[1], 13);
-            self.x[0] ^= R(self.x[3] + self.x[2], 18);
-            self.x[6] ^= R(self.x[5] + self.x[4], 7);
-            self.x[7] ^= R(self.x[6] + self.x[5], 9);
-            self.x[4] ^= R(self.x[7] + self.x[6], 13);
-            self.x[5] ^= R(self.x[4] + self.x[7], 18);
-            self.x[11] ^= R(self.x[10] + self.x[9], 7);
-            self.x[8] ^= R(self.x[11] + self.x[10], 9);
-            self.x[9] ^= R(self.x[8] + self.x[11], 13);
-            self.x[10] ^= R(self.x[9] + self.x[8], 18);
-            self.x[12] ^= R(self.x[15] + self.x[14], 7);
-            self.x[13] ^= R(self.x[12] + self.x[15], 9);
-            self.x[14] ^= R(self.x[13] + self.x[12], 13);
-            self.x[15] ^= R(self.x[14] + self.x[13], 18);
+            self.x[4] ^= R(self.x[0].wrapping_add(self.x[12]), 7);
+            self.x[8] ^= R(self.x[4].wrapping_add(self.x[0]), 9);
+            self.x[12] ^= R(self.x[8].wrapping_add(self.x[4]), 13);
+            self.x[0] ^= R(self.x[12].wrapping_add(self.x[8]), 18);
+            self.x[9] ^= R(self.x[5].wrapping_add(self.x[1]), 7);
+            self.x[13] ^= R(self.x[9].wrapping_add(self.x[5]), 9);
+            self.x[1] ^= R(self.x[13].wrapping_add(self.x[9]), 13);
+            self.x[5] ^= R(self.x[1].wrapping_add(self.x[13]), 18);
+            self.x[14] ^= R(self.x[10].wrapping_add(self.x[6]), 7);
+            self.x[2] ^= R(self.x[14].wrapping_add(self.x[10]), 9);
+            self.x[6] ^= R(self.x[2].wrapping_add(self.x[14]), 13);
+            self.x[10] ^= R(self.x[6].wrapping_add(self.x[2]), 18);
+            self.x[3] ^= R(self.x[15].wrapping_add(self.x[11]), 7);
+            self.x[7] ^= R(self.x[3].wrapping_add(self.x[15]), 9);
+            self.x[11] ^= R(self.x[7].wrapping_add(self.x[3]), 13);
+            self.x[15] ^= R(self.x[11].wrapping_add(self.x[7]), 18);
+            self.x[1] ^= R(self.x[0].wrapping_add(self.x[3]), 7);
+            self.x[2] ^= R(self.x[1].wrapping_add(self.x[0]), 9);
+            self.x[3] ^= R(self.x[2].wrapping_add(self.x[1]), 13);
+            self.x[0] ^= R(self.x[3].wrapping_add(self.x[2]), 18);
+            self.x[6] ^= R(self.x[5].wrapping_add(self.x[4]), 7);
+            self.x[7] ^= R(self.x[6].wrapping_add(self.x[5]), 9);
+            self.x[4] ^= R(self.x[7].wrapping_add(self.x[6]), 13);
+            self.x[5] ^= R(self.x[4].wrapping_add(self.x[7]), 18);
+            self.x[11] ^= R(self.x[10].wrapping_add(self.x[9]), 7);
+            self.x[8] ^= R(self.x[11].wrapping_add(self.x[10]), 9);
+            self.x[9] ^= R(self.x[8].wrapping_add(self.x[11]), 13);
+            self.x[10] ^= R(self.x[9].wrapping_add(self.x[8]), 18);
+            self.x[12] ^= R(self.x[15].wrapping_add(self.x[14]), 7);
+            self.x[13] ^= R(self.x[12].wrapping_add(self.x[15]), 9);
+            self.x[14] ^= R(self.x[13].wrapping_add(self.x[12]), 13);
+            self.x[15] ^= R(self.x[14].wrapping_add(self.x[13]), 18);
         }
 
         for i in 0..16 {
-            self.b32[i] += self.x[i];
+            self.b32[i] = self.b32[i].wrapping_add(self.x[i]);
         }
 
         for i in 0..16 {

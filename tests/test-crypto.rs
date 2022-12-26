@@ -179,7 +179,6 @@ fn test_crypto_hash_stream_pipe() {
     test_js_file("test/crypto/test-crypto-hash-stream-pipe.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_hkdf() {
     test_js_file("test/crypto/test-crypto-hkdf.js");
 }
