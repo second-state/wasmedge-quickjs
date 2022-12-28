@@ -284,7 +284,7 @@ export function getArrayBufferViews(buf) {
 }
 
 export const hasCrypto = true;
-
+export const hasFipsCrypto = true
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -298,6 +298,7 @@ const common = {
   isMainThread,
   hasCrypto,
   hasOpenSSL3,
+  hasFipsCrypto,
   mustCall,
   mustCallAtLeast,
   mustNotCall,

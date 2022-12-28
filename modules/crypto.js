@@ -68,8 +68,8 @@ import {
   signOneShot,
   Verify,
   verifyOneShot,
-} from "./internal/crypto/sig";
-import { createHash, Hash, Hmac } from "./internal/crypto/hash";
+} from "./internal/crypto/sig";*/
+import { Hash, Hmac } from "./internal/crypto/hash";/*
 import { X509Certificate } from "./internal/crypto/x509";
 */import {
   getCiphers,
@@ -107,11 +107,15 @@ function createDiffieHellmanGroup(name) {
 function createECDH(curve) {
   return new ECDH(curve);
 }
+*/
+function createHash(hash, options) {
+  return new Hash(hash, options);
+}
 
 function createHmac(hmac, key, options) {
   return new Hmac(hmac, key, options);
 }
-
+/*
 function createSign(algorithm, options) {
   return new Sign(algorithm, options);
 }
@@ -160,9 +164,9 @@ export default {
   createDecipheriv,
   createDiffieHellman,
   createDiffieHellmanGroup,
-  createECDH,
+  createECDH,*/
   createHash,
-  createHmac,
+  createHmac,/*
   createPrivateKey,
   createPublicKey,
   createSecretKey,
@@ -184,11 +188,11 @@ export default {
   getCurves,/*
   getDiffieHellman,*/
   getFips,
-  getHashes,/*
-  Hash,*/
+  getHashes,
+  Hash,
   hkdf,
-  hkdfSync,/*
-  Hmac,
+  hkdfSync,
+  Hmac,/*
   KeyObject,*/
   pbkdf2,
   pbkdf2Sync,/*
@@ -225,9 +229,9 @@ export {
   createDecipheriv,
   createDiffieHellman,
   createDiffieHellmanGroup,
-  createECDH,
+  createECDH,*/
   createHash,
-  createHmac,
+  createHmac,/*
   createPrivateKey,
   createPublicKey,
   createSecretKey,
@@ -249,11 +253,11 @@ export {
   getCurves,/*
   getDiffieHellman,*/
   getFips,
-  getHashes,/*
-  Hash,*/
+  getHashes,
+  Hash,
   hkdf,
-  hkdfSync,/*
-  Hmac,
+  hkdfSync,
+  Hmac,/*
   KeyObject,*/
   pbkdf2,
   pbkdf2Sync,/*

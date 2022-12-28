@@ -169,12 +169,10 @@ fn test_crypto_getcipherinfo() {
     test_js_file("test/crypto/test-crypto-getcipherinfo.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_hash() {
     test_js_file("test/crypto/test-crypto-hash.js");
 }
-#[test]
-#[ignore = "working"]
+#[ignore = "unsupported, sha3-512"]
 fn test_crypto_hash_stream_pipe() {
     test_js_file("test/crypto/test-crypto-hash-stream-pipe.js");
 }

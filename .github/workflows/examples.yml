@@ -33,7 +33,7 @@ jobs:
     - name: Install WasmEdge
       run: |
         VERSION=0.10.0
-        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION --image-deps-version=$VERSION  -p /usr/local
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION --image-deps-version=$VERSION --plugins wasi_crypto -p /usr/local
 
     - uses: actions/setup-node@v2
       with:

@@ -163,6 +163,156 @@ fn hkdf_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue
     }
 }
 
+struct JsHash {
+    handle: lib::Hash,
+}
+
+impl JsHash {
+    pub fn js_update(
+        &mut self,
+        _this: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let data = get_arg!(argv, JsValue::ArrayBuffer, 0);
+        if let Ok(()) = self.handle.update(data.as_ref()) {
+            JsValue::Bool(true)
+        } else {
+            JsValue::Bool(false)
+        }
+    }
+
+    pub fn js_digest(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        if let Ok(res) = self.handle.digest() {
+            ctx.new_array_buffer(&res).into()
+        } else {
+            JsValue::UnDefined
+        }
+    }
+
+    fn copy(&self) -> Result<Self, lib::CryptoErrno> {
+        self.handle.copy().map(|h| JsHash { handle: h })
+    }
+}
+
+impl JsClassDef for JsHash {
+    type RefType = JsHash;
+
+    const CLASS_NAME: &'static str = "JsHash";
+
+    const CONSTRUCTOR_ARGC: u8 = 1;
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+        ("update", 1, Self::js_update),
+        ("digest", 0, Self::js_digest),
+    ];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
+    }
+
+    fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
+        match argv.get(0) {
+            Some(JsValue::String(alg)) => lib::Hash::create(alg.as_str())
+                .or_else(|e| {
+                    let err = errno_to_js_object(ctx, e);
+                    Err(JsValue::Exception(ctx.throw_error(err)))
+                })
+                .map(|h| JsHash { handle: h }),
+            Some(obj) => JsHash::opaque(obj).ok_or(JsValue::UnDefined).and_then(|h| {
+                h.copy().or_else(|e| {
+                    let err = errno_to_js_object(ctx, e);
+                    Err(JsValue::Exception(ctx.throw_error(err)))
+                })
+            }),
+            _ => Err(JsValue::UnDefined),
+        }
+    }
+
+    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
+        std::mem::drop(data)
+    }
+}
+
+struct JsHmac {
+    handle: lib::Hmac,
+}
+
+impl JsHmac {
+    pub fn js_update(
+        &mut self,
+        _this: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let data = get_arg!(argv, JsValue::ArrayBuffer, 0);
+        if let Ok(()) = self.handle.update(data.as_ref()) {
+            JsValue::Bool(true)
+        } else {
+            JsValue::Bool(false)
+        }
+    }
+
+    pub fn js_digest(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        if let Ok(res) = self.handle.digest() {
+            ctx.new_array_buffer(&res).into()
+        } else {
+            JsValue::UnDefined
+        }
+    }
+}
+
+impl JsClassDef for JsHmac {
+    type RefType = JsHmac;
+
+    const CLASS_NAME: &'static str = "JsHmac";
+
+    const CONSTRUCTOR_ARGC: u8 = 2;
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+        ("update", 1, Self::js_update),
+        ("digest", 0, Self::js_digest),
+    ];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
+    }
+
+    fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
+        match (argv.get(0), argv.get(1)) {
+            (Some(JsValue::String(alg)), Some(JsValue::ArrayBuffer(key))) => {
+                lib::Hmac::create(alg.as_str(), key.as_ref())
+                    .or_else(|e| {
+                        let err = errno_to_js_object(ctx, e);
+                        Err(JsValue::Exception(ctx.throw_error(err)))
+                    })
+                    .map(|h| JsHmac { handle: h })
+            }
+            _ => Err(JsValue::UnDefined),
+        }
+    }
+
+    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
+        std::mem::drop(data)
+    }
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {
@@ -188,6 +338,8 @@ impl ModuleInit for Crypto {
             "hkdf_sync\0",
             ctx.wrap_function("hkdf_sync", hkdf_sync).into(),
         );
+        m.add_export(JsHash::CLASS_NAME, register_class::<JsHash>(ctx));
+        m.add_export(JsHmac::CLASS_NAME, register_class::<JsHmac>(ctx));
     }
 }
 
@@ -201,6 +353,8 @@ pub fn init_module(ctx: &mut Context) {
             "pbkdf2_sync\0",
             "scrypt_sync\0",
             "hkdf_sync\0",
+            JsHash::CLASS_NAME,
+            JsHmac::CLASS_NAME,
         ],
     )
 }

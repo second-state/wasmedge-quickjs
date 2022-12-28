@@ -3,7 +3,7 @@
 // for the stream, one conventional and one non-conventional.
 'use strict';
 
-import stream from '../../stream';
+import Transform from './transform';
 
 import {
   getDefaultEncoding
@@ -12,12 +12,12 @@ import {
 export function LazyTransform(options) {
   this._options = options;
 }
-Object.setPrototypeOf(LazyTransform.prototype, stream.Transform.prototype);
-Object.setPrototypeOf(LazyTransform, stream.Transform);
+Object.setPrototypeOf(LazyTransform.prototype, Transform.prototype);
+Object.setPrototypeOf(LazyTransform, Transform);
 
 function makeGetter(name) {
   return function() {
-    stream.Transform.call(this, this._options);
+    Transform.call(this, this._options);
     this._writableState.decodeStrings = false;
 
     if (!this._options || !this._options.defaultEncoding) {

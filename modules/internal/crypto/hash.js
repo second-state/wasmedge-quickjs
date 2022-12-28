@@ -1,12 +1,5 @@
 'use strict';
 
-const {
-  Hash: _Hash,
-  HashJob,
-  Hmac: _Hmac,
-  kCryptoJobAsync,
-} = internalBinding('crypto');
-
 import {
   getArrayBufferOrView,
   getDefaultEncoding,
@@ -16,6 +9,7 @@ import {
   normalizeHashName,
   validateMaxBufferLength,
   kHandle,
+  getHashes,
 } from '../crypto/util';
 
 import {
@@ -51,11 +45,20 @@ import { LazyTransform } from '../streams/lazy_transform';
 const kState = Symbol('kState');
 const kFinalized = Symbol('kFinalized');
 
+import {
+  JsHash as _Hash,
+  JsHmac as _Hmac,
+} from "_node:crypto";
+
 function Hash(algorithm, options) {
   if (!(this instanceof Hash))
     return new Hash(algorithm, options);
-  if (!(algorithm instanceof _Hash))
+  if (!(algorithm instanceof _Hash)) {
     validateString(algorithm, 'algorithm');
+    if (!getHashes().includes(algorithm.toLowerCase())) {
+      throw new Error("Digest method not supported");
+    }
+  }
   const xofLen = typeof options === 'object' && options !== null ?
     options.outputLength : undefined;
   if (xofLen !== undefined)
@@ -79,12 +82,12 @@ Hash.prototype.copy = function copy(options) {
 };
 
 Hash.prototype._transform = function _transform(chunk, encoding, callback) {
-  this[kHandle].update(chunk, encoding);
+  this.update(chunk, encoding);
   callback();
 };
 
 Hash.prototype._flush = function _flush(callback) {
-  this.push(this[kHandle].digest());
+  this.push(this.digest());
   callback();
 };
 
@@ -101,8 +104,8 @@ Hash.prototype.update = function update(data, encoding) {
     throw new ERR_INVALID_ARG_TYPE(
       'data', ['string', 'Buffer', 'TypedArray', 'DataView'], data);
   }
-
-  if (!this[kHandle].update(data, encoding))
+  let buffer = getArrayBufferOrView(data, "data", encoding);
+  if (!this[kHandle].update(buffer.buffer ?? buffer))
     throw new ERR_CRYPTO_HASH_UPDATE_FAILED();
   return this;
 };
@@ -115,19 +118,21 @@ Hash.prototype.digest = function digest(outputEncoding) {
   outputEncoding = outputEncoding || getDefaultEncoding();
 
   // Explicit conversion for backward compatibility.
-  const ret = this[kHandle].digest(`${outputEncoding}`);
+  const ret = Buffer.from(this[kHandle].digest());
   state[kFinalized] = true;
-  return ret;
+  return outputEncoding === 'buffer' ? ret : ret.toString(outputEncoding);
 };
 
 function Hmac(hmac, key, options) {
   if (!(this instanceof Hmac))
     return new Hmac(hmac, key, options);
   validateString(hmac, 'hmac');
+  if (!getHashes().includes(hmac.toLowerCase())) {
+    throw new Error("Digest method not supported");
+  }
   const encoding = getStringOption(options, 'encoding');
   key = prepareSecretKey(key, encoding);
-  this[kHandle] = new _Hmac();
-  this[kHandle].init(hmac, key);
+  this[kHandle] = new _Hmac(hmac, key.buffer ?? key);
   this[kState] = {
     [kFinalized]: false
   };
@@ -149,9 +154,9 @@ Hmac.prototype.digest = function digest(outputEncoding) {
   }
 
   // Explicit conversion for backward compatibility.
-  const ret = this[kHandle].digest(`${outputEncoding}`);
+  const ret = Buffer.from(this[kHandle].digest());
   state[kFinalized] = true;
-  return ret;
+  return outputEncoding === 'buffer' ? ret : ret.toString(outputEncoding);;
 };
 
 Hmac.prototype._flush = Hash.prototype._flush;
@@ -159,34 +164,7 @@ Hmac.prototype._transform = Hash.prototype._transform;
 
 // Implementation for WebCrypto subtle.digest()
 
-async function asyncDigest(algorithm, data) {
-  algorithm = normalizeAlgorithm(algorithm);
-  data = getArrayBufferOrView(data, 'data');
-  validateMaxBufferLength(data, 'data');
-
-  if (algorithm.length !== undefined)
-    validateUint32(algorithm.length, 'algorithm.length');
-
-  switch (algorithm.name) {
-    case 'SHA-1':
-    // Fall through
-    case 'SHA-256':
-    // Fall through
-    case 'SHA-384':
-    // Fall through
-    case 'SHA-512':
-      return jobPromise(new HashJob(
-        kCryptoJobAsync,
-        normalizeHashName(algorithm.name),
-        data,
-        algorithm.length));
-  }
-
-  throw lazyDOMException('Unrecognized name.', 'NotSupportedError');
-}
-
 export {
   Hash,
   Hmac,
-  asyncDigest,
 };

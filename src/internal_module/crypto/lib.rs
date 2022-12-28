@@ -1,5 +1,7 @@
 use super::raw;
 
+pub type CryptoErrno = raw::CryptoErrno;
+
 const NONE_OPTS: raw::OptOptions = raw::OptOptions {
     tag: raw::OPT_OPTIONS_U_NONE.raw(),
     u: raw::OptOptionsUnion { none: () },
@@ -77,7 +79,7 @@ impl Drop for Hmac {
 
 pub struct Hash {
     handle: raw::SymmetricState,
-    hash_len: usize
+    hash_len: usize,
 }
 
 impl Hash {
@@ -108,6 +110,14 @@ impl Hash {
             raw::symmetric_state_squeeze(self.handle, buf.as_mut_ptr(), buf.len())?;
         }
         Ok(())
+    }
+
+    pub fn copy(&self) -> Result<Self, raw::CryptoErrno> {
+        let h = unsafe { raw::symmetric_state_clone(self.handle) }?;
+        Ok(Self {
+            handle: h,
+            hash_len: self.hash_len,
+        })
     }
 }
 
@@ -468,4 +478,132 @@ pub fn u8array_to_hex(arr: impl AsRef<[u8]>) -> String {
         .map(|v| format!("{:02x}", v))
         .collect::<Vec<_>>()
         .join("")
+}
+
+pub struct Cipher {
+    handle: raw::SymmetricState,
+    message: Vec<u8>,
+    tag: Option<Vec<u8>>,
+}
+
+impl Cipher {
+    pub fn create<T>(alg: &str, key: T, iv: T) -> Result<Self, raw::CryptoErrno>
+    where
+        T: AsRef<[u8]>,
+    {
+        let alg = match alg {
+            "aes-128-gcm" | "AES-128-GCM" => "AES-128-GCM",
+            "aes-256-gcm" | "AES-256-GCM" => "AES-256-GCM",
+            _ => return Err(raw::CRYPTO_ERRNO_UNSUPPORTED_ALGORITHM),
+        };
+        let handle = {
+            let key = key.as_ref();
+            let iv = iv.as_ref();
+            unsafe {
+                let raw_key = raw::symmetric_key_import(alg, key.as_ptr(), key.len())?;
+                let key = raw::OptSymmetricKey {
+                    tag: raw::OPT_SYMMETRIC_KEY_U_SOME.raw(),
+                    u: raw::OptSymmetricKeyUnion { some: raw_key },
+                };
+                let opt = raw::options_open(raw::ALGORITHM_TYPE_SYMMETRIC)?;
+                raw::options_set(opt, "nonce", iv.as_ptr(), iv.len())?;
+                let opts = raw::OptOptions {
+                    tag: raw::OPT_OPTIONS_U_SOME.raw(),
+                    u: raw::OptOptionsUnion { some: opt },
+                };
+                let state = raw::symmetric_state_open(alg, key, opts).unwrap();
+                raw::symmetric_key_close(raw_key).unwrap();
+                state
+            }
+        };
+        Ok(Self {
+            handle,
+            message: vec![],
+            tag: None,
+        })
+    }
+
+    pub fn set_aad(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let data = data.as_ref();
+        unsafe { raw::symmetric_state_absorb(self.handle, data.as_ptr(), data.len()) }
+    }
+
+    /// in WasmEdge implement of wasi-crypto, `encrypt` can't be called multiple times,
+    /// multiple call `encrypt` is also not equivalent to multiple call `update`.
+    /// so we store all message and concat it, then encrypt one-time on `final`
+    pub fn update(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        self.message.extend_from_slice(data.as_ref());
+        Ok(())
+    }
+
+    /// `final` is reserved keyword, `fin` looks better than `r#final`
+    pub fn fin(&mut self) -> Result<Vec<u8>, raw::CryptoErrno> {
+        let mut out = vec![0; self.message.len()];
+        unsafe {
+            let tag = raw::symmetric_state_encrypt_detached(
+                self.handle,
+                out.as_mut_ptr(),
+                out.len(),
+                self.message.as_ptr(),
+                self.message.len(),
+            )?;
+            let len = raw::symmetric_tag_len(tag)?;
+            let mut buf = vec![0; len];
+            raw::symmetric_tag_pull(tag, buf.as_mut_ptr(), buf.len())?;
+            raw::symmetric_tag_close(tag)?;
+            self.tag = Some(buf);
+        }
+        Ok(out)
+    }
+
+    /// equivalent to `update(data)` then `final`
+    pub fn encrypt(&mut self, data: impl AsRef<[u8]>) -> Result<Vec<u8>, raw::CryptoErrno> {
+        let data = data.as_ref();
+        let mut out = vec![0; data.len()];
+        unsafe {
+            let tag = raw::symmetric_state_encrypt_detached(
+                self.handle,
+                out.as_mut_ptr(),
+                out.len(),
+                data.as_ptr(),
+                data.len(),
+            )?;
+            let len = raw::symmetric_tag_len(tag)?;
+            let mut buf = vec![0; len];
+            raw::symmetric_tag_pull(tag, buf.as_mut_ptr(), buf.len())?;
+            raw::symmetric_tag_close(tag)?;
+            self.tag = Some(buf);
+        }
+        Ok(out)
+    }
+
+    pub fn get_auth_tag(&self) -> Result<&Vec<u8>, raw::CryptoErrno> {
+        self.tag.as_ref().ok_or(raw::CRYPTO_ERRNO_INVALID_OPERATION)
+    }
+
+    pub fn take_auth_tag(&mut self) -> Result<Vec<u8>, raw::CryptoErrno> {
+        self.tag.take().ok_or(raw::CRYPTO_ERRNO_INVALID_OPERATION)
+    }
+}
+
+impl Drop for Cipher {
+    fn drop(&mut self) {
+        unsafe {
+            raw::symmetric_state_close(self.handle).unwrap();
+        }
+    }
+}
+
+pub fn encrypt<T: AsRef<[u8]>>(
+    alg: &str,
+    key: T,
+    iv: T,
+    aad: T,
+    msg: T,
+) -> Result<(Vec<u8>, Vec<u8>), raw::CryptoErrno> {
+    let mut c = Cipher::create(alg, key, iv)?;
+    c.set_aad(aad)?;
+    let out = c.encrypt(msg)?;
+    let tag = c.take_auth_tag()?;
+    Ok((out, tag))
 }

@@ -908,3 +908,17 @@ export class ERR_CRYPTO_INVALID_KEYLEN extends RangeError {
         this.code = "ERR_CRYPTO_INVALID_KEYLEN";
     }
 }
+
+export class ERR_CRYPTO_HASH_FINALIZED extends Error {
+    constructor() {
+        super(`Digest already called`);
+        this.code = "ERR_CRYPTO_HASH_FINALIZED";
+    }
+}
+
+export class ERR_CRYPTO_HASH_UPDATE_FAILED extends Error {
+    constructor() {
+        super(`Hash update failed`);
+        this.code = "ERR_CRYPTO_HASH_UPDATE_FAILED";
+    }
+}

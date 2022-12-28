@@ -20,15 +20,15 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 'use strict';
-const common = require('../common');
+import common from '../common';
 
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-const assert = require('assert');
-const crypto = require('crypto');
+import assert from 'assert';
+import crypto from 'crypto';
 
-const stream = require('stream');
+import stream from 'stream';
 const s = new stream.PassThrough();
 const h = crypto.createHash('sha3-512');
 const expect = '36a38a2a35e698974d4e5791a3f05b05' +
