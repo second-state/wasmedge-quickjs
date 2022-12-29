@@ -33,8 +33,7 @@ fn test_js_file(file_path: &str) {
     });
 }
 
-#[test]
-#[ignore = "working"]
+#[ignore = "unsupported, aes-wrap"]
 fn test_crypto_aes_wrap() {
     test_js_file("test/crypto/test-crypto-aes-wrap.js");
 }
@@ -63,8 +62,7 @@ fn test_crypto_binary_default() {
 fn test_crypto_certificate() {
     test_js_file("test/crypto/test-crypto-certificate.js");
 }
-#[test]
-#[ignore = "working"]
+#[ignore = "unsupported, md5"]
 fn test_crypto_cipher_decipher() {
     test_js_file("test/crypto/test-crypto-cipher-decipher.js");
 }
@@ -133,12 +131,10 @@ fn test_crypto_dh_shared() {
 fn test_crypto_dh_stateless() {
     test_js_file("test/crypto/test-crypto-dh-stateless.js");
 }
-#[test]
 #[ignore = "unsupported, domain"]
 fn test_crypto_domain() {
     test_js_file("test/crypto/test-crypto-domain.js");
 }
-#[test]
 #[ignore = "unsupported, domain"]
 fn test_crypto_domains() {
     test_js_file("test/crypto/test-crypto-domains.js");
@@ -153,7 +149,6 @@ fn test_crypto_ecb() {
 fn test_crypto_ecdh_convert_key() {
     test_js_file("test/crypto/test-crypto-ecdh-convert-key.js");
 }
-#[test]
 #[ignore = "unsupported"]
 fn test_crypto_fips() {
     test_js_file("test/crypto/test-crypto-fips.js");
@@ -181,7 +176,6 @@ fn test_crypto_hkdf() {
     test_js_file("test/crypto/test-crypto-hkdf.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_hmac() {
     test_js_file("test/crypto/test-crypto-hmac.js");
 }

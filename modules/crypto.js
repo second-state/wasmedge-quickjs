@@ -52,7 +52,7 @@ import {
   diffieHellman,
   DiffieHellmanGroup,
   ECDH,
-} from "./internal/crypto/diffiehellman";
+} from "./internal/crypto/diffiehellman";*/
 import {
   Cipheriv,
   Decipheriv,
@@ -62,7 +62,7 @@ import {
   publicDecrypt,
   publicEncrypt,
 } from "./internal/crypto/cipher";
-
+/*
 import {
   Sign,
   signOneShot,
@@ -82,7 +82,7 @@ import Certificate from "./internal/crypto/certificate";
 */
 const webcrypto = undefined;
 const fipsForced = getOptionValue("--force-fips");
-/*
+
 function createCipheriv(cipher, key, iv, options) {
   return new Cipheriv(cipher, key, iv, options);
 }
@@ -90,7 +90,7 @@ function createCipheriv(cipher, key, iv, options) {
 function createDecipheriv(algorithm, key, iv, options) {
   return new Decipheriv(algorithm, key, iv, options);
 }
-
+/*
 function createDiffieHellman(sizeOrKey, keyEncoding, generator, generatorEncoding) {
   return new DiffieHellman(
     sizeOrKey,
@@ -157,11 +157,11 @@ const verify = verifyOneShot;
 export default {
   /*Certificate,*/
   checkPrime,
-  checkPrimeSync,/*
+  checkPrimeSync,
   Cipheriv,
   constants,
   createCipheriv,
-  createDecipheriv,
+  createDecipheriv,/*
   createDiffieHellman,
   createDiffieHellmanGroup,
   createECDH,*/
@@ -171,8 +171,8 @@ export default {
   createPublicKey,
   createSecretKey,
   createSign,
-  createVerify,
-  Decipheriv,
+  createVerify,*/
+  Decipheriv,/*
   DiffieHellman,
   diffieHellman,
   DiffieHellmanGroup,
@@ -182,8 +182,8 @@ export default {
   generateKeyPairSync,
   generateKeySync,*/
   generatePrime,
-  generatePrimeSync,/*
-  getCipherInfo,*/
+  generatePrimeSync,
+  getCipherInfo,
   getCiphers,
   getCurves,/*
   getDiffieHellman,*/
@@ -195,11 +195,11 @@ export default {
   Hmac,/*
   KeyObject,*/
   pbkdf2,
-  pbkdf2Sync,/*
+  pbkdf2Sync,
   privateDecrypt,
   privateEncrypt,
   publicDecrypt,
-  publicEncrypt,*/
+  publicEncrypt,
   randomBytes,
   randomFill,
   randomFillSync,
@@ -222,12 +222,12 @@ export default {
 export {
   /*Certificate,*/
   checkPrime,
-  checkPrimeSync,/*
-  Cipheriv,*/
+  checkPrimeSync,
+  Cipheriv,
   constants,
-  /*createCipheriv,
+  createCipheriv,
   createDecipheriv,
-  createDiffieHellman,
+  /*createDiffieHellman,
   createDiffieHellmanGroup,
   createECDH,*/
   createHash,
@@ -236,8 +236,8 @@ export {
   createPublicKey,
   createSecretKey,
   createSign,
-  createVerify,
-  Decipheriv,
+  createVerify,*/
+  Decipheriv,/*
   DiffieHellman,
   diffieHellman,
   DiffieHellmanGroup,
@@ -247,8 +247,8 @@ export {
   generateKeyPairSync,
   generateKeySync,*/
   generatePrime,
-  generatePrimeSync,/*
-  getCipherInfo,*/
+  generatePrimeSync,
+  getCipherInfo,
   getCiphers,
   getCurves,/*
   getDiffieHellman,*/
@@ -260,11 +260,11 @@ export {
   Hmac,/*
   KeyObject,*/
   pbkdf2,
-  pbkdf2Sync,/*
+  pbkdf2Sync,
   privateDecrypt,
   privateEncrypt,
   publicDecrypt,
-  publicEncrypt,*/
+  publicEncrypt,
   randomBytes,
   randomFill,
   randomFillSync,

@@ -313,6 +313,157 @@ impl JsClassDef for JsHmac {
     }
 }
 
+enum JsCipher {
+    Cipher(lib::Cipher),
+    Decipher(lib::Decipher),
+}
+
+impl JsCipher {
+    pub fn js_update(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        if let Some(JsValue::ArrayBuffer(buf)) = argv.get(0) {
+            match self {
+                JsCipher::Cipher(c) => c.update(buf.as_ref()),
+                JsCipher::Decipher(d) => d.update(buf.as_ref()),
+            }
+            .map_or(JsValue::UnDefined, |()| ctx.new_array_buffer(&[]).into())
+        } else {
+            JsValue::UnDefined
+        }
+    }
+
+    pub fn js_set_aad(
+        &mut self,
+        _this: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        if let Some(JsValue::ArrayBuffer(buf)) = argv.get(0) {
+            match self {
+                JsCipher::Cipher(c) => c.set_aad(buf.as_ref()),
+                JsCipher::Decipher(d) => d.set_aad(buf.as_ref()),
+            }
+            .map_or(JsValue::UnDefined, |()| JsValue::Bool(true))
+        } else {
+            JsValue::UnDefined
+        }
+    }
+
+    pub fn js_set_auth_tag(
+        &mut self,
+        _this: &mut JsObject,
+        _ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        if let Some(JsValue::ArrayBuffer(buf)) = argv.get(0) {
+            match self {
+                JsCipher::Cipher(_) => JsValue::UnDefined,
+                JsCipher::Decipher(d) => d
+                    .set_auth_tag(buf.as_ref())
+                    .map_or(JsValue::UnDefined, |()| JsValue::Bool(true)),
+            }
+        } else {
+            JsValue::UnDefined
+        }
+    }
+
+    pub fn js_get_auth_tag(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        match self {
+            JsCipher::Cipher(c) => c
+                .get_auth_tag()
+                .map_or(JsValue::UnDefined, |tag| ctx.new_array_buffer(&tag).into()),
+            JsCipher::Decipher(_) => JsValue::UnDefined,
+        }
+    }
+
+    pub fn js_final(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        match self {
+            JsCipher::Cipher(c) => c.fin(),
+            JsCipher::Decipher(d) => d.fin(),
+        }
+        .map_or(JsValue::UnDefined, |res| ctx.new_array_buffer(&res).into())
+    }
+
+    pub fn js_set_auto_padding(
+        &mut self,
+        _this: &mut JsObject,
+        _ctx: &mut Context,
+        _argv: &[JsValue],
+    ) -> JsValue {
+        true.into()
+    }
+}
+
+impl JsClassDef for JsCipher {
+    type RefType = Self;
+
+    const CLASS_NAME: &'static str = "JsCipher";
+
+    const CONSTRUCTOR_ARGC: u8 = 5;
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[
+        ("update", 1, Self::js_update),
+        ("final", 0, Self::js_final),
+        ("setAAD", 0, Self::js_set_aad),
+        ("setAuthTag", 0, Self::js_set_auth_tag),
+        ("getAuthTag", 0, Self::js_get_auth_tag),
+        ("setAutoPadding", 0, Self::js_set_auto_padding),
+    ];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
+    }
+
+    fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
+        if let (
+            Some(JsValue::String(alg)),
+            Some(JsValue::ArrayBuffer(key)),
+            Some(JsValue::ArrayBuffer(iv)),
+            Some(JsValue::Bool(is_encrypt)),
+        ) = (argv.get(0), argv.get(1), argv.get(2), argv.get(4))
+        {
+            if *is_encrypt {
+                lib::Cipher::create(alg.as_str(), key.as_ref(), iv.as_ref())
+                    .or_else(|e| {
+                        let err = errno_to_js_object(ctx, e);
+                        Err(JsValue::Exception(ctx.throw_error(err)))
+                    })
+                    .map(|c| JsCipher::Cipher(c))
+            } else {
+                lib::Decipher::create(alg.as_str(), key.as_ref(), iv.as_ref())
+                    .or_else(|e| {
+                        let err = errno_to_js_object(ctx, e);
+                        Err(JsValue::Exception(ctx.throw_error(err)))
+                    })
+                    .map(|c| JsCipher::Decipher(c))
+            }
+        } else {
+            Err(JsValue::UnDefined)
+        }
+    }
+
+    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
+        std::mem::drop(data)
+    }
+}
+
 struct Crypto;
 
 impl ModuleInit for Crypto {
@@ -340,6 +491,7 @@ impl ModuleInit for Crypto {
         );
         m.add_export(JsHash::CLASS_NAME, register_class::<JsHash>(ctx));
         m.add_export(JsHmac::CLASS_NAME, register_class::<JsHmac>(ctx));
+        m.add_export(JsCipher::CLASS_NAME, register_class::<JsCipher>(ctx));
     }
 }
 
@@ -355,6 +507,7 @@ pub fn init_module(ctx: &mut Context) {
             "hkdf_sync\0",
             JsHash::CLASS_NAME,
             JsHmac::CLASS_NAME,
+            JsCipher::CLASS_NAME,
         ],
     )
 }

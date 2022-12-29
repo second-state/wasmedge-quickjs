@@ -480,6 +480,39 @@ pub fn u8array_to_hex(arr: impl AsRef<[u8]>) -> String {
         .join("")
 }
 
+/// Convert hex string to u8 array
+///
+/// # Examples
+///
+/// ```
+/// use crypto_wasi::hex_to_u8array;
+///
+/// assert_eq!(hex_to_u8array("01172d"), Some(vec![01, 23, 45]));
+/// ```
+pub fn hex_to_u8array(arr: &str) -> Option<Vec<u8>> {
+    if arr.len() % 2 != 0 || arr.chars().any(|v| !v.is_ascii_hexdigit()) {
+        return None;
+    }
+
+    fn hex_byte_to_u8(h: u8) -> u8 {
+        match h {
+            b'0'..=b'9' => h - b'0',
+            b'a'..=b'f' => 10 + h - b'a',
+            b'A'..=b'F' => 10 + h - b'A',
+            _ => unreachable!()
+        }
+    }
+
+    Some(
+        arr.as_bytes()
+            .chunks(2)
+            .map(|v| {
+                (hex_byte_to_u8(v[0]) << 4) + hex_byte_to_u8(v[1])
+            })
+            .collect(),
+    )
+}
+
 pub struct Cipher {
     handle: raw::SymmetricState,
     message: Vec<u8>,
@@ -487,10 +520,11 @@ pub struct Cipher {
 }
 
 impl Cipher {
-    pub fn create<T>(alg: &str, key: T, iv: T) -> Result<Self, raw::CryptoErrno>
-    where
-        T: AsRef<[u8]>,
-    {
+    pub fn create(
+        alg: &str,
+        key: impl AsRef<[u8]>,
+        iv: impl AsRef<[u8]>,
+    ) -> Result<Self, raw::CryptoErrno> {
         let alg = match alg {
             "aes-128-gcm" | "AES-128-GCM" => "AES-128-GCM",
             "aes-256-gcm" | "AES-256-GCM" => "AES-256-GCM",
@@ -594,16 +628,144 @@ impl Drop for Cipher {
     }
 }
 
-pub fn encrypt<T: AsRef<[u8]>>(
+pub fn encrypt(
     alg: &str,
-    key: T,
-    iv: T,
-    aad: T,
-    msg: T,
+    key: impl AsRef<[u8]>,
+    iv: impl AsRef<[u8]>,
+    aad: impl AsRef<[u8]>,
+    msg: impl AsRef<[u8]>,
 ) -> Result<(Vec<u8>, Vec<u8>), raw::CryptoErrno> {
     let mut c = Cipher::create(alg, key, iv)?;
     c.set_aad(aad)?;
     let out = c.encrypt(msg)?;
     let tag = c.take_auth_tag()?;
     Ok((out, tag))
+}
+
+pub struct Decipher {
+    handle: raw::SymmetricState,
+    message: Vec<u8>,
+    tag: Option<Vec<u8>>,
+}
+
+impl Decipher {
+    pub fn create(
+        alg: &str,
+        key: impl AsRef<[u8]>,
+        iv: impl AsRef<[u8]>,
+    ) -> Result<Self, raw::CryptoErrno> {
+        let alg = match alg {
+            "aes-128-gcm" | "AES-128-GCM" => "AES-128-GCM",
+            "aes-256-gcm" | "AES-256-GCM" => "AES-256-GCM",
+            _ => return Err(raw::CRYPTO_ERRNO_UNSUPPORTED_ALGORITHM),
+        };
+        let handle = {
+            let key = key.as_ref();
+            let iv = iv.as_ref();
+            unsafe {
+                let raw_key = raw::symmetric_key_import(alg, key.as_ptr(), key.len())?;
+                let key = raw::OptSymmetricKey {
+                    tag: raw::OPT_SYMMETRIC_KEY_U_SOME.raw(),
+                    u: raw::OptSymmetricKeyUnion { some: raw_key },
+                };
+                let opt = raw::options_open(raw::ALGORITHM_TYPE_SYMMETRIC)?;
+                raw::options_set(opt, "nonce", iv.as_ptr(), iv.len())?;
+                let opts = raw::OptOptions {
+                    tag: raw::OPT_OPTIONS_U_SOME.raw(),
+                    u: raw::OptOptionsUnion { some: opt },
+                };
+                let state = raw::symmetric_state_open(alg, key, opts).unwrap();
+                raw::symmetric_key_close(raw_key).unwrap();
+                state
+            }
+        };
+        Ok(Self {
+            handle,
+            message: vec![],
+            tag: None,
+        })
+    }
+
+    pub fn set_aad(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        let data = data.as_ref();
+        unsafe { raw::symmetric_state_absorb(self.handle, data.as_ptr(), data.len()) }
+    }
+
+    /// in WasmEdge implement of wasi-crypto, `decrypt` can't be called multiple times,
+    /// multiple call `decrypt` is also not equivalent to multiple call `update`.
+    /// so we store all message and concat it, then decrypt one-time on `final`
+    pub fn update(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        self.message.extend_from_slice(data.as_ref());
+        Ok(())
+    }
+
+    /// `final` is reserved keyword, `fin` looks better than `r#final`
+    pub fn fin(&mut self) -> Result<Vec<u8>, raw::CryptoErrno> {
+        if let Some(tag) = &self.tag {
+            let mut out = vec![0; self.message.len()];
+            unsafe {
+                raw::symmetric_state_decrypt_detached(
+                    self.handle,
+                    out.as_mut_ptr(),
+                    out.len(),
+                    self.message.as_ptr(),
+                    self.message.len(),
+                    tag.as_ptr(),
+                    tag.len(),
+                )?;
+            }
+            Ok(out)
+        } else {
+            Err(raw::CRYPTO_ERRNO_INVALID_OPERATION)
+        }
+    }
+
+    /// equivalent to `update(data)` then `final`
+    pub fn decrypt(&mut self, data: impl AsRef<[u8]>) -> Result<Vec<u8>, raw::CryptoErrno> {
+        let data = data.as_ref();
+        if let Some(tag) = &self.tag {
+            let mut out = vec![0; data.len()];
+            unsafe {
+                raw::symmetric_state_decrypt_detached(
+                    self.handle,
+                    out.as_mut_ptr(),
+                    out.len(),
+                    data.as_ptr(),
+                    data.len(),
+                    tag.as_ptr(),
+                    tag.len(),
+                )?;
+            }
+            Ok(out)
+        } else {
+            Err(raw::CRYPTO_ERRNO_INVALID_OPERATION)
+        }
+    }
+
+    pub fn set_auth_tag(&mut self, data: impl AsRef<[u8]>) -> Result<(), raw::CryptoErrno> {
+        self.tag = Some(data.as_ref().to_vec());
+        Ok(())
+    }
+}
+
+impl Drop for Decipher {
+    fn drop(&mut self) {
+        unsafe {
+            raw::symmetric_state_close(self.handle).unwrap();
+        }
+    }
+}
+
+pub fn decrypt(
+    alg: &str,
+    key: impl AsRef<[u8]>,
+    iv: impl AsRef<[u8]>,
+    aad: impl AsRef<[u8]>,
+    auth_tag: impl AsRef<[u8]>,
+    msg: impl AsRef<[u8]>,
+) -> Result<Vec<u8>, raw::CryptoErrno> {
+    let mut c = Decipher::create(alg, key, iv)?;
+    c.set_aad(aad)?;
+    c.set_auth_tag(auth_tag)?;
+    c.decrypt(msg)
 }
