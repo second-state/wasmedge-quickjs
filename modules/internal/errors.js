@@ -922,3 +922,17 @@ export class ERR_CRYPTO_HASH_UPDATE_FAILED extends Error {
         this.code = "ERR_CRYPTO_HASH_UPDATE_FAILED";
     }
 }
+
+export class ERR_CRYPTO_INVALID_STATE extends Error {
+    constructor() {
+        super(`Invalid state`);
+        this.code = "ERR_CRYPTO_INVALID_STATE";
+    }
+}
+
+export class ERR_CRYPTO_UNKNOWN_CIPHER extends Error {
+    constructor() {
+        super(`Unknown cipher`);
+        this.code = "ERR_CRYPTO_UNKNOWN_CIPHER";
+    }
+}

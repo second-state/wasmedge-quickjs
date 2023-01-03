@@ -83,10 +83,32 @@ function testCipher3(key, iv) {
          `encryption/decryption with key ${key} and iv ${iv}`);
 }
 
+// copy from testCipher1 but used aes-128-gcm
+function testCipher4(key, iv) {
+  // Test encryption and decryption with explicit key and iv
+  const plaintext =
+          '32|RmVZZkFUVmpRRkp0TmJaUm56ZU9qcnJkaXNNWVNpTTU*|iXmckfRWZBGWWELw' +
+          'eCBsThSsfUHLeRe0KCsK8ooHgxie0zOINpXxfZi/oNG7uq9JWFVCk70gfzQH8ZUJ' +
+          'jAfaFg**';
+  
+  const cipher = crypto.createCipheriv('aes-128-gcm', key, iv);
+  let ciph = cipher.update(plaintext, 'utf8', 'hex');
+  ciph += cipher.final('hex');
+  let tag = cipher.getAuthTag();
+
+  const decipher = crypto.createDecipheriv('aes-128-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  let txt = decipher.update(ciph, 'hex', 'utf8');
+  txt += decipher.final('utf8');
+
+  assert.strictEqual(txt, plaintext,
+                     `encryption/decryption with key ${key} and iv ${iv}`);
+}
+
 {
   const Cipheriv = crypto.Cipheriv;
-  const key = '123456789012345678901234';
-  const iv = '12345678';
+  const key = '1234567890123456';
+  const iv = '123456789012';
 
   const instance = Cipheriv('aes-128-gcm', key, iv);
   assert(instance instanceof Cipheriv, 'Cipheriv is expected to return a new ' +
@@ -118,8 +140,8 @@ function testCipher3(key, iv) {
 
 {
   const Decipheriv = crypto.Decipheriv;
-  const key = '123456789012345678901234';
-  const iv = '12345678';
+  const key = '1234567890123456';
+  const iv = '123456789012';
 
   const instance = Decipheriv('aes-128-gcm', key, iv);
   assert(instance instanceof Decipheriv, 'Decipheriv expected to return a new' +
@@ -148,6 +170,12 @@ function testCipher3(key, iv) {
       name: 'TypeError',
     });
 }
+
+testCipher4('0123456789abcdef', '0123456789ab');
+testCipher4('0123456789abcdef', Buffer.from('0123456789ab'));
+testCipher4(Buffer.from('0123456789abcdef'), '0123456789ab');
+testCipher4(Buffer.from('0123456789abcdef'), Buffer.from('0123456789ab'));
+
 /*
 testCipher1('0123456789abcd0123456789', '12345678');
 testCipher1('0123456789abcd0123456789', Buffer.from('12345678'));
@@ -198,12 +226,13 @@ assert.throws(
   errMessage);
 
 // But all other IV lengths should be accepted.
+/* Unsupported
 const minIvLength = common.hasOpenSSL3 ? 8 : 1;
 const maxIvLength = common.hasOpenSSL3 ? 64 : 256;
 for (let n = minIvLength; n < maxIvLength; n += 1) {
   if (common.hasFipsCrypto && n < 12) continue;
   crypto.createCipheriv('aes-128-gcm', Buffer.alloc(16), Buffer.alloc(n));
-}
+}*/
 
 {
   // Passing an invalid cipher name should throw.

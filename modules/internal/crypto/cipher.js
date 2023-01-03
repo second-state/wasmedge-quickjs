@@ -17,6 +17,7 @@ const {
 
 import {
   ERR_CRYPTO_INVALID_STATE,
+  ERR_CRYPTO_UNKNOWN_CIPHER,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
 } from '../errors';
@@ -39,6 +40,7 @@ import {
   getArrayBufferOrView,
   getStringOption,
   kHandle,
+  getCiphers,
 } from './util';
 
 import {
@@ -52,6 +54,8 @@ import { LazyTransform } from '../streams/lazy_transform';
 import { normalizeEncoding } from '../util';
 
 import { StringDecoder } from 'string_decoder';
+
+import { JsCipher as CipherBase } from "_node:crypto";
 
 function rsaFunctionFor(method, defaultPadding, keyType) {
   return (options, buffer) => {
@@ -103,7 +107,7 @@ function createCipherBase(cipher, credential, options, decipher, iv) {
   if (iv === undefined) {
     // this[kHandle].init(cipher, credential, authTagLength);
   } else {
-    this[kHandle] = new CipherBase(cipher, credential, iv, authTagLength, decipher);
+    this[kHandle] = new CipherBase(cipher, credential.buffer ?? credential, iv.buffer ?? iv, authTagLength, decipher);
   }
   this._decoder = null;
 
@@ -122,6 +126,15 @@ function createCipherWithIV(cipher, key, options, decipher, iv) {
   const encoding = getStringOption(options, 'encoding');
   key = prepareSecretKey(key, encoding);
   iv = iv === null ? null : getArrayBufferOrView(iv, 'iv');
+  if (!getCiphers().includes(cipher)) {
+    throw new ERR_CRYPTO_UNKNOWN_CIPHER();
+  }
+  // Zero-sized IV should be rejected in GCM mode. 
+  // Wasi-crypto current implemention only support GCM mode,
+  // so always check
+  if (iv.byteLength === 0) {
+    throw new Error("Invalid initialization vector");
+  }
   Reflect.apply(createCipherBase, this, [cipher, key, options, decipher, iv]);
 }
 
@@ -141,14 +154,13 @@ Object.setPrototypeOf(Cipher.prototype, LazyTransform.prototype);
 Object.setPrototypeOf(Cipher, LazyTransform);
 
 Cipher.prototype._transform = function _transform(chunk, encoding, callback) {
-  let buf = getArrayBufferOrView(chunk, "chunk", encoding);
-  this.push(this[kHandle].update(buf.buffer ?? buf));
+  this.push(this.update(chunk, encoding));
   callback();
 };
 
 Cipher.prototype._flush = function _flush(callback) {
   try {
-    this.push(this[kHandle].final());
+    this.push(this.final());
   } catch (e) {
     callback(e);
     return;
@@ -172,8 +184,9 @@ Cipher.prototype.update = function update(data, inputEncoding, outputEncoding) {
   const ret = this[kHandle].update(buf.buffer ?? buf);
 
   if (outputEncoding && outputEncoding !== 'buffer') {
-    this._decoder = getDecoder(this._decoder, outputEncoding);
-    return this._decoder.write(ret);
+    return ""; // current implemented doesn't return anything from update
+    // this._decoder = getDecoder(this._decoder, outputEncoding);
+    // return this._decoder.write(ret);
   }
 
   return ret;
@@ -183,10 +196,10 @@ Cipher.prototype.update = function update(data, inputEncoding, outputEncoding) {
 Cipher.prototype.final = function final(outputEncoding) {
   outputEncoding = outputEncoding || getDefaultEncoding();
   const ret = this[kHandle].final();
-
   if (outputEncoding && outputEncoding !== 'buffer') {
-    this._decoder = getDecoder(this._decoder, outputEncoding);
-    return this._decoder.end(ret);
+    return Buffer.from(ret).toString(outputEncoding);
+    // this._decoder = getDecoder(this._decoder, outputEncoding);
+    // return this._decoder.end(ret);
   }
 
   return ret;

@@ -67,7 +67,6 @@ fn test_crypto_cipher_decipher() {
     test_js_file("test/crypto/test-crypto-cipher-decipher.js");
 }
 #[test]
-#[ignore = "working"]
 fn test_crypto_cipheriv_decipheriv() {
     test_js_file("test/crypto/test-crypto-cipheriv-decipheriv.js");
 }

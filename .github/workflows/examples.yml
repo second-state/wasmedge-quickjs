@@ -37,7 +37,7 @@ jobs:
         curl -sLO https://github.com/WasmEdge/WasmEdge/releases/download/0.11.2/WasmEdge-plugin-wasi_crypto-0.11.2-manylinux2014_x86_64.tar.gz
         tar -zxf WasmEdge-plugin-wasi_crypto-0.11.2-manylinux2014_x86_64.tar.gz
         rm -f WasmEdge-plugin-wasi_crypto-0.11.2-manylinux2014_x86_64.tar.gz
-        mv libwasmedgePluginWasiCrypto.so /usr/local/lib/wasmedge/
+        sudo mv libwasmedgePluginWasiCrypto.so /usr/local/lib/wasmedge/
 
     - uses: actions/setup-node@v2
       with:
