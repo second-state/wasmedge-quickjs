@@ -335,6 +335,9 @@ impl Context {
             super::internal_module::tensorflow_module::init_module_tensorflow_lite(&mut ctx);
         }
 
+        #[cfg(feature = "wasi_nn")]
+        super::internal_module::wasi_nn::init_module(&mut ctx);
+
         js_init_dirname(&mut ctx);
 
         super::internal_module::core::init_global_function(&mut ctx);

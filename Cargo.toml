@@ -9,15 +9,15 @@ readme = "README.md"
 documentation = "https://www.secondstate.io/articles/run-javascript-in-webassembly-with-wasmedge/"
 homepage = "https://www.secondstate.io/"
 edition = "2018"
-exclude = [
-    "example_js/*",
-    "examples/*",
-]
+exclude = ["example_js/*", "examples/*"]
 
 [dependencies]
 argparse = "0.2.2"
-image = { version = "0.23.6", default-features = false, features = ["jpeg", "png"], optional = true }
-imageproc = { version =  "0.22.0", optional = true }
+image = { version = "0.23.6", default-features = false, features = [
+    "jpeg",
+    "png",
+], optional = true }
+imageproc = { version = "0.22.0", optional = true }
 libc = "0.2"
 url = "2.2.2"
 lazy_static = "1.4"
@@ -27,4 +27,5 @@ encoding = "0.2"
 default = []
 img = ["image", "imageproc"]
 tensorflow = ["img"]
+wasi_nn = ["img"]
 cjs = []
