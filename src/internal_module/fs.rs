@@ -853,7 +853,7 @@ fn freaddir_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
                             *(&buf[idx..(idx + s)] as *const [u8] as *const wasi_fs::Dirent)
                         };
                         idx += s;
-                        if (idx + dir.d_namlen as usize) >= len.min(4096) {
+                        if (idx + dir.d_namlen as usize) > len.min(4096) {
                             break;
                         }
                         let name =
