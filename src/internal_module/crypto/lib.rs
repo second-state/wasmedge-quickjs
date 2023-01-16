@@ -499,16 +499,14 @@ pub fn hex_to_u8array(arr: &str) -> Option<Vec<u8>> {
             b'0'..=b'9' => h - b'0',
             b'a'..=b'f' => 10 + h - b'a',
             b'A'..=b'F' => 10 + h - b'A',
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     Some(
         arr.as_bytes()
             .chunks(2)
-            .map(|v| {
-                (hex_byte_to_u8(v[0]) << 4) + hex_byte_to_u8(v[1])
-            })
+            .map(|v| (hex_byte_to_u8(v[0]) << 4) + hex_byte_to_u8(v[1]))
             .collect(),
     )
 }
