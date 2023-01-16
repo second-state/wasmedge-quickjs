@@ -236,10 +236,6 @@ impl JsClassDef for JsHash {
             _ => Err(JsValue::UnDefined),
         }
     }
-
-    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
-        std::mem::drop(data)
-    }
 }
 
 struct JsHmac {
@@ -306,10 +302,6 @@ impl JsClassDef for JsHmac {
             }
             _ => Err(JsValue::UnDefined),
         }
-    }
-
-    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
-        std::mem::drop(data)
     }
 }
 
@@ -457,10 +449,6 @@ impl JsClassDef for JsCipher {
         } else {
             Err(JsValue::UnDefined)
         }
-    }
-
-    fn finalizer(data: &mut Self::RefType, _event_loop: Option<&mut EventLoop>) {
-        std::mem::drop(data)
     }
 }
 
