@@ -47,7 +47,7 @@ import { hkdf_sync } from "_node:crypto";
 const validateParameters = hideStackFrames((hash, key, salt, info, length) => {
   validateString(hash, 'digest');
 
-  key = prepareKey(key);
+  key = prepareKey(key).export();
   salt = validateByteSource(salt, 'salt');
   info = validateByteSource(info, 'info');
 
@@ -83,7 +83,7 @@ function prepareKey(key) {
     return key;
 
   if (isAnyArrayBuffer(key))
-    return getArrayBufferOrView(key);
+    return createSecretKey(key);
 
   key = toBuf(key);
 
@@ -101,7 +101,7 @@ function prepareKey(key) {
       key);
   }
 
-  return getArrayBufferOrView(key);
+  return createSecretKey(key);
 }
 
 function hkdf(hash, key, salt, info, length, callback) {

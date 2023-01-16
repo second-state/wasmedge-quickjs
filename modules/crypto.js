@@ -40,13 +40,13 @@ import { hkdf, hkdfSync } from "./internal/crypto/hkdf";
   generateKeyPair,
   generateKeyPairSync,
   generateKeySync,
-} from "./internal/crypto/keygen";
+} from "./internal/crypto/keygen";*/
 import {
   createPrivateKey,
   createPublicKey,
   createSecretKey,
   KeyObject,
-} from "./internal/crypto/keys";
+} from "./internal/crypto/keys";/*
 import {
   DiffieHellman,
   diffieHellman,
@@ -166,10 +166,10 @@ export default {
   createDiffieHellmanGroup,
   createECDH,*/
   createHash,
-  createHmac,/*
+  createHmac,
   createPrivateKey,
   createPublicKey,
-  createSecretKey,
+  createSecretKey,/*
   createSign,
   createVerify,*/
   Decipheriv,/*
@@ -231,10 +231,10 @@ export {
   createDiffieHellmanGroup,
   createECDH,*/
   createHash,
-  createHmac,/*
+  createHmac,
   createPrivateKey,
   createPublicKey,
-  createSecretKey,
+  createSecretKey,/*
   createSign,
   createVerify,*/
   Decipheriv,/*

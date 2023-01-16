@@ -1,8 +1,33 @@
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
 'use strict';
 
-class KeyObjectHandle {
-  // TODO
+class SecretKeyHandle {
+  #keyBuffer
+
+  constructor(key) {
+    this.#keyBuffer = Buffer.from(key);
+  }
+
+  // base
+  equals(key) {
+    return this.export().equals(key.export());
+  }
+
+  // secretKey
+  getSymmetricKeySize() {
+    return this.#keyBuffer.byteLength;
+  }
+
+  export() {
+    return Buffer.from(this.#keyBuffer)
+  }
+
+  exportJwk(_obj, _bool) {
+    return {
+      kty: 'oct',
+      k: this.#keyBuffer.toString("base64").replace(/=+$/, '')
+    };
+  }
 }
 
 const kKeyTypeSecret = Symbol("kKeyTypeSecret");
@@ -584,8 +609,8 @@ function prepareSecretKey(key, encoding, bufferOnly = false) {
 
 function createSecretKey(key, encoding) {
   key = prepareSecretKey(key, encoding, true);
-  const handle = new KeyObjectHandle();
-  handle.init(kKeyTypeSecret, key);
+  const handle = new SecretKeyHandle(key);
+  // handle.init(kKeyTypeSecret, key);
   return new SecretKeyObject(handle);
 }
 

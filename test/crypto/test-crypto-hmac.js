@@ -460,11 +460,11 @@ assert.strictEqual(
     /Invalid digest/);
 }*/
 
-/*{
+{
   const buf = Buffer.alloc(0);
   const keyObject = crypto.createSecretKey(Buffer.alloc(0));
   assert.deepStrictEqual(
     crypto.createHmac('sha256', buf).update('foo').digest(),
     crypto.createHmac('sha256', keyObject).update('foo').digest(),
   );
-}*/
+}

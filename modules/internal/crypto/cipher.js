@@ -30,6 +30,7 @@ import {
 } from '../validators';
 
 import {
+  isKeyObject,
   preparePrivateKey,
   preparePublicOrPrivateKey,
   prepareSecretKey,
@@ -125,6 +126,9 @@ function createCipherWithIV(cipher, key, options, decipher, iv) {
   validateString(cipher, 'cipher');
   const encoding = getStringOption(options, 'encoding');
   key = prepareSecretKey(key, encoding);
+  if (isKeyObject(key)) {
+    key = key.export();
+  }
   iv = iv === null ? null : getArrayBufferOrView(iv, 'iv');
   if (!getCiphers().includes(cipher)) {
     throw new ERR_CRYPTO_UNKNOWN_CIPHER();

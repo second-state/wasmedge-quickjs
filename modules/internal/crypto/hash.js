@@ -133,6 +133,9 @@ function Hmac(hmac, key, options) {
   }
   const encoding = getStringOption(options, 'encoding');
   key = prepareSecretKey(key, encoding);
+  if (key.export !== undefined) {
+    key = key.export();
+  }
   this[kHandle] = new _Hmac(hmac, key.buffer ?? key);
   this[kState] = {
     [kFinalized]: false
