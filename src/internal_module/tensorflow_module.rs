@@ -2,7 +2,7 @@ use crate::*;
 
 /// reference https://github.com/second-state/wasmedge_tensorflow_interface
 mod wasmedge_tensorflow {
-    /// wasmedge_tensorflow host functions.
+    // wasmedge_tensorflow host functions.
     #[link(wasm_import_module = "wasmedge_tensorflow")]
     extern "C" {
         pub fn wasmedge_tensorflow_create_session(model_buf: *const u8, model_buf_len: u32) -> u64;
@@ -37,7 +37,7 @@ mod wasmedge_tensorflow {
         pub fn wasmedge_tensorflow_clear_output(context: u64);
     }
 
-    /// wasmedge_tensorflowlite host functions.
+    // wasmedge_tensorflowlite host functions.
     #[link(wasm_import_module = "wasmedge_tensorflowlite")]
     extern "C" {
         pub fn wasmedge_tensorflowlite_create_session(
@@ -62,7 +62,7 @@ mod wasmedge_tensorflow {
         );
     }
 
-    /// wasmedge_image host helper functions.
+    // wasmedge_image host helper functions.
     #[link(wasm_import_module = "wasmedge_image")]
     extern "C" {
         pub fn wasmedge_image_load_jpg_to_rgb8(

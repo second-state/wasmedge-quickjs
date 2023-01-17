@@ -34,7 +34,11 @@ jobs:
       run: |
         VERSION=0.11.2
         curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION  -p /usr/local
-        
+        curl -sLO https://github.com/WasmEdge/WasmEdge/releases/download/0.12.0-alpha.1/WasmEdge-plugin-wasi_nn-tensorflowlite-0.12.0-alpha.1-ubuntu20.04_x86_64.tar.gz
+        tar -zxf WasmEdge-plugin-wasi_nn-tensorflowlite-*-ubuntu20.04_x86_64.tar.gz
+        rm -f WasmEdge-plugin-wasi_nn-tensorflowlite-*-ubuntu20.04_x86_64.tar.gz
+        sudo mv libwasmedgePluginWasiNN.so /usr/local/lib/wasmedge/
+
     - uses: actions/setup-node@v2
       with:
         node-version: '14'
@@ -152,6 +156,11 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --release --features=tensorflow
         wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/main.js
+
+    - name: WASI-NN example (TensorflowLite)
+      run: |
+        cargo build --target wasm32-wasi --release --features=wasi_nn
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/wasi_nn_main.js
 
     - name: Embed JS in Rust
       run: |

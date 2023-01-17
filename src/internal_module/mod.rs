@@ -8,3 +8,5 @@ pub mod os;
 #[cfg(feature = "tensorflow")]
 pub mod tensorflow_module;
 pub mod wasi_net_module;
+#[cfg(feature = "wasi_nn")]
+pub mod wasi_nn;
