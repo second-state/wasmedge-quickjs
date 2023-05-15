@@ -17,7 +17,7 @@ Install [Rust](https://www.rust-lang.org/tools/install) and use the following co
 $ rustup target add wasm32-wasi
 ```
 
-Install [wasmedge CLI tool](https://wasmedge.org/book/en/start/install.html). Make sure that you use the `-e all` option to install the WasmEdge Tensorflow extensions if you want to try the Tensorflow examples.
+Install [wasmedge CLI tool](https://wasmedge.org/docs/develop/build-and-run/install). Make sure that you [install the WasmEdge Tensorflow Lite plugin](https://wasmedge.org/docs/develop/build-and-run/install#wasi-nn-plugin-with-tensorflow-lite) if you want to try the Tensorflow examples.
 
 ## Hello world
 
@@ -42,6 +42,7 @@ cargo build --target wasm32-wasi --release
 ```
 
 ### Run
+
 ```shell
 $ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/module_demo/demo.js 
 
@@ -58,10 +59,7 @@ $ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js
 
 hello from "my_mod_1.js"
 hello from "my_mod_2.js"
-
 ```
-
-### 
 
 ## Async HTTP Request
 
@@ -82,7 +80,7 @@ $ wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js
 Start an HTTP server.
 
 ```
-$ nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_echo.js &
+$ nohup wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_server.js &
 ```
 
 Access the server.
