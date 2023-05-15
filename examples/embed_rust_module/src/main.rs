@@ -14,7 +14,7 @@ mod point {
             println!("rust-> new Point {:?}", argv);
             let x = argv.get(0);
             let y = argv.get(1);
-            if let ((Some(JsValue::Int(ref x)), Some(JsValue::Int(ref y)))) = (x, y) {
+            if let (Some(JsValue::Int(ref x)), Some(JsValue::Int(ref y))) = (x, y) {
                 Some(Point(*x, *y))
             } else {
                 None
