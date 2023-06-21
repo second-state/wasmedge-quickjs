@@ -157,7 +157,7 @@ impl JsClassDef for Buffer {
     }
 
     const FIELDS: &'static [crate::JsClassField<Self::RefType>] = &[
-        ("length", Self::js_length, None),
+        ("byteLength", Self::js_length, None),
         ("buffer", Self::js_buffer, None),
     ];
 
