@@ -199,7 +199,7 @@ pub trait ExtendsJsClassDef {
 
     type BaseDef: JsClassDef;
 
-    const CLASS_NAME: &'static str;
+    const EXT_CLASS_NAME: &'static str;
     const CONSTRUCTOR_ARGC: u8;
     const FIELDS: &'static [JsClassField<Self::RefType>];
     const METHODS: &'static [JsClassMethod<Self::RefType>];
@@ -216,7 +216,7 @@ pub trait ExtendsJsClassDef {
 impl<S: ExtendsJsClassDef> JsClassDef for S {
     type RefType = <Self as ExtendsJsClassDef>::RefType;
 
-    const CLASS_NAME: &'static str = <Self as ExtendsJsClassDef>::CLASS_NAME;
+    const CLASS_NAME: &'static str = <Self as ExtendsJsClassDef>::EXT_CLASS_NAME;
 
     const CONSTRUCTOR_ARGC: u8 = <Self as ExtendsJsClassDef>::CONSTRUCTOR_ARGC;
 

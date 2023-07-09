@@ -18,7 +18,7 @@ async function test_fetch_post() {
         print(e)
     }
 }
-test_fetch_post()
+// test_fetch_post()
 
 async function test_fetch_put() {
     try {
@@ -33,4 +33,4 @@ async function test_fetch_put() {
         print(e)
     }
 }
-test_fetch_put()
+// test_fetch_put()

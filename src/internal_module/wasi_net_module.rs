@@ -1,20 +1,36 @@
+use std::io::Write;
+
 use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, PollResult};
 use crate::*;
 
 impl AsyncTcpConn {
     pub fn connect(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-        let addr = argv.get(0);
-        let timeout = argv.get(1);
+        use wasmedge_wasi_socket::ToSocketAddrs;
+        let host = argv.get(0);
+        let port = argv.get(1);
+        let timeout = argv.get(2);
         let (p, ok, error) = ctx.new_promise();
         let event_loop = ctx.event_loop();
-        if let (Some(JsValue::String(addr)), Some(event_loop)) = (addr, event_loop) {
+        if let (Some(JsValue::String(host)), Some(JsValue::Int(port)), Some(event_loop)) =
+            (host, port, event_loop)
+        {
             let timeout = if let Some(JsValue::Int(timeout)) = timeout {
                 Some(std::time::Duration::from_millis((*timeout) as u64))
             } else {
                 None
             };
 
-            let addr = addr.to_string().parse();
+            let host = host.to_string();
+
+            let addr = (host.as_str(), *port as u16)
+                .to_socket_addrs()
+                .and_then(|mut it| {
+                    it.next().ok_or(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("Unknown domain name {}", host),
+                    ))
+                });
+
             match addr {
                 Ok(addr) => {
                     if let Err(e) = event_loop.tcp_connect(
@@ -76,7 +92,7 @@ impl AsyncTcpConn {
 
     pub fn js_read(
         this_val: &mut AsyncTcpConn,
-        _this_obj: &mut JsObject,
+        this_obj: &mut JsObject,
         ctx: &mut Context,
         argv: &[JsValue],
     ) -> JsValue {
@@ -87,18 +103,34 @@ impl AsyncTcpConn {
             } else {
                 None
             };
+
+            let mut this_obj = JsValue::Object(this_obj.clone());
             this_val.async_read(
                 event_poll,
                 Box::new(move |ctx, event| match event {
-                    PollResult::Read(data) => {
-                        if let JsValue::Function(ok) = ok {
-                            let ret = if data.len() > 0 {
-                                let buff = ctx.new_array_buffer(data.as_slice());
-                                JsValue::ArrayBuffer(buff)
-                            } else {
-                                JsValue::UnDefined
-                            };
-                            ok.call(&[ret]);
+                    PollResult::Read(_) => {
+                        let this_val = Self::opaque_mut(&mut this_obj).unwrap();
+                        let data = this_val.read_all();
+
+                        match data {
+                            Ok(data) => {
+                                if let JsValue::Function(ok) = ok {
+                                    let ret = if data.len() > 0 {
+                                        let buff = ctx.new_array_buffer(data.as_slice());
+                                        JsValue::ArrayBuffer(buff)
+                                    } else {
+                                        JsValue::UnDefined
+                                    };
+                                    ok.call(&[ret]);
+                                }
+                            }
+                            Err(e) => {
+                                let err_msg = e.to_string();
+                                let e = ctx.new_error(err_msg.as_str());
+                                if let JsValue::Function(error) = error {
+                                    error.call(&[e]);
+                                }
+                            }
                         }
                     }
                     PollResult::Error(e) => {
@@ -291,14 +323,15 @@ impl JsClassDef for AsyncTcpServer {
 }
 
 fn js_nsloopup(ctx: &mut Context, _this: JsValue, param: &[JsValue]) -> JsValue {
+    use wasmedge_wasi_socket::ToSocketAddrs;
     let node = param.get(0);
     let service = param.get(1);
     if let (Some(JsValue::String(node)), Some(JsValue::String(service))) = (node, service) {
-        let r = event_loop::nslookup(node.as_str(), service.as_str());
+        let r = format!("{}:{}", node.as_str(), service.as_str()).to_socket_addrs();
         match r {
             Ok(addr_vec) => {
                 let mut array = ctx.new_array();
-                for (i, addr) in addr_vec.iter().enumerate() {
+                for (i, addr) in addr_vec.enumerate() {
                     array.put(i, ctx.new_string(addr.to_string().as_str()).into());
                 }
                 array.into()
@@ -316,7 +349,6 @@ pub fn init_module(ctx: &mut Context) {
         &[
             AsyncTcpServer::CLASS_NAME,
             AsyncTcpConn::CLASS_NAME,
-            "connect",
             "nsloopup",
         ],
         |ctx, m| {
@@ -328,7 +360,6 @@ pub fn init_module(ctx: &mut Context) {
                 let conn = ctx.wrap_function("connect", AsyncTcpConn::connect);
                 tcp_conn_ctor.set("connect", conn.into());
             }
-
             m.add_export(AsyncTcpConn::CLASS_NAME, class_ctor);
 
             let f = ctx.wrap_function("nsloopup", js_nsloopup);

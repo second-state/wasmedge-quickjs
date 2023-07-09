@@ -7,10 +7,11 @@ use crate::{quickjs_sys as qjs, Context, JsValue};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::{HashMap, LinkedList};
-use std::io;
+use std::io::{self, Read, Write};
 use std::mem::ManuallyDrop;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::ops::Add;
+use std::os::fd::{AsRawFd, FromRawFd};
 
 pub use wasi_sock::nslookup;
 
@@ -28,7 +29,7 @@ impl AsyncTcpServer {
         callback: Box<dyn FnOnce(&mut qjs::Context, PollResult)>,
         timeout: Option<std::time::Duration>,
     ) {
-        let s = self.0 .0;
+        let s = self.0.as_raw_fd();
         if let Some(timeout) = timeout {
             let ddl = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -57,11 +58,7 @@ impl AsyncTcpServer {
 
 pub struct AsyncTcpConn(wasi_sock::Socket);
 impl AsyncTcpConn {
-    pub fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.send(buf)
-    }
-
-    pub fn read(&mut self) -> io::Result<Vec<u8>> {
+    pub fn read_all(&mut self) -> io::Result<Vec<u8>> {
         let mut buff = [0u8; 1024];
         let mut data = vec![];
         loop {
@@ -98,7 +95,7 @@ impl AsyncTcpConn {
             event_loop
                 .io_selector
                 .add_task(PollTask::SocketTimeout(SocketTimeoutTask {
-                    s: self.0 .0,
+                    s: self.0.as_raw_fd(),
                     event: NetPollEvent::Read,
                     timeout: ddl,
                     callback,
@@ -107,15 +104,11 @@ impl AsyncTcpConn {
             event_loop
                 .io_selector
                 .add_task(PollTask::Socket(SocketTask {
-                    s: self.0 .0,
+                    s: self.0.as_raw_fd(),
                     event: NetPollEvent::Read,
                     callback,
                 }));
         }
-    }
-
-    pub fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 
     pub fn local(&self) -> io::Result<SocketAddr> {
@@ -124,6 +117,22 @@ impl AsyncTcpConn {
 
     pub fn peer(&self) -> io::Result<SocketAddr> {
         self.0.get_peer()
+    }
+}
+
+impl io::Read for AsyncTcpConn {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.recv(buf)
+    }
+}
+
+impl io::Write for AsyncTcpConn {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.send(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
@@ -369,13 +378,11 @@ impl IoSelector {
             subscription_vec.len()
         ];
 
-        let n = unsafe {
-            poll::poll_oneoff(
-                subscription_vec.as_ptr(),
-                revent.as_mut_ptr(),
-                subscription_vec.len(),
-            )
-        }?;
+        let n = poll::poll(
+            subscription_vec.as_ptr(),
+            revent.as_mut_ptr(),
+            subscription_vec.len(),
+        )?;
 
         for i in 0..n {
             let event = revent[i];
@@ -414,20 +421,15 @@ impl IoSelector {
 
                         match net_event {
                             NetPollEvent::Accept => {
-                                let s = std::mem::ManuallyDrop::new(wasi_sock::Socket(s));
+                                let s = std::mem::ManuallyDrop::new(unsafe {
+                                    wasi_sock::Socket::from_raw_fd(s)
+                                });
                                 match s.accept(true) {
                                     Ok(cs) => callback(ctx, PollResult::Accept(AsyncTcpConn(cs))),
                                     Err(e) => callback(ctx, PollResult::Error(e)),
                                 }
                             }
-                            NetPollEvent::Read => {
-                                let mut s =
-                                    std::mem::ManuallyDrop::new(AsyncTcpConn(wasi_sock::Socket(s)));
-                                match s.read() {
-                                    Ok(data) => callback(ctx, PollResult::Read(data)),
-                                    Err(e) => callback(ctx, PollResult::Error(e)),
-                                }
-                            }
+                            NetPollEvent::Read => callback(ctx, PollResult::Read(vec![])),
                             NetPollEvent::Connect => {
                                 if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP
                                     > 0
@@ -435,7 +437,8 @@ impl IoSelector {
                                     let e = io::Error::from(io::ErrorKind::ConnectionAborted);
                                     callback(ctx, PollResult::Error(e));
                                 } else {
-                                    let s = AsyncTcpConn(wasi_sock::Socket(s));
+                                    let s =
+                                        AsyncTcpConn(unsafe { wasi_sock::Socket::from_raw_fd(s) });
                                     callback(ctx, PollResult::Connect(s));
                                 }
                             }
@@ -647,14 +650,14 @@ impl EventLoop {
 
             self.io_selector
                 .add_task(PollTask::SocketTimeout(SocketTimeoutTask {
-                    s: s.0,
+                    s: s.as_raw_fd(),
                     event: NetPollEvent::Connect,
                     timeout: ddl,
                     callback,
                 }));
         } else {
             self.io_selector.add_task(PollTask::Socket(SocketTask {
-                s: s.0,
+                s: s.as_raw_fd(),
                 event: NetPollEvent::Connect,
                 callback,
             }));

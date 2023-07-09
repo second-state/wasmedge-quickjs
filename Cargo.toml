@@ -22,6 +22,7 @@ libc = "0.2"
 url = "2.2.2"
 lazy_static = "1.4"
 encoding = "0.2"
+wasmedge_wasi_socket = { version = "0.5", features = ["wasi_poll"] }
 
 [features]
 default = []

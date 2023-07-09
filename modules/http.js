@@ -200,9 +200,8 @@ export async function fetch(input, init = {}) {
         headers['Host'] = url.host
     }
 
-    let addr = net.nsloopup(url.host, `${url.port}`)[0];
+    let s = await net.WasiTcpConn.connect(url.host, url.port);
 
-    let s = await net.WasiTcpConn.connect(addr)
     let req = new httpx.WasiRequest()
     req.version = init.version || 'HTTP/1.1'
     req.headers = headers
