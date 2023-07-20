@@ -1,19 +1,18 @@
 use std::io::Write;
 
-use crate::event_loop::{AsyncTcpConn, AsyncTcpServer, PollResult};
+use crate::event_loop::{AsyncTcpConn, AsyncTcpServer};
 use crate::*;
 
 impl AsyncTcpConn {
-    pub fn connect(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    pub fn js_connect(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         use wasmedge_wasi_socket::ToSocketAddrs;
         let host = argv.get(0);
         let port = argv.get(1);
         let timeout = argv.get(2);
-        let (p, ok, error) = ctx.new_promise();
-        let event_loop = ctx.event_loop();
-        if let (Some(JsValue::String(host)), Some(JsValue::Int(port)), Some(event_loop)) =
-            (host, port, event_loop)
-        {
+
+        let nctx = ctx.clone();
+
+        if let (Some(JsValue::String(host)), Some(JsValue::Int(port))) = (host, port) {
             let timeout = if let Some(JsValue::Int(timeout)) = timeout {
                 Some(std::time::Duration::from_millis((*timeout) as u64))
             } else {
@@ -21,61 +20,33 @@ impl AsyncTcpConn {
             };
 
             let host = host.to_string();
+            let port = *port as u16;
 
-            let addr = (host.as_str(), *port as u16)
-                .to_socket_addrs()
-                .and_then(|mut it| {
-                    it.next().ok_or(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        format!("Unknown domain name {}", host),
-                    ))
-                });
-
-            match addr {
-                Ok(addr) => {
-                    if let Err(e) = event_loop.tcp_connect(
-                        &addr,
-                        Box::new(move |ctx, event| match event {
-                            PollResult::Connect(cs) => {
-                                if let JsValue::Function(ok) = ok {
-                                    let cs = AsyncTcpConn::wrap_obj(ctx, cs);
-                                    ok.call(&[cs]);
-                                }
-                            }
-                            PollResult::Error(e) => {
-                                let err_msg = e.to_string();
-                                let e = ctx.new_error(err_msg.as_str());
-                                if let JsValue::Function(error) = error {
-                                    error.call(&[e]);
-                                }
-                            }
-                            PollResult::Timeout => {
-                                let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
-                                let e = ctx.new_error(e.to_string().as_str());
-                                if let JsValue::Function(error) = error {
-                                    error.call(&[e]);
-                                }
-                            }
-                            _ => {
-                                let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                                let e = ctx.new_error(e.to_string().as_str());
-                                if let JsValue::Function(error) = error {
-                                    error.call(&[e]);
-                                }
-                            }
-                        }),
-                        timeout,
-                    ) {
-                        let e = ctx.throw_internal_type_error(e.to_string().as_str());
-                        return e.into();
-                    };
-                }
-                Err(e) => {
-                    let e = ctx.throw_internal_type_error(e.to_string().as_str());
-                    return e.into();
-                }
-            }
-            p
+            let pp = if let Some(duration) = timeout {
+                ctx.future_to_promise(async move {
+                    let mut ctx = nctx;
+                    match tokio::time::timeout(duration, AsyncTcpConn::async_connect((host, port)))
+                        .await
+                    {
+                        Ok(Ok(conn)) => Ok(Self::wrap_obj(&mut ctx, conn)),
+                        Ok(Err(e)) => Err(ctx.new_error(e.to_string().as_str())),
+                        Err(e) => {
+                            let err =
+                                std::io::Error::new(std::io::ErrorKind::TimedOut, e.to_string());
+                            Err(ctx.new_error(err.to_string().as_str()).into())
+                        }
+                    }
+                })
+            } else {
+                ctx.future_to_promise(async move {
+                    let mut ctx = nctx;
+                    match AsyncTcpConn::async_connect((host, port)).await {
+                        Ok(conn) => Ok(Self::wrap_obj(&mut ctx, conn)),
+                        Err(e) => Err(ctx.new_error(e.to_string().as_str())),
+                    }
+                })
+            };
+            pp
         } else {
             JsValue::UnDefined
         }
@@ -91,98 +62,93 @@ impl AsyncTcpConn {
     }
 
     pub fn js_read(
-        this_val: &mut AsyncTcpConn,
+        _this_val: &mut AsyncTcpConn,
         this_obj: &mut JsObject,
         ctx: &mut Context,
         argv: &[JsValue],
     ) -> JsValue {
-        let (p, ok, error) = ctx.new_promise();
-        if let Some(event_poll) = ctx.event_loop() {
-            let timeout = if let Some(JsValue::Int(timeout)) = argv.get(0) {
-                Some(std::time::Duration::from_millis((*timeout) as u64))
-            } else {
-                None
-            };
-
-            let mut this_obj = JsValue::Object(this_obj.clone());
-            this_val.async_read(
-                event_poll,
-                Box::new(move |ctx, event| match event {
-                    PollResult::Read(_) => {
-                        let this_val = Self::opaque_mut(&mut this_obj).unwrap();
-                        let data = this_val.read_all();
-
-                        match data {
-                            Ok(data) => {
-                                if let JsValue::Function(ok) = ok {
-                                    let ret = if data.len() > 0 {
-                                        let buff = ctx.new_array_buffer(data.as_slice());
-                                        JsValue::ArrayBuffer(buff)
-                                    } else {
-                                        JsValue::UnDefined
-                                    };
-                                    ok.call(&[ret]);
-                                }
-                            }
-                            Err(e) => {
-                                let err_msg = e.to_string();
-                                let e = ctx.new_error(err_msg.as_str());
-                                if let JsValue::Function(error) = error {
-                                    error.call(&[e]);
-                                }
-                            }
+        let mut js_obj = this_obj.clone().into();
+        let n_ctx = ctx.clone();
+        if let Some(JsValue::Int(timeout)) = argv.get(0) {
+            let duration = std::time::Duration::from_millis((*timeout) as u64);
+            ctx.future_to_promise(async move {
+                let mut ctx = n_ctx;
+                let this_val = Self::opaque_mut(&mut js_obj).unwrap();
+                match tokio::time::timeout(duration, this_val.async_read_all()).await {
+                    Ok(Ok(data)) => {
+                        if data.len() > 0 {
+                            let buff = ctx.new_array_buffer(data.as_slice());
+                            Ok(JsValue::ArrayBuffer(buff))
+                        } else {
+                            Ok(JsValue::UnDefined)
                         }
                     }
-                    PollResult::Error(e) => {
-                        let err_msg = e.to_string();
-                        let e = ctx.new_error(err_msg.as_str());
-                        if let JsValue::Function(error) = error {
-                            error.call(&[e]);
-                        }
+                    Ok(Err(err)) => Err(ctx.new_error(err.to_string().as_str()).into()),
+                    Err(e) => {
+                        let err = std::io::Error::new(std::io::ErrorKind::TimedOut, e.to_string());
+                        Err(ctx.new_error(err.to_string().as_str()).into())
                     }
-                    PollResult::Timeout => {
-                        let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
-                        let e = ctx.new_error(e.to_string().as_str());
-                        if let JsValue::Function(error) = error {
-                            error.call(&[e]);
-                        }
-                    }
-                    _ => {
-                        let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                        let e = ctx.new_error(e.to_string().as_str());
-                        if let JsValue::Function(error) = error {
-                            error.call(&[e]);
-                        }
-                    }
-                }),
-                timeout,
-            );
-            p
+                }
+            })
         } else {
-            JsValue::UnDefined
+            ctx.future_to_promise(async move {
+                let mut ctx = n_ctx;
+                let this_val = Self::opaque_mut(&mut js_obj).unwrap();
+                match this_val.async_read_all().await {
+                    Ok(data) => {
+                        if data.len() > 0 {
+                            let buff = ctx.new_array_buffer(data.as_slice());
+                            log::trace!("async_read_all return ArrayBuffer");
+                            Ok(JsValue::ArrayBuffer(buff))
+                        } else {
+                            Ok(JsValue::UnDefined)
+                        }
+                    }
+                    Err(err) => Err(ctx.new_error(err.to_string().as_str()).into()),
+                }
+            })
         }
     }
 
     pub fn js_write(
-        this_val: &mut AsyncTcpConn,
-        _this_obj: &mut JsObject,
-        _ctx: &mut Context,
+        _this_val: &mut AsyncTcpConn,
+        this_obj: &mut JsObject,
+        ctx: &mut Context,
         argv: &[JsValue],
     ) -> JsValue {
-        let data = argv.get(0);
-        match data {
+        let mut js_obj = JsValue::Object(this_obj.clone());
+        match argv.get(0) {
             Some(JsValue::String(s)) => {
-                this_val.write(s.to_string().as_bytes());
+                let data = s.to_string();
+                ctx.future_to_promise(async move {
+                    let this_val = AsyncTcpConn::opaque_mut(&mut js_obj).unwrap();
+                    this_val.async_write_all(data.as_bytes()).await;
+                    Ok(JsValue::UnDefined)
+                });
             }
             Some(JsValue::ArrayBuffer(buff)) => {
-                this_val.write(buff.as_ref());
+                let data = buff.to_vec();
+                ctx.future_to_promise(async move {
+                    let this_val = AsyncTcpConn::opaque_mut(&mut js_obj).unwrap();
+                    this_val.async_write_all(&data).await;
+                    Ok(JsValue::UnDefined)
+                });
             }
             Some(JsValue::Object(o)) => {
-                this_val.write(o.to_string().as_bytes());
+                let data = o.to_string();
+                ctx.future_to_promise(async move {
+                    let this_val = AsyncTcpConn::opaque_mut(&mut js_obj).unwrap();
+                    this_val.async_write_all(data.as_bytes()).await;
+                    Ok(JsValue::UnDefined)
+                });
             }
             Some(JsValue::Symbol(s)) => {
                 let data = format!("{:?}", s);
-                this_val.write(data.as_bytes());
+                ctx.future_to_promise(async move {
+                    let this_val = AsyncTcpConn::opaque_mut(&mut js_obj).unwrap();
+                    this_val.async_write_all(data.as_bytes()).await;
+                    Ok(JsValue::UnDefined)
+                });
             }
             _ => {}
         };
@@ -243,7 +209,7 @@ impl JsClassDef for AsyncTcpConn {
 impl AsyncTcpServer {
     pub fn js_accept(
         &mut self,
-        _this: &mut JsObject,
+        this: &mut JsObject,
         ctx: &mut Context,
         argv: &[JsValue],
     ) -> JsValue {
@@ -252,45 +218,13 @@ impl AsyncTcpServer {
         } else {
             None
         };
-        let (p, ok, error) = ctx.new_promise();
-        if let Some(event_loop) = ctx.event_loop() {
-            self.async_accept(
-                event_loop,
-                Box::new(move |ctx, r| match r {
-                    PollResult::Accept(cs) => {
-                        let cs = AsyncTcpConn::wrap_obj(ctx, cs);
-                        if let JsValue::Function(ok) = ok {
-                            ok.call(&[cs]);
-                        }
-                    }
-                    PollResult::Error(e) => {
-                        let err_msg = e.to_string();
-                        let e = ctx.new_error(err_msg.as_str());
-                        if let JsValue::Function(error) = error {
-                            error.call(&[e]);
-                        }
-                    }
-                    PollResult::Timeout => {
-                        if let JsValue::Function(error) = error {
-                            let e = std::io::Error::from(std::io::ErrorKind::TimedOut);
-                            let e = ctx.new_error(e.to_string().as_str());
-                            error.call(&[e]);
-                        }
-                    }
-                    _ => {
-                        if let JsValue::Function(error) = error {
-                            let e = std::io::Error::from(std::io::ErrorKind::Unsupported);
-                            let e = ctx.new_error(e.to_string().as_str());
-                            error.call(&[e]);
-                        }
-                    }
-                }),
-                timeout,
-            );
-            p
-        } else {
-            JsValue::UnDefined
-        }
+        let n_ctx = ctx.clone();
+        let mut js_obj = this.clone().into();
+        ctx.future_to_promise(async move {
+            let this = Self::opaque_mut(&mut js_obj).unwrap();
+            let mut ctx = n_ctx;
+            this.accept(&mut ctx, timeout).await
+        })
     }
 }
 
@@ -311,10 +245,13 @@ impl JsClassDef for AsyncTcpServer {
 
     fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
         let port = argv.get(0).ok_or_else(|| JsValue::UnDefined)?;
-        if let (JsValue::Int(port), Some(event_loop)) = (port, ctx.event_loop()) {
-            match event_loop.tcp_listen(*port as u16) {
+        if let JsValue::Int(port) = port {
+            match Self::bind(*port as u16) {
                 Ok(tcp_server) => Ok(tcp_server),
-                Err(e) => Err(ctx.throw_internal_type_error(e.to_string().as_str()).into()),
+                Err(e) => {
+                    log::trace!("tcp_listen err: {e}");
+                    Err(ctx.throw_internal_type_error(e.to_string().as_str()).into())
+                }
             }
         } else {
             Err(JsValue::UnDefined)
@@ -357,7 +294,7 @@ pub fn init_module(ctx: &mut Context) {
 
             let mut class_ctor = register_class::<AsyncTcpConn>(ctx);
             if let JsValue::Function(tcp_conn_ctor) = &mut class_ctor {
-                let conn = ctx.wrap_function("connect", AsyncTcpConn::connect);
+                let conn = ctx.wrap_function("connect", AsyncTcpConn::js_connect);
                 tcp_conn_ctor.set("connect", conn.into());
             }
             m.add_export(AsyncTcpConn::CLASS_NAME, class_ctor);

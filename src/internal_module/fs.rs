@@ -1,5 +1,4 @@
 use crate::event_loop::wasi_fs;
-use crate::event_loop::PollResult;
 use crate::quickjs_sys::*;
 use std::convert::TryInto;
 use std::fs;
@@ -599,28 +598,48 @@ fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
         if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 let (promise, ok, error) = ctx.new_promise();
-                if let Some(event_loop) = ctx.event_loop() {
-                    event_loop.fd_read(
-                        *fd,
-                        position,
-                        *length as u64,
-                        Box::new(move |ctx, res| match res {
-                            PollResult::Read(data) => {
-                                let buf = ctx.new_array_buffer(&data);
-                                if let JsValue::Function(resolve) = ok {
-                                    resolve.call(&[JsValue::ArrayBuffer(buf)]);
-                                }
-                            }
-                            PollResult::Error(e) => {
-                                if let JsValue::Function(reject) = error {
-                                    reject.call(&[err_to_js_object(ctx, e)]);
-                                }
-                            }
-                            _ => {}
-                        }),
-                    );
-                    return promise;
+
+                let len = *length as usize; // len.min(event.fd_readwrite.nbytes) as usize;
+                let pos = position;
+                let fd = *fd;
+                let mut buf = vec![0u8; len];
+                let res = if pos >= 0 {
+                    unsafe {
+                        wasi_fs::fd_pread(
+                            fd as u32,
+                            &[wasi_fs::Iovec {
+                                buf: buf.as_mut_ptr(),
+                                buf_len: len,
+                            }],
+                            pos as u64,
+                        )
+                    }
+                } else {
+                    unsafe {
+                        wasi_fs::fd_read(
+                            fd as u32,
+                            &[wasi_fs::Iovec {
+                                buf: buf.as_mut_ptr(),
+                                buf_len: len,
+                            }],
+                        )
+                    }
+                };
+                match res {
+                    Ok(rlen) => {
+                        let buf = ctx.new_array_buffer(&buf[0..rlen]);
+                        if let JsValue::Function(resolve) = ok {
+                            resolve.call(&[JsValue::ArrayBuffer(buf)]);
+                        }
+                    }
+                    Err(e) => {
+                        if let JsValue::Function(reject) = error {
+                            reject.call(&[errno_to_js_object(ctx, e)]);
+                        }
+                    }
                 }
+
+                return promise;
             }
         }
     }
@@ -767,35 +786,23 @@ fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
 }
 
 fn fwrite(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
-    if let Some(JsValue::Int(fd)) = arg.get(0) {
-        if let Some(position) = get_js_number(arg.get(1)) {
-            if let Some(JsValue::ArrayBuffer(buf)) = arg.get(2) {
-                let (promise, ok, error) = ctx.new_promise();
-                if let Some(event_loop) = ctx.event_loop() {
-                    event_loop.fd_write(
-                        *fd,
-                        position,
-                        buf.to_vec(),
-                        Box::new(move |ctx, res| match res {
-                            PollResult::Write(len) => {
-                                if let JsValue::Function(resolve) = ok {
-                                    resolve.call(&[JsValue::Int(len as i32)]);
-                                }
-                            }
-                            PollResult::Error(e) => {
-                                if let JsValue::Function(reject) = error {
-                                    reject.call(&[err_to_js_object(ctx, e)]);
-                                }
-                            }
-                            _ => {}
-                        }),
-                    );
-                    return promise;
-                }
-            }
+    let (promise, ok, error) = ctx.new_promise();
+    let r = fwrite_sync(ctx, _this_val, arg);
+    match r {
+        JsValue::UnDefined => JsValue::UnDefined,
+        JsValue::Int(len) => {
+            if let JsValue::Function(resolve) = ok {
+                resolve.call(&[JsValue::Int(len)]);
+            };
+            promise
+        }
+        other => {
+            if let JsValue::Function(reject) = error {
+                reject.call(&[other]);
+            };
+            promise
         }
     }
-    return JsValue::UnDefined;
 }
 
 fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
@@ -850,7 +857,10 @@ fn freaddir_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
                     let mut dir_next = 0;
                     while (idx + s) < len.min(4096) {
                         let dir = unsafe {
-                            *(&buf[idx..(idx + s)] as *const [u8] as *const wasi_fs::Dirent)
+                            (&buf[idx..(idx + s)] as *const [u8] as *const wasi_fs::Dirent)
+                                .as_ref()
+                                .unwrap()
+                                .clone()
                         };
                         idx += s;
                         if (idx + dir.d_namlen as usize) > len.min(4096) {

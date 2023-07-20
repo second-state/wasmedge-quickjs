@@ -23,6 +23,9 @@ url = "2.2.2"
 lazy_static = "1.4"
 encoding = "0.2"
 wasmedge_wasi_socket = { version = "0.5", features = ["wasi_poll"] }
+tokio_wasi = { version = "1.25.2", features = ["full"] }
+log = "0.4.19"
+env_logger = "0.10.0"
 
 [features]
 default = []

@@ -2,6 +2,7 @@
 mod macros;
 pub mod js_class;
 pub mod js_module;
+pub mod js_promise;
 
 use std::collections::HashMap;
 
@@ -176,6 +177,57 @@ impl Runtime {
             f(&mut ctx)
         }
     }
+
+    unsafe fn run_loop_without_io(&mut self) -> i32 {
+        use crate::EventLoop;
+        use qjs::JS_ExecutePendingJob;
+
+        let rt = self.0;
+        let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() }.unwrap();
+        let mut pctx: *mut JSContext = 0 as *mut JSContext;
+
+        loop {
+            'pending: loop {
+                log::trace!("Runtime JS_ExecutePendingJob");
+                let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
+                if err <= 0 {
+                    if err < 0 {
+                        js_std_dump_error(pctx);
+                        return err;
+                    }
+                    break 'pending;
+                }
+            }
+
+            if event_loop.run_tick_task() == 0 {
+                break;
+            }
+        }
+        0
+    }
+
+    pub fn async_run_with_context(
+        &mut self,
+        box_fn: Box<dyn FnOnce(&mut Context) -> JsValue>,
+    ) -> RuntimeResult {
+        unsafe {
+            let ctx = Context::new_with_rt(self.0);
+            let box_fn = Some(box_fn);
+            RuntimeResult {
+                box_fn,
+                ctx,
+                result: None,
+                rt: self,
+            }
+        }
+    }
+}
+
+pub struct RuntimeResult<'rt> {
+    box_fn: Option<Box<dyn FnOnce(&mut Context) -> JsValue>>,
+    ctx: Context,
+    result: Option<JsValue>,
+    rt: &'rt mut Runtime,
 }
 
 impl Drop for Runtime {
@@ -239,6 +291,8 @@ pub struct Context {
     ctx: *mut JSContext,
 }
 
+unsafe impl Send for Context {}
+
 fn get_file_name(ctx: &mut Context, n_stack_levels: usize) -> JsValue {
     unsafe {
         let basename = JS_GetScriptOrModuleName(ctx.ctx, n_stack_levels as i32);
@@ -292,18 +346,6 @@ fn js_init_dirname(ctx: &mut Context) {
 impl Context {
     pub fn event_loop(&mut self) -> Option<&mut super::EventLoop> {
         unsafe { (JS_GetRuntimeOpaque(self.rt()) as *mut super::EventLoop).as_mut() }
-    }
-
-    fn event_loop_run_once(&mut self) -> std::io::Result<usize> {
-        unsafe {
-            if let Some(event_loop) =
-                (JS_GetRuntimeOpaque(self.rt()) as *mut super::EventLoop).as_mut()
-            {
-                event_loop.run_once(self)
-            } else {
-                Ok(0)
-            }
-        }
     }
 
     #[inline]
@@ -554,42 +596,14 @@ impl Context {
 
     pub fn promise_loop_poll(&mut self) {
         unsafe {
-            let rt = self.rt();
-            let mut pctx: *mut JSContext = 0 as *mut JSContext;
-
-            loop {
-                let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
-                if err <= 0 {
-                    if err < 0 {
-                        js_std_dump_error(pctx);
-                    }
-                    break;
-                }
-            }
+            let mut rt = std::mem::ManuallyDrop::new(Runtime(self.rt()));
+            rt.run_loop_without_io();
         }
     }
 
+    #[deprecated]
     pub fn js_loop(&mut self) -> std::io::Result<()> {
-        unsafe {
-            let rt = self.rt();
-
-            let mut pctx: *mut JSContext = 0 as *mut JSContext;
-            loop {
-                'pending: loop {
-                    let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
-                    if err <= 0 {
-                        if err < 0 {
-                            js_std_dump_error(pctx);
-                            return Err(std::io::Error::from(std::io::ErrorKind::Other));
-                        }
-                        break 'pending;
-                    }
-                }
-                if self.event_loop_run_once()? == 0 {
-                    return Ok(());
-                }
-            }
-        }
+        todo!()
     }
 }
 
@@ -597,6 +611,14 @@ impl Drop for Context {
     fn drop(&mut self) {
         unsafe {
             JS_FreeContext(self.ctx);
+        }
+    }
+}
+
+impl Clone for Context {
+    fn clone(&self) -> Self {
+        Context {
+            ctx: unsafe { JS_DupContext(self.ctx) },
         }
     }
 }
@@ -672,6 +694,7 @@ impl Drop for JsRef {
     }
 }
 
+unsafe impl Send for JsRef {}
 pub trait AsObject {
     fn js_ref(&self) -> &JsRef;
 
@@ -820,6 +843,12 @@ impl JsPromise {
             let v = JS_GetPromiseResult_real(ctx, this_obj);
             JsValue::from_qjs_value(ctx, v)
         }
+    }
+}
+
+impl AsObject for JsPromise {
+    fn js_ref(&self) -> &JsRef {
+        &self.0
     }
 }
 
