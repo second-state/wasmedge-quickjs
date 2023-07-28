@@ -16,9 +16,12 @@ impl Context {
             .event_loop()
             .and_then(|event_loop| event_loop.waker.clone());
 
+        println!("future_to_promise {waker:?}");
+
         let (promise, resolve, reject) = self.new_promise();
 
-        let handle = tokio::spawn(async move {
+        let handle = tokio::task::spawn(async move {
+            println!("future_to_promise start");
             match f.await {
                 Ok(value) => {
                     if let JsValue::Function(f) = resolve {
@@ -31,6 +34,7 @@ impl Context {
                     }
                 }
             }
+            println!("rt {:?} wake", waker);
             log::trace!("rt {:?} wake", waker);
             waker.map(|waker| waker.wake());
         });
@@ -48,35 +52,40 @@ impl Future for Runtime {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Self::Output> {
+        println!("runtime poll");
         unsafe {
-            let rt = self.0;
+            let rt = self.rt.0;
             let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() };
             if let Some(event_loop) = event_loop {
                 let waker = cx.waker().clone();
                 log::info!("insert rt waker {waker:?}");
                 event_loop.waker.insert(waker);
-                // let mut pctx: *mut JSContext = 0 as *mut JSContext;
-                // loop {
-                //     'pending: loop {
-                //         log::trace!("Runtime JS_ExecutePendingJob");
-                //         let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
-                //         if err <= 0 {
-                //             if err < 0 {
-                //                 js_std_dump_error(pctx);
-                //                 return Poll::Ready(());
-                //             }
-                //             break 'pending;
-                //         }
-                //     }
 
-                //     if event_loop.run_tick_task() == 0 {
-                //         break;
+                // println!("1 sub_tasks size = {}", event_loop.sub_tasks.len());
+                // loop {
+                //     match event_loop.sub_tasks.pop_front() {
+                //         Some(task) => {
+                //             if task.is_finished() {
+                //                 continue;
+                //             } else {
+                //                 event_loop.sub_tasks.push_front(task);
+                //                 log::trace!("Runtime Pending 1");
+                //                 println!("Runtime pending 1");
+                //                 return Poll::Pending;
+                //             }
+                //         }
+                //         None => {
+                //             println!("Runtime Ready 1");
+                //             break;
+                //         }
                 //     }
                 // }
 
                 if self.run_loop_without_io() < 0 {
+                    println!("Runtime io error");
                     return Poll::Ready(());
                 }
+                println!("2 sub_tasks size = {}", event_loop.sub_tasks.len());
                 loop {
                     match event_loop.sub_tasks.pop_front() {
                         Some(task) => {
@@ -85,10 +94,12 @@ impl Future for Runtime {
                             } else {
                                 event_loop.sub_tasks.push_front(task);
                                 log::trace!("Runtime Pending");
+                                println!("Runtime pending");
                                 return Poll::Pending;
                             }
                         }
                         None => {
+                            println!("Runtime Ready");
                             return Poll::Ready(());
                         }
                     }
@@ -107,7 +118,7 @@ impl<'rt> Future for RuntimeResult<'rt> {
         let me = self.get_mut();
         if me.result.is_none() && me.box_fn.is_some() {
             unsafe {
-                let rt = me.rt.0;
+                let rt = me.rt.rt.0;
                 let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() };
                 if let Some(event_loop) = event_loop {
                     event_loop.waker.insert(cx.waker().clone());
@@ -115,7 +126,7 @@ impl<'rt> Future for RuntimeResult<'rt> {
                     return Poll::Ready(Err(()));
                 }
                 let f = me.box_fn.take().unwrap();
-                me.result = Some(f(&mut me.ctx));
+                me.result = Some(f(&mut me.rt.ctx));
             }
         }
         let rt = &mut me.rt;

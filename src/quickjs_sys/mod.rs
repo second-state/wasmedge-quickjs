@@ -143,13 +143,28 @@ unsafe extern "C" fn module_loader(
     m.cast()
 }
 
-pub struct Runtime(*mut JSRuntime);
+struct InnerRuntime(*mut JSRuntime);
+impl Drop for InnerRuntime {
+    fn drop(&mut self) {
+        unsafe { JS_FreeRuntime(self.0) };
+    }
+}
+pub struct Runtime {
+    ctx: Context,
+    rt: InnerRuntime,
+}
 
 impl Runtime {
     pub fn new() -> Self {
         unsafe {
-            let mut rt = Runtime(JS_NewRuntime());
-            JS_SetModuleLoaderFunc(rt.0, None, Some(module_loader), std::ptr::null_mut());
+            let raw_rt = JS_NewRuntime();
+            let ctx = Context::new_with_rt(raw_rt);
+            JS_SetModuleLoaderFunc(raw_rt, None, Some(module_loader), std::ptr::null_mut());
+
+            let mut rt = Runtime {
+                ctx,
+                rt: InnerRuntime(raw_rt),
+            };
             rt.init_event_loop();
             rt
         }
@@ -159,12 +174,12 @@ impl Runtime {
         unsafe {
             let event_loop = Box::new(super::EventLoop::default());
             let event_loop_ptr: &'static mut super::EventLoop = Box::leak(event_loop);
-            JS_SetRuntimeOpaque(self.0, (event_loop_ptr as *mut super::EventLoop).cast());
+            JS_SetRuntimeOpaque(self.rt.0, (event_loop_ptr as *mut super::EventLoop).cast());
         }
     }
     fn drop_event_loop(&mut self) {
         unsafe {
-            let event_loop = JS_GetRuntimeOpaque(self.0) as *mut super::EventLoop;
+            let event_loop = JS_GetRuntimeOpaque(self.rt.0) as *mut super::EventLoop;
             if !event_loop.is_null() {
                 Box::from_raw(event_loop); // drop
             }
@@ -172,17 +187,14 @@ impl Runtime {
     }
 
     pub fn run_with_context<F: FnMut(&mut Context) -> R, R>(&mut self, mut f: F) -> R {
-        unsafe {
-            let mut ctx = Context::new_with_rt(self.0);
-            f(&mut ctx)
-        }
+        f(&mut self.ctx)
     }
 
     unsafe fn run_loop_without_io(&mut self) -> i32 {
         use crate::EventLoop;
         use qjs::JS_ExecutePendingJob;
 
-        let rt = self.0;
+        let rt = self.rt.0;
         let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() }.unwrap();
         let mut pctx: *mut JSContext = 0 as *mut JSContext;
 
@@ -210,22 +222,17 @@ impl Runtime {
         &mut self,
         box_fn: Box<dyn FnOnce(&mut Context) -> JsValue>,
     ) -> RuntimeResult {
-        unsafe {
-            let ctx = Context::new_with_rt(self.0);
-            let box_fn = Some(box_fn);
-            RuntimeResult {
-                box_fn,
-                ctx,
-                result: None,
-                rt: self,
-            }
+        let box_fn = Some(box_fn);
+        RuntimeResult {
+            box_fn,
+            result: None,
+            rt: self,
         }
     }
 }
 
 pub struct RuntimeResult<'rt> {
     box_fn: Option<Box<dyn FnOnce(&mut Context) -> JsValue>>,
-    ctx: Context,
     result: Option<JsValue>,
     rt: &'rt mut Runtime,
 }
@@ -233,7 +240,6 @@ pub struct RuntimeResult<'rt> {
 impl Drop for Runtime {
     fn drop(&mut self) {
         self.drop_event_loop();
-        unsafe { JS_FreeRuntime(self.0) };
     }
 }
 
@@ -457,7 +463,6 @@ impl Context {
 
     pub fn eval_module_str(&mut self, code: String, filename: &str) {
         self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE);
-        self.promise_loop_poll();
     }
 
     pub fn new_function<F: JsFn>(&mut self, name: &str) -> JsFunction {
@@ -594,11 +599,9 @@ impl Context {
         }
     }
 
+    #[deprecated]
     pub fn promise_loop_poll(&mut self) {
-        unsafe {
-            let mut rt = std::mem::ManuallyDrop::new(Runtime(self.rt()));
-            rt.run_loop_without_io();
-        }
+        todo!()
     }
 
     #[deprecated]

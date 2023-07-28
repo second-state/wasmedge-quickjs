@@ -62,19 +62,19 @@ const throwNextTick = (e) => { process.nextTick(() => { throw e; }); };
 
 let __filename = args[0];
 
-fs.access(__filename, common.mustCall(function(...args) {
+fs.access(__filename, common.mustCall(function (...args) {
   assert.deepStrictEqual(args, [null]);
 }));
 fs.promises.access(__filename)
   .then(common.mustCall())
   .catch(throwNextTick);
-fs.access(__filename, fs.R_OK, common.mustCall(function(...args) {
+fs.access(__filename, fs.R_OK, common.mustCall(function (...args) {
   assert.deepStrictEqual(args, [null]);
 }));
 fs.promises.access(__filename, fs.R_OK)
   .then(common.mustCall())
   .catch(throwNextTick);
-fs.access(readOnlyFile, fs.R_OK, common.mustCall(function(...args) {
+fs.access(readOnlyFile, fs.R_OK, common.mustCall(function (...args) {
   assert.deepStrictEqual(args, [null]);
 }));
 fs.promises.access(readOnlyFile, fs.R_OK)

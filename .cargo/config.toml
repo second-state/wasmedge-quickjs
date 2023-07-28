@@ -1,6 +1,6 @@
 [build]
-target="wasm32-wasi"
-rustflags="-C target-feature=+bulk-memory"
+target = "wasm32-wasi"
+rustflags = "-C target-feature=+bulk-memory"
 
 [target.wasm32-wasi]
-runner="wasmedge --dir=.:. "
+runner = "/home/csh/WasmEdge/build/tools/wasmedge/wasmedge --dir=.:. "
