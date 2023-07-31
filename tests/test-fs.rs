@@ -6,7 +6,10 @@ use wasmedge_quickjs::*;
 fn test_js_file(file_path: &str) {
     use wasmedge_quickjs as q;
 
-    env_logger::builder().is_test(true).try_init();
+    env_logger::builder()
+        // .filter_level(log::LevelFilter::Trace)
+        .is_test(true)
+        .try_init();
 
     let tokio_rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()

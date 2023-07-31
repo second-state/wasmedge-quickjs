@@ -2,7 +2,6 @@ mod poll;
 pub mod wasi_fs;
 mod wasi_sock;
 
-use crate::event_loop::poll::{Eventtype, Subscription};
 use crate::{quickjs_sys as qjs, Context, JsClassTool, JsValue};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
@@ -115,6 +114,71 @@ impl AsyncTcpConn {
 
     pub fn peer(&self) -> io::Result<SocketAddr> {
         self.0.peer_addr()
+    }
+}
+
+#[cfg(feature = "tls")]
+pub struct AsyncTlsConn(
+    pub(crate) wasmedge_rustls_api::stream::async_stream::TlsStream<tokio::net::TcpStream>,
+);
+
+#[cfg(feature = "tls")]
+impl AsyncTlsConn {
+    pub async fn async_connect<R: tokio::net::ToSocketAddrs, S: AsRef<str>>(
+        addr: R,
+        domain: S,
+    ) -> io::Result<Self> {
+        use wasmedge_rustls_api::stream::async_stream::TlsStream;
+        use wasmedge_rustls_api::ClientConfig;
+        let io = tokio::net::TcpStream::connect(addr).await?;
+        let config = ClientConfig::default();
+        let conn = TlsStream::connect(&config, domain, io)
+            .await
+            .map_err(|(e, _)| e)?;
+        Ok(Self(conn))
+    }
+
+    pub async fn async_read_all(&mut self) -> io::Result<Vec<u8>> {
+        let mut data = vec![];
+        let mut buff = [0u8; 1024 * 4];
+
+        log::trace!("tls read_all");
+
+        loop {
+            match self.0.read(&mut buff).await {
+                Ok(0) => {
+                    log::trace!("tls read: 0");
+                    return Ok(data);
+                }
+                Ok(n) => {
+                    log::trace!("tls read: {n}");
+                    data.extend_from_slice(&buff[0..n]);
+                    if n < buff.len() {
+                        return Ok(data);
+                    }
+                }
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    log::trace!("tls read: WouldBlock");
+                    return Ok(data);
+                }
+                Err(e) => {
+                    log::trace!("tls read: {e}");
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    pub async fn async_write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf).await
+    }
+
+    pub fn local(&self) -> io::Result<SocketAddr> {
+        self.0.get_ref().0.local_addr()
+    }
+
+    pub fn peer(&self) -> io::Result<SocketAddr> {
+        self.0.get_ref().0.peer_addr()
     }
 }
 
