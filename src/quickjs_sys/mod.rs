@@ -191,6 +191,7 @@ impl Runtime {
     }
 
     unsafe fn run_loop_without_io(&mut self) -> i32 {
+        log::trace!("Runtime run loop without io");
         use crate::EventLoop;
         use qjs::JS_ExecutePendingJob;
 
@@ -214,6 +215,7 @@ impl Runtime {
             if event_loop.run_tick_task() == 0 {
                 break;
             }
+            log::trace!("Runtime JS_ExecutePendingJob continue");
         }
         0
     }

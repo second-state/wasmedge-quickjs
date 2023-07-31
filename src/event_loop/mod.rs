@@ -133,11 +133,14 @@ impl EventLoop {
 
     pub fn run_tick_task(&mut self) -> usize {
         let mut i = 0;
+        let mut cb_vec = LinkedList::new();
         while let Some(f) = self.next_tick_queue.pop_front() {
-            f();
-            i += 1;
+            cb_vec.push_back(f);
         }
         while let Some(f) = self.immediate_queue.pop_front() {
+            cb_vec.push_back(f);
+        }
+        while let Some(f) = cb_vec.pop_front() {
             f();
             i += 1;
         }

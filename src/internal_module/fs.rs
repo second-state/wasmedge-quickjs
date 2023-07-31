@@ -594,49 +594,56 @@ fn get_js_number(val: Option<&JsValue>) -> Option<i64> {
 }
 
 fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
+    println!("call fread");
     if let Some(JsValue::Int(fd)) = arg.get(0) {
         if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
                 let (promise, ok, error) = ctx.new_promise();
-
+                let nctx = ctx.clone();
                 let len = *length as usize; // len.min(event.fd_readwrite.nbytes) as usize;
-                let pos = position;
                 let fd = *fd;
-                let mut buf = vec![0u8; len];
-                let res = if pos >= 0 {
-                    unsafe {
-                        wasi_fs::fd_pread(
-                            fd as u32,
-                            &[wasi_fs::Iovec {
-                                buf: buf.as_mut_ptr(),
-                                buf_len: len,
-                            }],
-                            pos as u64,
-                        )
-                    }
-                } else {
-                    unsafe {
-                        wasi_fs::fd_read(
-                            fd as u32,
-                            &[wasi_fs::Iovec {
-                                buf: buf.as_mut_ptr(),
-                                buf_len: len,
-                            }],
-                        )
-                    }
-                };
-                match res {
-                    Ok(rlen) => {
-                        let buf = ctx.new_array_buffer(&buf[0..rlen]);
-                        if let JsValue::Function(resolve) = ok {
-                            resolve.call(&[JsValue::ArrayBuffer(buf)]);
-                        }
-                    }
-                    Err(e) => {
-                        if let JsValue::Function(reject) = error {
-                            reject.call(&[errno_to_js_object(ctx, e)]);
-                        }
-                    }
+
+                if let Some(event_loop) = ctx.event_loop() {
+                    event_loop.add_immediate_task(Box::new(move || {
+                        let mut ctx = nctx;
+                        let pos = position;
+                        let mut buf = vec![0u8; len];
+                        let res = if pos >= 0 {
+                            unsafe {
+                                wasi_fs::fd_pread(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                    pos as u64,
+                                )
+                            }
+                        } else {
+                            unsafe {
+                                wasi_fs::fd_read(
+                                    fd as u32,
+                                    &[wasi_fs::Iovec {
+                                        buf: buf.as_mut_ptr(),
+                                        buf_len: len,
+                                    }],
+                                )
+                            }
+                        };
+                        match res {
+                            Ok(rlen) => {
+                                let buf = ctx.new_array_buffer(&buf[0..rlen]);
+                                if let JsValue::Function(resolve) = ok {
+                                    resolve.call(&[JsValue::ArrayBuffer(buf)]);
+                                }
+                            }
+                            Err(e) => {
+                                if let JsValue::Function(reject) = error {
+                                    reject.call(&[errno_to_js_object(&mut ctx, e)]);
+                                }
+                            }
+                        };
+                    }))
                 }
 
                 return promise;
@@ -787,22 +794,33 @@ fn readlink_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsVa
 
 fn fwrite(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
     let (promise, ok, error) = ctx.new_promise();
-    let r = fwrite_sync(ctx, _this_val, arg);
-    match r {
-        JsValue::UnDefined => JsValue::UnDefined,
-        JsValue::Int(len) => {
-            if let JsValue::Function(resolve) = ok {
-                resolve.call(&[JsValue::Int(len)]);
+    let nctx = ctx.clone();
+    let arg = arg.to_vec();
+    if let Some(event_loop) = ctx.event_loop() {
+        event_loop.add_immediate_task(Box::new(move || {
+            let mut ctx = nctx;
+            let r = fwrite_sync(&mut ctx, _this_val, &arg);
+            match r {
+                JsValue::UnDefined => {
+                    if let JsValue::Function(resolve) = ok {
+                        resolve.call(&[JsValue::UnDefined]);
+                    };
+                }
+                JsValue::Int(len) => {
+                    if let JsValue::Function(resolve) = ok {
+                        resolve.call(&[JsValue::Int(len)]);
+                    };
+                }
+                other => {
+                    if let JsValue::Function(reject) = error {
+                        reject.call(&[other]);
+                    };
+                }
             };
-            promise
-        }
-        other => {
-            if let JsValue::Function(reject) = error {
-                reject.call(&[other]);
-            };
-            promise
-        }
+        }))
     }
+
+    promise
 }
 
 fn fwrite_sync(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {

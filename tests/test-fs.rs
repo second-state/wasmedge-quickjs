@@ -6,6 +6,8 @@ use wasmedge_quickjs::*;
 fn test_js_file(file_path: &str) {
     use wasmedge_quickjs as q;
 
+    env_logger::builder().is_test(true).try_init();
+
     let tokio_rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -30,6 +32,7 @@ fn test_js_file(file_path: &str) {
         }))
         .await;
         rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try _onExit");
             if let JsValue::Function(func) = ctx.get_global().get("_onExit") {
                 func.call(&[]);
             };
@@ -37,6 +40,7 @@ fn test_js_file(file_path: &str) {
         }))
         .await;
         rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try commonExitCheck");
             if let JsValue::Function(func) = ctx.get_global().get("commonExitCheck") {
                 func.call(&[]);
             };
@@ -44,6 +48,7 @@ fn test_js_file(file_path: &str) {
         }))
         .await;
         rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try assertPass");
             if let JsValue::Function(func) = ctx.get_global().get("assertPass") {
                 func.call(&[]);
             };

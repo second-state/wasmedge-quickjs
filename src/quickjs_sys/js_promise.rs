@@ -16,12 +16,9 @@ impl Context {
             .event_loop()
             .and_then(|event_loop| event_loop.waker.clone());
 
-        println!("future_to_promise {waker:?}");
-
         let (promise, resolve, reject) = self.new_promise();
 
         let handle = tokio::task::spawn(async move {
-            println!("future_to_promise start");
             match f.await {
                 Ok(value) => {
                     if let JsValue::Function(f) = resolve {
@@ -34,7 +31,6 @@ impl Context {
                     }
                 }
             }
-            println!("rt {:?} wake", waker);
             log::trace!("rt {:?} wake", waker);
             waker.map(|waker| waker.wake());
         });
@@ -52,40 +48,16 @@ impl Future for Runtime {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Self::Output> {
-        println!("runtime poll");
         unsafe {
             let rt = self.rt.0;
             let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() };
             if let Some(event_loop) = event_loop {
                 let waker = cx.waker().clone();
-                log::info!("insert rt waker {waker:?}");
                 event_loop.waker.insert(waker);
 
-                // println!("1 sub_tasks size = {}", event_loop.sub_tasks.len());
-                // loop {
-                //     match event_loop.sub_tasks.pop_front() {
-                //         Some(task) => {
-                //             if task.is_finished() {
-                //                 continue;
-                //             } else {
-                //                 event_loop.sub_tasks.push_front(task);
-                //                 log::trace!("Runtime Pending 1");
-                //                 println!("Runtime pending 1");
-                //                 return Poll::Pending;
-                //             }
-                //         }
-                //         None => {
-                //             println!("Runtime Ready 1");
-                //             break;
-                //         }
-                //     }
-                // }
-
                 if self.run_loop_without_io() < 0 {
-                    println!("Runtime io error");
                     return Poll::Ready(());
                 }
-                println!("2 sub_tasks size = {}", event_loop.sub_tasks.len());
                 loop {
                     match event_loop.sub_tasks.pop_front() {
                         Some(task) => {
@@ -93,13 +65,10 @@ impl Future for Runtime {
                                 continue;
                             } else {
                                 event_loop.sub_tasks.push_front(task);
-                                log::trace!("Runtime Pending");
-                                println!("Runtime pending");
                                 return Poll::Pending;
                             }
                         }
                         None => {
-                            println!("Runtime Ready");
                             return Poll::Ready(());
                         }
                     }

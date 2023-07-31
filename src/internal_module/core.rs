@@ -39,7 +39,6 @@ fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     if let (Some(JsValue::Function(callback)), Some(JsValue::Int(timeout))) = (callback, timeout) {
         let timeout = *timeout as u64;
         let callback = callback.clone();
-        println!("set_timeout {timeout} {:?}", std::time::Instant::now());
 
         if timeout == 0 {
             ctx.event_loop().map(|event_loop| {
@@ -58,18 +57,15 @@ fn set_timeout(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
             let id = TimeoutId::new();
             let id_ = id.clone();
 
-            println!("set_timeout future_to_promise {timeout:?}");
             ctx.future_to_promise(async move {
-                println!("tokio::wait future_to_promise {timeout:?}");
-
+                log::trace!("async wait timeout {timeout:?}");
                 match tokio::time::timeout(timeout, id_.0.notified()).await {
                     Ok(_) => {
-                        println!("timer cancel");
                         log::trace!("timer cancel");
                         Err(JsValue::UnDefined)
                     }
                     Err(_) => {
-                        println!("tokio timeout {timeout:?}");
+                        log::trace!("timer timeout");
                         if let Some(rest_args) = rest_args {
                             callback.call(&rest_args);
                         } else {
@@ -174,7 +170,7 @@ pub fn init_global_function(ctx: &mut Context) {
         "setImmediate",
         ctx.wrap_function("setImmediate", set_immediate).into(),
     );
-    // global.set("sleep", ctx.wrap_function("sleep", sleep).into());
+    global.set("sleep", ctx.wrap_function("sleep", sleep).into());
     global.set("nextTick", ctx.wrap_function("nextTick", next_tick).into());
     global.set("exit", ctx.wrap_function("exit", os_exit).into());
     global.set("env", env_object(ctx).into());
