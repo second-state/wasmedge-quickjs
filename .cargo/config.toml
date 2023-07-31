@@ -3,4 +3,4 @@ target = "wasm32-wasi"
 rustflags = "-C target-feature=+bulk-memory"
 
 [target.wasm32-wasi]
-runner = "/home/csh/WasmEdge/build/tools/wasmedge/wasmedge --dir=.:. "
+runner = "wasmedge --dir=.:. "
