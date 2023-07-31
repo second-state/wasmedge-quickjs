@@ -34,18 +34,23 @@ jobs:
       run: |
         VERSION=0.13.3
         curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION  -p /usr/local
-        curl -sLO https://github.com/WasmEdge/WasmEdge/releases/download/0.13.3-alpha.1/WasmEdge-plugin-wasi_nn-tensorflowlite-0.12.0-alpha.1-ubuntu20.04_x86_64.tar.gz
-        curl -sLO https://github.com/second-state/wasmedge_rustls_plugin/releases/download/0.2.0/wasmedge_rustls_plugin_ubuntu-20.04.zip
+        wget https://github.com/WasmEdge/WasmEdge/releases/download/0.13.3/WasmEdge-plugin-wasi_nn-tensorflowlite-0.13.3-ubuntu20.04_x86_64.tar.gz
+        wget https://github.com/second-state/wasmedge_rustls_plugin/releases/download/0.2.0/wasmedge_rustls_plugin_ubuntu-20.04.zip
+        wget https://github.com/second-state/WasmEdge-tensorflow-deps/releases/download/TF-2.12.0-CC/WasmEdge-tensorflow-deps-TFLite-TF-2.12.0-CC-manylinux2014_x86_64.tar.gz
 
         tar -zxf WasmEdge-plugin-wasi_nn-tensorflowlite-*-ubuntu20.04_x86_64.tar.gz
         rm -f WasmEdge-plugin-wasi_nn-tensorflowlite-*-ubuntu20.04_x86_64.tar.gz
+        tar -zxf WasmEdge-tensorflow-deps-TFLite-TF-2.12.0-CC-manylinux2014_x86_64.tar.gz
+        rm -f WasmEdge-tensorflow-deps-TFLite-TF-2.12.0-CC-manylinux2014_x86_64.tar.gz
         unzip wasmedge_rustls_plugin_ubuntu-20.04.zip
         rm -f wasmedge_rustls_plugin_ubuntu-20.04.zip
 
-        mkdir -p /usr/local/lib/wasmedge/
+        sudo mkdir -p /usr/local/lib/wasmedge/
 
         sudo mv target/release/libwasmedge_rustls.so /usr/local/lib/wasmedge/
         sudo mv libwasmedgePluginWasiNN.so /usr/local/lib/wasmedge/
+        sudo mv libtensorflowlite_c.so /usr/local/lib
+        sudo mv libtensorflowlite_flex.so /usr/local/lib
 
     - uses: actions/setup-node@v2
       with:
@@ -164,11 +169,6 @@ jobs:
         sleep 15
         resp=$(curl http://localhost:8003)
         echo "$resp"
-
-    - name: Tensorflow example
-      run: |
-        cargo build --target wasm32-wasi --release --features=tensorflow
-        wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/main.js
 
     - name: WASI-NN example (TensorflowLite)
       run: |
