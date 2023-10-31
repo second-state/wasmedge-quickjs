@@ -594,7 +594,6 @@ fn get_js_number(val: Option<&JsValue>) -> Option<i64> {
 }
 
 fn fread(ctx: &mut Context, _this_val: JsValue, arg: &[JsValue]) -> JsValue {
-    println!("call fread");
     if let Some(JsValue::Int(fd)) = arg.get(0) {
         if let Some(position) = get_js_number(arg.get(1)) {
             if let Some(JsValue::Int(length)) = arg.get(2) {
