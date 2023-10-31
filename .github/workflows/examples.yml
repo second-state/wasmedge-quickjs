@@ -34,7 +34,7 @@ jobs:
       run: |
         VERSION=0.13.4
         curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --plugins=wasi_nn-tensorflowlite -p /usr/local        
-        wget https://github.com/WasmEdge/WasmEdge/releases/download/0.13.4/WasmEdge-plugin-wasmedge_rustls-$VERSION-ubuntu20.04_x86_64.tar.gz
+        wget https://github.com/WasmEdge/WasmEdge/releases/download/$VERSION/WasmEdge-plugin-wasmedge_rustls-$VERSION-ubuntu20.04_x86_64.tar.gz
         sudo chmod +x /usr/local/lib/wasmedge
 
         tar -zxf WasmEdge-plugin-wasmedge_rustls-*-ubuntu20.04_x86_64.tar.gz
