@@ -37,7 +37,7 @@ server_start();
 
 async function connect_test() {
   try {
-    let ss = await net.WasiTcpConn.connect('127.0.0.1:8000')
+    let ss = await net.WasiTcpConn.connect('127.0.0.1', 8000)
     ss.write('hello');
     let msg = await ss.read() || "";
     print('client recv:', new TextDecoder().decode(msg));

@@ -21,6 +21,7 @@ import { pathToFileURL } from 'url';
 import process from 'process';
 
 const setTimeoutAsync = (timeout, val) => {
+  print("setTimeoutAsync", timeout)
   return new Promise((res, rej) => {
     setTimeout(() => {
       res(val);
@@ -336,7 +337,7 @@ if (!isWindows && false) {
   assert.throws(() => {
     cpSync(src, dest, {
       filter: async (path) => {
-        await setTimeoutAsync(5, 'done');
+        await setTimeoutAsync(500, 'done');
         const pathStat = statSync(path);
         return pathStat.isDirectory() || path.endsWith('.js');
       },

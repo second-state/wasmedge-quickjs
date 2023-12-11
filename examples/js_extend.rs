@@ -96,7 +96,7 @@ impl ExtendsJsClassDef for ClassB {
 
     type BaseDef = ClassA;
 
-    const CLASS_NAME: &'static str = "ClassB";
+    const EXT_CLASS_NAME: &'static str = "ClassB";
 
     const CONSTRUCTOR_ARGC: u8 = 1;
 

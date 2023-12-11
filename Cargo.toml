@@ -22,9 +22,17 @@ libc = "0.2"
 url = "2.2.2"
 lazy_static = "1.4"
 encoding = "0.2"
+wasmedge_wasi_socket = { version = "0.5", features = ["wasi_poll"] }
+tokio_wasi = { version = "1.25.2", features = ["full"] }
+log = "0.4.19"
+env_logger = "0.10.0"
+wasmedge_rustls_api = { version = "0.1.1", features = [
+    "tokio_async",
+], optional = true }
 
 [features]
-default = []
+default = ["tls"]
+tls = ["wasmedge_rustls_api"]
 img = ["image", "imageproc"]
 tensorflow = ["img"]
 wasi_nn = ["img"]

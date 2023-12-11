@@ -5,8 +5,10 @@ use wasmedge_quickjs::*;
 
 fn test_js_file(file_path: &str) {
     use wasmedge_quickjs as q;
+
+    let file_path = file_path.to_string();
     let mut rt = q::Runtime::new();
-    rt.run_with_context(|ctx| {
+    let fut = rt.async_run_with_context(Box::new(move |ctx| {
         let code = std::fs::read_to_string(&file_path);
         match code {
             Ok(code) => {
@@ -21,8 +23,14 @@ fn test_js_file(file_path: &str) {
                 assert!(false, "run js test file fail");
             }
         }
-        ctx.js_loop().unwrap();
-    });
+        JsValue::UnDefined
+    }));
+    let tokio_rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(fut);
 }
 
 #[test]
