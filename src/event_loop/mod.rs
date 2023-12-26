@@ -6,13 +6,16 @@ use crate::{quickjs_sys as qjs, Context, JsClassTool, JsValue};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::{HashMap, LinkedList};
+use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::mem::ManuallyDrop;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::ops::Add;
 use std::os::fd::{AsRawFd, FromRawFd};
 use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 
+use rustls::OwnedTrustAnchor;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub use wasi_sock::nslookup;
 
@@ -118,9 +121,7 @@ impl AsyncTcpConn {
 }
 
 #[cfg(feature = "tls")]
-pub struct AsyncTlsConn(
-    pub(crate) wasmedge_rustls_api::stream::async_stream::TlsStream<tokio::net::TcpStream>,
-);
+pub struct AsyncTlsConn(pub(crate) tokio_rustls::client::TlsStream<tokio::net::TcpStream>);
 
 #[cfg(feature = "tls")]
 impl AsyncTlsConn {
@@ -128,13 +129,32 @@ impl AsyncTlsConn {
         addr: R,
         domain: S,
     ) -> io::Result<Self> {
-        use wasmedge_rustls_api::stream::async_stream::TlsStream;
-        use wasmedge_rustls_api::ClientConfig;
+        use rustls::ClientConfig;
+        use tokio_rustls::client::TlsStream;
+
         let io = tokio::net::TcpStream::connect(addr).await?;
-        let config = ClientConfig::default();
-        let conn = TlsStream::connect(&config, domain, io)
-            .await
-            .map_err(|(e, _)| e)?;
+        let mut root_store = rustls::RootCertStore::empty();
+        root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
+            OwnedTrustAnchor::from_subject_spki_name_constraints(
+                ta.subject,
+                ta.spki,
+                ta.name_constraints,
+            )
+        }));
+
+        let config = rustls::ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        let connector = tokio_rustls::TlsConnector::from(Arc::new(config));
+        let domain: rustls::ServerName = domain
+            .as_ref()
+            .try_into()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+        let conn = connector.connect(domain, io).await?;
+
         Ok(Self(conn))
     }
 

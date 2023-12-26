@@ -33,6 +33,7 @@ impl Context {
             }
             log::trace!("rt {:?} wake", waker);
             waker.map(|waker| waker.wake());
+            tokio::task::spawn(tokio::task::yield_now());
         });
 
         self.event_loop().map(|event_loop| {
@@ -49,6 +50,8 @@ impl Future for Runtime {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Self::Output> {
         unsafe {
+            log::trace!("Runtime poll");
+
             let rt = self.rt.0;
             let event_loop = { (JS_GetRuntimeOpaque(rt) as *mut EventLoop).as_mut() };
             if let Some(event_loop) = event_loop {
@@ -56,6 +59,7 @@ impl Future for Runtime {
                 event_loop.waker.insert(waker);
 
                 if self.run_loop_without_io() < 0 {
+                    log::trace!("Runtime Ready io < 0");
                     return Poll::Ready(());
                 }
                 loop {
@@ -65,15 +69,18 @@ impl Future for Runtime {
                                 continue;
                             } else {
                                 event_loop.sub_tasks.push_front(task);
+                                log::trace!("Runtime Pending");
                                 return Poll::Pending;
                             }
                         }
                         None => {
+                            log::trace!("Runtime Ready sub_tasks empty");
                             return Poll::Ready(());
                         }
                     }
                 }
             } else {
+                log::trace!("Runtime Ready sub_tasks empty");
                 Poll::Ready(())
             }
         }
