@@ -32,12 +32,13 @@ jobs:
 
     - name: Install WasmEdge
       run: |
-        VERSION=0.11.2
-        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION -p /usr/local
-        curl -sLO https://github.com/WasmEdge/WasmEdge/releases/download/0.11.2/WasmEdge-plugin-wasi_crypto-0.11.2-ubuntu20.04_x86_64.tar.gz
-        tar -zxf WasmEdge-plugin-wasi_crypto-0.11.2-ubuntu20.04_x86_64.tar.gz
-        rm -f WasmEdge-plugin-wasi_crypto-0.11.2-ubuntu20.04_x86_64.tar.gz
-        sudo mv libwasmedgePluginWasiCrypto.so /usr/local/lib/wasmedge/
+        VERSION=0.13.4
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --plugins=wasi_nn-tensorflowlite -p /usr/local        
+        wget https://github.com/WasmEdge/WasmEdge/releases/download/$VERSION/WasmEdge-plugin-wasmedge_rustls-$VERSION-ubuntu20.04_x86_64.tar.gz
+        sudo chmod +x /usr/local/lib/wasmedge
+
+        tar -zxf WasmEdge-plugin-wasmedge_rustls-*-ubuntu20.04_x86_64.tar.gz
+        sudo mv libwasmedge_rustls.so /usr/local/lib/wasmedge/
 
     - uses: actions/setup-node@v2
       with:
@@ -74,6 +75,11 @@ jobs:
         cargo build --target wasm32-wasi --release
         wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_http_echo.js &
         
+    - name: Https fetch example
+      run: |
+        cargo build --target wasm32-wasi --release
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_https_fetch.js
+
     - name: ES6 module
       run: |
         cargo build --target wasm32-wasi --release
@@ -152,10 +158,10 @@ jobs:
         resp=$(curl http://localhost:8003)
         echo "$resp"
 
-    - name: Tensorflow example
+    - name: WASI-NN example (TensorflowLite)
       run: |
-        cargo build --target wasm32-wasi --release --features=tensorflow
-        wasmedge-tensorflow-lite --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/main.js
+        cargo build --target wasm32-wasi --release --features=wasi_nn
+        wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/tensorflow_lite_demo/wasi_nn_main.js
 
     - name: Embed JS in Rust
       run: |
@@ -181,7 +187,7 @@ jobs:
         wasmedge --dir .:. target/wasm32-wasi/release/examples/js_extend.wasm
 
     - name: Node fs module test
-      #timeout-minutes: 10
+      timeout-minutes: 60
       run: |
         cargo test test_fs --target=wasm32-wasi --release
 

@@ -19,22 +19,29 @@ fn args_parse() -> (String, Vec<String>) {
     (file_path, res_args)
 }
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     use wasmedge_quickjs as q;
+    env_logger::init();
+
     let mut rt = q::Runtime::new();
-    rt.run_with_context(|ctx| {
-        let (file_path, mut rest_arg) = args_parse();
-        let code = std::fs::read_to_string(&file_path);
-        match code {
-            Ok(code) => {
-                rest_arg.insert(0, file_path.clone());
-                ctx.put_args(rest_arg);
-                ctx.eval_module_str(code, &file_path);
+
+    let r = rt
+        .async_run_with_context(Box::new(|ctx| {
+            let (file_path, mut rest_arg) = args_parse();
+            let code = std::fs::read_to_string(&file_path);
+            match code {
+                Ok(code) => {
+                    rest_arg.insert(0, file_path.clone());
+                    ctx.put_args(rest_arg);
+                    ctx.eval_buf(code.into_bytes(), &file_path, 1)
+                }
+                Err(e) => {
+                    eprintln!("{}", e.to_string());
+                    JsValue::UnDefined
+                }
             }
-            Err(e) => {
-                eprintln!("{}", e.to_string());
-            }
-        }
-        ctx.js_loop().unwrap();
-    });
+        }))
+        .await;
+    log::info!("{r:?}");
 }

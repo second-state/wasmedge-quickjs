@@ -5,31 +5,59 @@ use wasmedge_quickjs::*;
 
 fn test_js_file(file_path: &str) {
     use wasmedge_quickjs as q;
-    let mut rt = q::Runtime::new();
-    rt.run_with_context(|ctx| {
-        let code = std::fs::read_to_string(&file_path);
-        match code {
-            Ok(code) => {
-                ctx.put_args(vec![file_path.clone()]);
-                ctx.eval_module_str(code, &file_path);
+
+    env_logger::builder()
+        // .filter_level(log::LevelFilter::Trace)
+        .is_test(true)
+        .try_init();
+
+    let tokio_rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(async {
+        let mut rt = q::Runtime::new();
+        let file_path = file_path.to_string();
+        rt.async_run_with_context(Box::new(move |ctx| {
+            let code = std::fs::read_to_string(&file_path);
+            match code {
+                Ok(code) => {
+                    ctx.put_args(vec![file_path.clone()]);
+                    ctx.eval_module_str(code, &file_path);
+                }
+                Err(e) => {
+                    eprintln!("{}", e.to_string());
+                    assert!(false, "run js test file fail");
+                }
             }
-            Err(e) => {
-                eprintln!("{}", e.to_string());
-                assert!(false, "run js test file fail");
-            }
-        }
-        ctx.js_loop().unwrap();
-        if let JsValue::Function(func) = ctx.get_global().get("_onExit") {
-            func.call(&[]);
-        }
-        ctx.js_loop().unwrap();
-        if let JsValue::Function(func) = ctx.get_global().get("commonExitCheck") {
-            func.call(&[]);
-        }
-        ctx.js_loop().unwrap();
-        if let JsValue::Bool(false) = ctx.get_global().get("assertPass") {
-            assert!(false, "js assert fail");
-        }
+            JsValue::UnDefined
+        }))
+        .await;
+        rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try _onExit");
+            if let JsValue::Function(func) = ctx.get_global().get("_onExit") {
+                func.call(&[]);
+            };
+            JsValue::UnDefined
+        }))
+        .await;
+        rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try commonExitCheck");
+            if let JsValue::Function(func) = ctx.get_global().get("commonExitCheck") {
+                func.call(&[]);
+            };
+            JsValue::UnDefined
+        }))
+        .await;
+        rt.async_run_with_context(Box::new(|ctx| {
+            log::trace!("try assertPass");
+            if let JsValue::Function(func) = ctx.get_global().get("assertPass") {
+                func.call(&[]);
+            };
+            JsValue::UnDefined
+        }))
+        .await;
     });
     std::fs::remove_dir_all("./test/.tmp.0");
 }

@@ -128,7 +128,7 @@ fn into_proto_function_list<Def: JsClassDef>(p: JsClassProto) -> &'static [JSCFu
             u: JSCFunctionListEntry__bindgen_ty_1 {
                 func: JSCFunctionListEntry__bindgen_ty_1__bindgen_ty_1 {
                     length: argc,
-                    cproto: JSCFunctionEnum_JS_CFUNC_generic_magic as u8,
+                    cproto: JS_CFUNC_generic_magic as u8,
                     cfunc: JSCFunctionType {
                         generic_magic: Some(js_method_magic_trampoline::<Def>),
                     },
@@ -199,7 +199,7 @@ pub trait ExtendsJsClassDef {
 
     type BaseDef: JsClassDef;
 
-    const CLASS_NAME: &'static str;
+    const EXT_CLASS_NAME: &'static str;
     const CONSTRUCTOR_ARGC: u8;
     const FIELDS: &'static [JsClassField<Self::RefType>];
     const METHODS: &'static [JsClassMethod<Self::RefType>];
@@ -216,7 +216,7 @@ pub trait ExtendsJsClassDef {
 impl<S: ExtendsJsClassDef> JsClassDef for S {
     type RefType = <Self as ExtendsJsClassDef>::RefType;
 
-    const CLASS_NAME: &'static str = <Self as ExtendsJsClassDef>::CLASS_NAME;
+    const CLASS_NAME: &'static str = <Self as ExtendsJsClassDef>::EXT_CLASS_NAME;
 
     const CONSTRUCTOR_ARGC: u8 = <Self as ExtendsJsClassDef>::CONSTRUCTOR_ARGC;
 
@@ -563,7 +563,7 @@ pub fn register_class<Def: JsClassDef>(ctx: &mut Context) -> JsValue {
             Some(constructor::<Def>),
             class_name.as_ptr().cast(),
             Def::CONSTRUCTOR_ARGC as i32,
-            JSCFunctionEnum_JS_CFUNC_constructor,
+            JS_CFUNC_constructor,
             0,
         );
 
