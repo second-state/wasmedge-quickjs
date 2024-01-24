@@ -1,11 +1,11 @@
-mod lib;
-mod raw;
-
-use core::arch;
-
 use crate::event_loop::wasi_fs::{Errno, Size};
 use crate::quickjs_sys::*;
 use crate::EventLoop;
+use core::arch;
+use crypto_wasi::{
+    generate_key_pair, hkdf_hmac, pbkdf2, raw, scrypt, Cipheriv, Decipheriv, Hash, Hmac,
+    KeyEncodingFormat, PrivateKey, PrivateKeyEncodingType, PublicKey, PublicKeyEncodingType,
+};
 
 mod wasi_snapshot_preview1 {
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
@@ -79,8 +79,6 @@ fn random_fill(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     };
 }
 
-use self::lib::{hkdf_hmac, pbkdf2, scrypt};
-
 pub fn errno_to_js_object(ctx: &mut Context, e: raw::CryptoErrno) -> JsValue {
     let mut res = ctx.new_object();
     res.set("message", JsValue::String(ctx.new_string(e.message())));
@@ -97,11 +95,11 @@ fn pbkdf2_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsVal
     let alg = get_arg!(argv, JsValue::String, 4);
     match {
         pbkdf2(
-            alg.as_str(),
             password.as_ref(),
             salt.as_ref(),
             *iters as usize,
             *key_len as usize,
+            alg.as_str(),
         )
     } {
         Ok(res) => ctx.new_array_buffer(res.as_slice()).into(),
@@ -163,8 +161,26 @@ fn hkdf_sync(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue
     }
 }
 
+fn gen_keypair(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
+    let alg = get_arg!(argv, JsValue::String, 0);
+    match { generate_key_pair(alg.as_str()) } {
+        Ok((pk, sk)) => {
+            let js_pk = JsKeyObjectHandle::PubKey(pk);
+            let js_sk = JsKeyObjectHandle::PriKey(sk);
+            let mut arr = ctx.new_array();
+            arr.put(0, JsKeyObjectHandle::wrap_obj(ctx, js_pk));
+            arr.put(1, JsKeyObjectHandle::wrap_obj(ctx, js_sk));
+            JsValue::Array(arr)
+        }
+        Err(e) => {
+            let err = errno_to_js_object(ctx, e);
+            JsValue::Exception(ctx.throw_error(err))
+        }
+    }
+}
+
 struct JsHash {
-    handle: lib::Hash,
+    handle: Hash,
 }
 
 impl JsHash {
@@ -195,7 +211,7 @@ impl JsHash {
         }
     }
 
-    fn copy(&self) -> Result<Self, lib::CryptoErrno> {
+    fn copy(&self) -> Result<Self, raw::CryptoErrno> {
         self.handle.copy().map(|h| JsHash { handle: h })
     }
 }
@@ -221,7 +237,7 @@ impl JsClassDef for JsHash {
 
     fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
         match argv.get(0) {
-            Some(JsValue::String(alg)) => lib::Hash::create(alg.as_str())
+            Some(JsValue::String(alg)) => Hash::create(alg.as_str())
                 .or_else(|e| {
                     let err = errno_to_js_object(ctx, e);
                     Err(JsValue::Exception(ctx.throw_error(err)))
@@ -239,7 +255,7 @@ impl JsClassDef for JsHash {
 }
 
 struct JsHmac {
-    handle: lib::Hmac,
+    handle: Hmac,
 }
 
 impl JsHmac {
@@ -293,7 +309,7 @@ impl JsClassDef for JsHmac {
     fn constructor_fn(ctx: &mut Context, argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
         match (argv.get(0), argv.get(1)) {
             (Some(JsValue::String(alg)), Some(JsValue::ArrayBuffer(key))) => {
-                lib::Hmac::create(alg.as_str(), key.as_ref())
+                Hmac::create(alg.as_str(), key.as_ref())
                     .or_else(|e| {
                         let err = errno_to_js_object(ctx, e);
                         Err(JsValue::Exception(ctx.throw_error(err)))
@@ -306,8 +322,8 @@ impl JsClassDef for JsHmac {
 }
 
 enum JsCipher {
-    Cipher(lib::Cipher),
-    Decipher(lib::Decipher),
+    Cipher(Cipheriv),
+    Decipher(Decipheriv),
 }
 
 impl JsCipher {
@@ -432,14 +448,14 @@ impl JsClassDef for JsCipher {
         ) = (argv.get(0), argv.get(1), argv.get(2), argv.get(4))
         {
             if *is_encrypt {
-                lib::Cipher::create(alg.as_str(), key.as_ref(), iv.as_ref())
+                Cipheriv::create(alg.as_str(), key.as_ref(), iv.as_ref())
                     .or_else(|e| {
                         let err = errno_to_js_object(ctx, e);
                         Err(JsValue::Exception(ctx.throw_error(err)))
                     })
                     .map(|c| JsCipher::Cipher(c))
             } else {
-                lib::Decipher::create(alg.as_str(), key.as_ref(), iv.as_ref())
+                Decipheriv::create(alg.as_str(), key.as_ref(), iv.as_ref())
                     .or_else(|e| {
                         let err = errno_to_js_object(ctx, e);
                         Err(JsValue::Exception(ctx.throw_error(err)))
@@ -449,6 +465,76 @@ impl JsClassDef for JsCipher {
         } else {
             Err(JsValue::UnDefined)
         }
+    }
+}
+
+enum JsKeyObjectHandle {
+    PubKey(PublicKey),
+    PriKey(PrivateKey),
+}
+
+impl JsKeyObjectHandle {
+    pub fn js_export(
+        &mut self,
+        _this: &mut JsObject,
+        ctx: &mut Context,
+        argv: &[JsValue],
+    ) -> JsValue {
+        let skenc_enums = [
+            PrivateKeyEncodingType::Pkcs1,
+            PrivateKeyEncodingType::Pkcs8,
+            PrivateKeyEncodingType::Sec1,
+        ];
+        let pkenc_enums = [PublicKeyEncodingType::Pkcs1, PublicKeyEncodingType::Spki];
+        let format_enums = [
+            KeyEncodingFormat::Der,
+            KeyEncodingFormat::Pem,
+            KeyEncodingFormat::Jwk,
+        ];
+        let enc = get_arg!(argv, JsValue::Int, 0);
+        let format = get_arg!(argv, JsValue::Int, 0);
+        match self {
+            JsKeyObjectHandle::PriKey(sk) => {
+                return match sk.export(skenc_enums[*enc as usize], format_enums[*format as usize]) {
+                    Ok(res) => ctx.new_array_buffer(res.as_slice()).into(),
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                }
+            }
+            JsKeyObjectHandle::PubKey(pk) => {
+                return match pk.export(pkenc_enums[*enc as usize], format_enums[*format as usize]) {
+                    Ok(res) => ctx.new_array_buffer(res.as_slice()).into(),
+                    Err(e) => {
+                        let err = errno_to_js_object(ctx, e);
+                        JsValue::Exception(ctx.throw_error(err))
+                    }
+                }
+            }
+        };
+    }
+}
+
+impl JsClassDef for JsKeyObjectHandle {
+    type RefType = Self;
+
+    const CLASS_NAME: &'static str = "JsKeyObjectHandle";
+
+    const CONSTRUCTOR_ARGC: u8 = 0;
+
+    const FIELDS: &'static [JsClassField<Self::RefType>] = &[];
+
+    const METHODS: &'static [JsClassMethod<Self::RefType>] = &[("export", 2, Self::js_export)];
+
+    unsafe fn mut_class_id_ptr() -> &'static mut u32 {
+        static mut CLASS_ID: u32 = 0;
+        &mut CLASS_ID
+    }
+
+    // can't construct by user
+    fn constructor_fn(_ctx: &mut Context, _argv: &[JsValue]) -> Result<Self::RefType, JsValue> {
+        Err(JsValue::UnDefined)
     }
 }
 
@@ -477,9 +563,17 @@ impl ModuleInit for Crypto {
             "hkdf_sync\0",
             ctx.wrap_function("hkdf_sync", hkdf_sync).into(),
         );
+        m.add_export(
+            "gen_keypair\0",
+            ctx.wrap_function("gen_keypair", gen_keypair).into(),
+        );
         m.add_export(JsHash::CLASS_NAME, register_class::<JsHash>(ctx));
         m.add_export(JsHmac::CLASS_NAME, register_class::<JsHmac>(ctx));
         m.add_export(JsCipher::CLASS_NAME, register_class::<JsCipher>(ctx));
+        m.add_export(
+            JsKeyObjectHandle::CLASS_NAME,
+            register_class::<JsKeyObjectHandle>(ctx),
+        );
     }
 }
 
@@ -493,9 +587,11 @@ pub fn init_module(ctx: &mut Context) {
             "pbkdf2_sync\0",
             "scrypt_sync\0",
             "hkdf_sync\0",
+            "gen_keypair\0",
             JsHash::CLASS_NAME,
             JsHmac::CLASS_NAME,
             JsCipher::CLASS_NAME,
+            JsKeyObjectHandle::CLASS_NAME,
         ],
     )
 }
