@@ -14,6 +14,9 @@ fn test_js_file(file_path: &str) {
             Ok(code) => {
                 ctx.put_args(vec![file_path.clone()]);
                 ctx.eval_module_str(code, &file_path);
+                if let JsValue::Bool(false) = ctx.get_global().get("assertPass") {
+                    assert!(false, "js assert fail");
+                }
             }
             Err(e) => {
                 eprintln!("{}", e.to_string());
