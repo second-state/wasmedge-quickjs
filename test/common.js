@@ -37,7 +37,7 @@ const isOSX = process.platform === 'darwin';
 const isPi = false;
 const isMainThread = true;
 const isDumbTerminal = process.env.TERM === 'dumb';
-
+const hasOpenSSL3 = true;
 const mustCallChecks = [];
 
 function runCallChecks() {
@@ -283,6 +283,8 @@ export function getArrayBufferViews(buf) {
   return out;
 }
 
+export const hasCrypto = true;
+export const hasFipsCrypto = true
 const common = {
   isDumbTerminal,
   isFreeBSD,
@@ -294,6 +296,9 @@ const common = {
   isWindows,
   isAIX,
   isMainThread,
+  hasCrypto,
+  hasOpenSSL3,
+  hasFipsCrypto,
   mustCall,
   mustCallAtLeast,
   mustNotCall,

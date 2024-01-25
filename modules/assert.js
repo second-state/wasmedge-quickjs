@@ -248,6 +248,7 @@ function parseCode(code, offset) {
 }
 
 function getErrMessage(message, fn) {
+  return "assert.getErrMessage unsupported";
   const tmpLimit = Error.stackTraceLimit;
   const errorStackTraceLimitIsWritable = isErrorStackTraceLimitWritable();
   // Make sure the limit is set to 1. Otherwise it could fail (<= 0) or it

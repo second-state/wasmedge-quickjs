@@ -3,7 +3,8 @@ import {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_CALLBACK,
     ERR_OUT_OF_RANGE,
-    hideStackFrames
+    hideStackFrames,
+    ERR_INVALID_ARG_VALUE
 } from './errors'
 
 export function validatePort(port, name = "Port", allowZero = true) {
@@ -191,6 +192,145 @@ export const getValidMode = hideStackFrames((mode, type) => {
     );
 });
 
+/**
+ * @callback validateNumber
+ * @param {*} value
+ * @param {string} name
+ * @param {number} [min]
+ * @param {number} [max]
+ * @returns {asserts value is number}
+ */
+
+/** @type {validateNumber} */
+export function validateNumber(value, name, min = undefined, max) {
+    if (typeof value !== 'number')
+        throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+
+    if ((min != null && value < min) || (max != null && value > max) ||
+        ((min != null || max != null) && Number.isNaN(value))) {
+        throw new ERR_OUT_OF_RANGE(
+            name,
+            `${min != null ? `>= ${min}` : ''}${min != null && max != null ? ' && ' : ''}${max != null ? `<= ${max}` : ''}`,
+            value);
+    }
+}
+
+/**
+ * @callback validateArray
+ * @param {*} value
+ * @param {string} name
+ * @param {number} [minLength]
+ * @returns {asserts value is any[]}
+ */
+
+/** @type {validateArray} */
+export const validateArray = hideStackFrames((value, name, minLength = 0) => {
+    if (!Array.isArray(value)) {
+        throw new ERR_INVALID_ARG_TYPE(name, 'Array', value);
+    }
+    if (value.length < minLength) {
+        const reason = `must be longer than ${minLength}`;
+        throw new ERR_INVALID_ARG_VALUE(name, value, reason);
+    }
+});
+
+/**
+ * @callback validateOneOf
+ * @template T
+ * @param {T} value
+ * @param {string} name
+ * @param {T[]} oneOf
+ */
+
+/** @type {validateOneOf} */
+export const validateOneOf = hideStackFrames((value, name, oneOf) => {
+    if (!Array.prototype.includes.call(oneOf, value)) {
+        const allowed = Array.prototype.join.call(
+            Array.prototype.map.call(oneOf, (v) =>
+                (typeof v === 'string' ? `'${v}'` : String(v))),
+            ', ');
+        const reason = 'must be one of: ' + allowed;
+        throw new ERR_INVALID_ARG_VALUE(name, value, reason);
+    }
+});
+
+// Return undefined if there is no match.
+// Move the "slow cases" to a separate function to make sure this function gets
+// inlined properly. That prioritizes the common case.
+function normalizeEncoding(enc) {
+    if (enc == null || enc === 'utf8' || enc === 'utf-8') return 'utf8';
+    return slowCases(enc);
+}
+
+function slowCases(enc) {
+    switch (enc.length) {
+        case 4:
+            if (enc === 'UTF8') return 'utf8';
+            if (enc === 'ucs2' || enc === 'UCS2') return 'utf16le';
+            enc = `${enc}`.toLowerCase();
+            if (enc === 'utf8') return 'utf8';
+            if (enc === 'ucs2') return 'utf16le';
+            break;
+        case 3:
+            if (enc === 'hex' || enc === 'HEX' ||
+                `${enc}`.toLowerCase() === 'hex')
+                return 'hex';
+            break;
+        case 5:
+            if (enc === 'ascii') return 'ascii';
+            if (enc === 'ucs-2') return 'utf16le';
+            if (enc === 'UTF-8') return 'utf8';
+            if (enc === 'ASCII') return 'ascii';
+            if (enc === 'UCS-2') return 'utf16le';
+            enc = `${enc}`.toLowerCase();
+            if (enc === 'utf-8') return 'utf8';
+            if (enc === 'ascii') return 'ascii';
+            if (enc === 'ucs-2') return 'utf16le';
+            break;
+        case 6:
+            if (enc === 'base64') return 'base64';
+            if (enc === 'latin1' || enc === 'binary') return 'latin1';
+            if (enc === 'BASE64') return 'base64';
+            if (enc === 'LATIN1' || enc === 'BINARY') return 'latin1';
+            enc = `${enc}`.toLowerCase();
+            if (enc === 'base64') return 'base64';
+            if (enc === 'latin1' || enc === 'binary') return 'latin1';
+            break;
+        case 7:
+            if (enc === 'utf16le' || enc === 'UTF16LE' ||
+                `${enc}`.toLowerCase() === 'utf16le')
+                return 'utf16le';
+            break;
+        case 8:
+            if (enc === 'utf-16le' || enc === 'UTF-16LE' ||
+                `${enc}`.toLowerCase() === 'utf-16le')
+                return 'utf16le';
+            break;
+        case 9:
+            if (enc === 'base64url' || enc === 'BASE64URL' ||
+                `${enc}`.toLowerCase() === 'base64url')
+                return 'base64url';
+            break;
+        default:
+            if (enc === '') return 'utf8';
+    }
+}
+
+
+/**
+ * @param {string} data
+ * @param {string} encoding
+ */
+export function validateEncoding(data, encoding) {
+    const normalizedEncoding = normalizeEncoding(encoding);
+    const length = data.length;
+
+    if (normalizedEncoding === 'hex' && length % 2 !== 0) {
+        throw new ERR_INVALID_ARG_VALUE('encoding', encoding,
+            `is invalid for data of length ${length}`);
+    }
+}
+
 export default {
     validatePort,
     validateFunction,
@@ -200,5 +340,9 @@ export default {
     validateAbortSignal,
     validateCallback,
     validateInteger,
-    getValidMode
+    validateNumber,
+    validateArray,
+    getValidMode,
+    validateOneOf,
+    validateEncoding
 }

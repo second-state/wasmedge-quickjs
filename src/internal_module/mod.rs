@@ -1,4 +1,6 @@
 pub mod core;
+#[cfg(feature = "nodejs_crypto")]
+pub mod crypto;
 pub mod encoding;
 pub mod fs;
 pub mod httpx;

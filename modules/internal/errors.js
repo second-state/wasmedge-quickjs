@@ -816,3 +816,123 @@ export class ERR_FS_INVALID_SYMLINK_TYPE extends Error {
         this.code = "ERR_FS_INVALID_SYMLINK_TYPE";
     }
 }
+
+export class ERR_CRYPTO_FIPS_FORCED extends Error {
+    constructor() {
+        super(
+            'Cannot set FIPS mode, it was forced with --force-fips at startup.',
+        );
+        this.code = "ERR_CRYPTO_FIPS_FORCED";
+    }
+}
+
+export class ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH extends RangeError {
+    constructor() {
+        super(
+            'Input buffers must have the same byte length',
+        );
+        this.code = "ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH";
+    }
+}
+
+export class ERR_OPERATION_FAILED extends Error {
+    constructor(x) {
+        super(
+            `Operation failed: ${x}`,
+        );
+        this.code = "ERR_OPERATION_FAILED";
+    }
+}
+
+export class ERR_CRYPTO_ENGINE_UNKNOWN extends Error {
+    constructor(x) {
+        super(
+            `Engine "${x}" was not found`,
+        );
+        this.code = "ERR_CRYPTO_ENGINE_UNKNOWN";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_DIGEST extends TypeError {
+    constructor(x) {
+        super(`Invalid digest: ${x}`);
+        this.code = "ERR_CRYPTO_INVALID_DIGEST";
+    }
+}
+
+export class ERR_CRYPTO_SCRYPT_INVALID_PARAMETER extends Error {
+    constructor() {
+        super(`Invalid scrypt parameter`);
+        this.code = "ERR_CRYPTO_SCRYPT_INVALID_PARAMETER";
+    }
+}
+
+export class ERR_CRYPTO_SCRYPT_NOT_SUPPORTED extends Error {
+    constructor() {
+        super(`Scrypt algorithm not supported`);
+        this.code = "ERR_CRYPTO_SCRYPT_NOT_SUPPORTED";
+    }
+}
+
+export class ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS extends Error {
+    constructor(a, b) {
+        super(`The selected key encoding ${a} ${b}.`);
+        this.code = "ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE extends TypeError {
+    constructor(t, e) {
+        super(`Invalid key object type ${t}, expected ${e}.`);
+        this.code = "ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_JWK extends TypeError {
+    constructor() {
+        super(`Invalid JWK data`);
+        this.code = "ERR_CRYPTO_INVALID_JWK";
+    }
+}
+
+export class ERR_ILLEGAL_CONSTRUCTOR extends TypeError {
+    constructor() {
+        super(`Illegal constructor`);
+        this.code = "ERR_ILLEGAL_CONSTRUCTOR";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_KEYLEN extends RangeError {
+    constructor() {
+        super(`Invalid key length`);
+        this.code = "ERR_CRYPTO_INVALID_KEYLEN";
+    }
+}
+
+export class ERR_CRYPTO_HASH_FINALIZED extends Error {
+    constructor() {
+        super(`Digest already called`);
+        this.code = "ERR_CRYPTO_HASH_FINALIZED";
+    }
+}
+
+export class ERR_CRYPTO_HASH_UPDATE_FAILED extends Error {
+    constructor() {
+        super(`Hash update failed`);
+        this.code = "ERR_CRYPTO_HASH_UPDATE_FAILED";
+    }
+}
+
+export class ERR_CRYPTO_INVALID_STATE extends Error {
+    constructor() {
+        super(`Invalid state`);
+        this.code = "ERR_CRYPTO_INVALID_STATE";
+    }
+}
+
+export class ERR_CRYPTO_UNKNOWN_CIPHER extends Error {
+    constructor() {
+        super(`Unknown cipher`);
+        this.code = "ERR_CRYPTO_UNKNOWN_CIPHER";
+    }
+}
