@@ -33,7 +33,7 @@ jobs:
     - name: Install WasmEdge
       run: |
         VERSION=0.13.4
-        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --plugins=wasi_nn-tensorflowlite -p /usr/local        
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --plugins=wasi_nn-tensorflowlite --plugins=wasi_crypto -p /usr/local        
         wget https://github.com/WasmEdge/WasmEdge/releases/download/$VERSION/WasmEdge-plugin-wasmedge_rustls-$VERSION-ubuntu20.04_x86_64.tar.gz
         sudo chmod +x /usr/local/lib/wasmedge
 
