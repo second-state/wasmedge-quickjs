@@ -128,7 +128,7 @@ fn into_proto_function_list<Def: JsClassDef>(p: JsClassProto) -> &'static [JSCFu
             u: JSCFunctionListEntry__bindgen_ty_1 {
                 func: JSCFunctionListEntry__bindgen_ty_1__bindgen_ty_1 {
                     length: argc,
-                    cproto: JS_CFUNC_generic_magic as u8,
+                    cproto: JSCFunctionEnum_JS_CFUNC_generic_magic as u8,
                     cfunc: JSCFunctionType {
                         generic_magic: Some(js_method_magic_trampoline::<Def>),
                     },
@@ -563,7 +563,7 @@ pub fn register_class<Def: JsClassDef>(ctx: &mut Context) -> JsValue {
             Some(constructor::<Def>),
             class_name.as_ptr().cast(),
             Def::CONSTRUCTOR_ARGC as i32,
-            JS_CFUNC_constructor,
+            JSCFunctionEnum_JS_CFUNC_constructor,
             0,
         );
 
