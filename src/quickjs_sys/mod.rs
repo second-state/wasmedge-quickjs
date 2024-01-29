@@ -403,6 +403,11 @@ impl Context {
             super::internal_module::crypto::init_module(&mut ctx);
         }
 
+        #[cfg(feature = "ggml")]
+        {
+            super::internal_module::ggml::init_wasi_nn_ggml_module(&mut ctx);
+            super::internal_module::ggml::init_ggml_template_module(&mut ctx);
+        }
         ctx
     }
 
