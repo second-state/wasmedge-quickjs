@@ -611,9 +611,21 @@ impl Context {
         }
     }
 
-    #[deprecated]
     pub fn promise_loop_poll(&mut self) {
-        todo!()
+        unsafe {
+            let rt = self.rt();
+            let mut pctx: *mut JSContext = 0 as *mut JSContext;
+
+            loop {
+                let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
+                if err <= 0 {
+                    if err < 0 {
+                        js_std_dump_error(pctx);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     #[deprecated]
