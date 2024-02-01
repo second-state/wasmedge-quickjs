@@ -32,11 +32,16 @@ tokio-rustls-wasi = { version = "0.24.1", optional = true }
 webpki-roots = { version = "0.25.0", optional = true }
 crypto-wasi = { version = "0.1.1", optional = true }
 
+chat-prompts = { version = "0.3", optional = true }
+wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml", optional = true }
+endpoints = { version = "0.2", optional = true }
+
 [features]
 default = ["tls"]
 tls = ["rustls", "tokio-rustls-wasi", "webpki-roots"]
 img = ["image", "imageproc"]
 tensorflow = ["img"]
 wasi_nn = ["img"]
+ggml = ["chat-prompts", "dep:wasi-nn", "endpoints"]
 cjs = []
 nodejs_crypto = ["crypto-wasi"]

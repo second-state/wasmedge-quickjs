@@ -128,7 +128,7 @@ fn into_proto_function_list<Def: JsClassDef>(p: JsClassProto) -> &'static [JSCFu
             u: JSCFunctionListEntry__bindgen_ty_1 {
                 func: JSCFunctionListEntry__bindgen_ty_1__bindgen_ty_1 {
                     length: argc,
-                    cproto: JS_CFUNC_generic_magic as u8,
+                    cproto: JSCFunctionEnum_JS_CFUNC_generic_magic as u8,
                     cfunc: JSCFunctionType {
                         generic_magic: Some(js_method_magic_trampoline::<Def>),
                     },
@@ -142,6 +142,26 @@ fn into_proto_function_list<Def: JsClassDef>(p: JsClassProto) -> &'static [JSCFu
     Vec::leak(entry_vec)
 }
 
+pub struct SelfRefJsValue<R, T> {
+    data: T,
+    val: JsValue,
+    _p: std::marker::PhantomData<(R, T)>,
+}
+
+impl<R, T> Deref for SelfRefJsValue<R, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl<R, T> DerefMut for SelfRefJsValue<R, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
+}
+
 pub trait JsClassTool: JsClassDef {
     fn class_id() -> u32;
 
@@ -151,6 +171,28 @@ pub trait JsClassTool: JsClassDef {
 
     fn constructor(ctx: &mut Context) -> Option<JsValue> {
         ctx.get_class_constructor(Self::class_id())
+    }
+
+    fn self_ref_opaque_mut<T, E>(
+        js_obj: JsValue,
+        f: impl FnOnce(&'static Self::RefType) -> Result<T, E>,
+    ) -> Option<Result<SelfRefJsValue<Self, T>, E>>
+    where
+        Self: Sized,
+    {
+        unsafe {
+            let class_id = Self::class_id();
+            let ptr = JS_GetOpaque(js_obj.get_qjs_value(), class_id) as *mut Self::RefType;
+            let r: &'static mut <Self as JsClassDef>::RefType = ptr.as_mut()?;
+            match f(r) {
+                Ok(data) => Some(Ok(SelfRefJsValue {
+                    data,
+                    val: js_obj,
+                    _p: Default::default(),
+                })),
+                Err(e) => Some(Err(e)),
+            }
+        }
     }
 
     fn opaque_mut(js_obj: &mut JsValue) -> Option<&mut Self::RefType> {
@@ -563,7 +605,7 @@ pub fn register_class<Def: JsClassDef>(ctx: &mut Context) -> JsValue {
             Some(constructor::<Def>),
             class_name.as_ptr().cast(),
             Def::CONSTRUCTOR_ARGC as i32,
-            JS_CFUNC_constructor,
+            JSCFunctionEnum_JS_CFUNC_constructor,
             0,
         );
 

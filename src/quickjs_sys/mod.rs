@@ -403,6 +403,11 @@ impl Context {
             super::internal_module::crypto::init_module(&mut ctx);
         }
 
+        #[cfg(feature = "ggml")]
+        {
+            super::internal_module::ggml::init_wasi_nn_ggml_module(&mut ctx);
+            super::internal_module::ggml::init_ggml_template_module(&mut ctx);
+        }
         ctx
     }
 
@@ -606,9 +611,21 @@ impl Context {
         }
     }
 
-    #[deprecated]
     pub fn promise_loop_poll(&mut self) {
-        todo!()
+        unsafe {
+            let rt = self.rt();
+            let mut pctx: *mut JSContext = 0 as *mut JSContext;
+
+            loop {
+                let err = JS_ExecutePendingJob(rt, (&mut pctx) as *mut *mut JSContext);
+                if err <= 0 {
+                    if err < 0 {
+                        js_std_dump_error(pctx);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     #[deprecated]
@@ -634,7 +651,7 @@ impl Clone for Context {
 }
 
 unsafe fn to_u32(ctx: *mut JSContext, v: JSValue) -> Result<u32, String> {
-    if JS_VALUE_GET_NORM_TAG_real(v) == JS_TAG_INT {
+    if JS_VALUE_GET_NORM_TAG_real(v) == JS_TAG_JS_TAG_INT {
         let mut r = 0u32;
         JS_ToUint32_real(ctx, &mut r as *mut u32, v);
         Ok(r)
@@ -691,13 +708,13 @@ impl Drop for JsRef {
         unsafe {
             let tag = JS_VALUE_GET_NORM_TAG_real(self.v);
             match tag {
-                JS_TAG_STRING
-                | JS_TAG_OBJECT
-                | JS_TAG_FUNCTION_BYTECODE
-                | JS_TAG_BIG_INT
-                | JS_TAG_BIG_FLOAT
-                | JS_TAG_BIG_DECIMAL
-                | JS_TAG_SYMBOL => JS_FreeValue_real(self.ctx, self.v),
+                JS_TAG_JS_TAG_STRING
+                | JS_TAG_JS_TAG_OBJECT
+                | JS_TAG_JS_TAG_FUNCTION_BYTECODE
+                | JS_TAG_JS_TAG_BIG_INT
+                | JS_TAG_JS_TAG_BIG_FLOAT
+                | JS_TAG_JS_TAG_BIG_DECIMAL
+                | JS_TAG_JS_TAG_SYMBOL => JS_FreeValue_real(self.ctx, self.v),
                 _ => {}
             }
         }
@@ -879,7 +896,7 @@ impl JsArray {
             let mut values = Vec::new();
             for index in 0..(len as usize) {
                 let value_raw = JS_GetPropertyUint32(ctx, v, index as u32);
-                if JS_VALUE_GET_NORM_TAG_real(value_raw) == JS_TAG_EXCEPTION {
+                if JS_VALUE_GET_NORM_TAG_real(value_raw) == JS_TAG_JS_TAG_EXCEPTION {
                     return Err(JsException(JsRef { ctx, v: value_raw }));
                 }
                 let v = JsValue::from_qjs_value(ctx, value_raw);
@@ -1066,22 +1083,22 @@ impl JsValue {
         unsafe {
             let tag = JS_VALUE_GET_NORM_TAG_real(v);
             match tag {
-                JS_TAG_INT => {
+                JS_TAG_JS_TAG_INT => {
                     let mut num = 0;
                     JS_ToInt32(ctx, (&mut num) as *mut i32, v);
                     JsValue::Int(num)
                 }
-                JS_TAG_FLOAT64 => {
+                JS_TAG_JS_TAG_FLOAT64 => {
                     let mut num = 0_f64;
                     JS_ToFloat64(ctx, (&mut num) as *mut f64, v);
                     JsValue::Float(num)
                 }
-                JS_TAG_BIG_DECIMAL | JS_TAG_BIG_INT | JS_TAG_BIG_FLOAT => {
+                JS_TAG_JS_TAG_BIG_DECIMAL | JS_TAG_JS_TAG_BIG_INT | JS_TAG_JS_TAG_BIG_FLOAT => {
                     JsValue::BigNum(JsBigNum(JsRef { ctx, v }))
                 }
-                JS_TAG_STRING => JsValue::String(JsString(JsRef { ctx, v })),
-                JS_TAG_MODULE => JsValue::Module(JsModule(JsRef { ctx, v })),
-                JS_TAG_OBJECT => {
+                JS_TAG_JS_TAG_STRING => JsValue::String(JsString(JsRef { ctx, v })),
+                JS_TAG_JS_TAG_MODULE => JsValue::Module(JsModule(JsRef { ctx, v })),
+                JS_TAG_JS_TAG_OBJECT => {
                     if JS_IsFunction(ctx, v) != 0 {
                         JsValue::Function(JsFunction(JsRef { ctx, v }))
                     } else if JS_IsArrayBuffer(ctx, v) != 0 {
@@ -1094,14 +1111,14 @@ impl JsValue {
                         JsValue::Object(JsObject(JsRef { ctx, v }))
                     }
                 }
-                JS_TAG_BOOL => JsValue::Bool(JS_ToBool(ctx, v) != 0),
-                JS_TAG_NULL => JsValue::Null,
-                JS_TAG_EXCEPTION => JsValue::Exception(JsException(JsRef { ctx, v })),
-                JS_TAG_UNDEFINED => JsValue::UnDefined,
-                JS_TAG_FUNCTION_BYTECODE => {
+                JS_TAG_JS_TAG_BOOL => JsValue::Bool(JS_ToBool(ctx, v) != 0),
+                JS_TAG_JS_TAG_NULL => JsValue::Null,
+                JS_TAG_JS_TAG_EXCEPTION => JsValue::Exception(JsException(JsRef { ctx, v })),
+                JS_TAG_JS_TAG_UNDEFINED => JsValue::UnDefined,
+                JS_TAG_JS_TAG_FUNCTION_BYTECODE => {
                     JsValue::FunctionByteCode(JsFunctionByteCode(JsRef { ctx, v }))
                 }
-                JS_TAG_SYMBOL => JsValue::Symbol(JsRef { ctx, v }),
+                JS_TAG_JS_TAG_SYMBOL => JsValue::Symbol(JsRef { ctx, v }),
                 _ => JsValue::Other(JsRef { ctx, v }),
             }
         }
