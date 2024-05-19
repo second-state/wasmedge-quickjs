@@ -1,6 +1,7 @@
 mod poll;
 pub mod wasi_fs;
 mod wasi_sock;
+mod certs;
 
 use crate::{quickjs_sys as qjs, Context, JsClassTool, JsValue};
 use std::borrow::BorrowMut;
@@ -134,13 +135,21 @@ impl AsyncTlsConn {
 
         let io = tokio::net::TcpStream::connect(addr).await?;
         let mut root_store = rustls::RootCertStore::empty();
-        root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
-            OwnedTrustAnchor::from_subject_spki_name_constraints(
-                ta.subject,
-                ta.spki,
-                ta.name_constraints,
-            )
-        }));
+        if let Ok(custom_certs) = certs::load_certs_from_env() {
+            log::info!("using custom certs");
+            for cert in custom_certs {
+                root_store.add(&cert).unwrap();
+            }
+        } else {
+            log::info!("falling back to webpki certs");
+            root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
+                OwnedTrustAnchor::from_subject_spki_name_constraints(
+                    ta.subject,
+                    ta.spki,
+                    ta.name_constraints,
+                )
+            }));
+        }
 
         let config = rustls::ClientConfig::builder()
             .with_safe_defaults()
