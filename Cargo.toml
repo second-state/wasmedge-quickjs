@@ -35,6 +35,7 @@ crypto-wasi = { version = "0.1.1", optional = true }
 chat-prompts = { version = "0.3", optional = true }
 wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml", optional = true }
 endpoints = { version = "0.2", optional = true }
+rustls-pemfile = "1.0.4"
 
 [features]
 default = ["tls"]

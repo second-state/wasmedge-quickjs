@@ -13,3 +13,9 @@ cargo build --target wasm32-wasi --release
 wasmedge --dir .:. target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/hello.js WasmEdge Runtime
 Hello WasmEdge Runtime
 ```
+
+### Usage with custom ssl certs
+```bash
+$  wasmedge --dir .:. --dir /etc/ssl:/etc/ssl:readonly --env SSL_CERT_FILE="/etc/ssl/cert.pem" target/wasm32-wasi/release/wasmedge_quickjs.wasm example_js/wasi_https_fetch.js
+```
+substitute the value of `/etc/ssl` and `/etc/ssl/cert.pem` with the location of your cert folder and cert file
