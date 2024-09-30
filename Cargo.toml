@@ -1,6 +1,6 @@
 [package]
 name = "wasmedge_quickjs"
-version = "0.6.0-alpha"
+version = "0.6.1-alpha"
 authors = ["csh <458761603@qq.com>", "Michael Yuan <michael@secondstate.io>"]
 description = "Create your own JavaScript runtime and extension APIs for WasmEdge."
 repository = "https://github.com/second-state/wasmedge-quickjs"
@@ -10,6 +10,11 @@ documentation = "https://www.secondstate.io/articles/run-javascript-in-webassemb
 homepage = "https://www.secondstate.io/"
 edition = "2018"
 exclude = ["example_js/*", "examples/*"]
+
+[patch.crates-io]
+tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.40.x" }
+mio = { git = "https://github.com/second-state/wasi_mio.git", branch = "v1.0.x" }
+socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
 
 [dependencies]
 argparse = "0.2.2"
@@ -23,26 +28,27 @@ url = "2.2.2"
 lazy_static = "1.4"
 encoding = "0.2"
 wasmedge_wasi_socket = { version = "0.5", features = ["wasi_poll"] }
-tokio_wasi = { version = "1.25.2", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 log = "0.4.19"
 env_logger = "0.10.0"
 
 rustls = { version = "0.21.0", optional = true }
-tokio-rustls-wasi = { version = "0.24.1", optional = true }
+tokio-rustls = { version = "0.24.1", optional = true }
 webpki-roots = { version = "0.25.0", optional = true }
 crypto-wasi = { version = "0.1.1", optional = true }
 
 chat-prompts = { version = "0.3", optional = true }
-wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml", optional = true }
+# wasi-nn = { git = "https://github.com/second-state/wasmedge-wasi-nn", branch = "ggml", optional = true }
+wasmedge-wasi-nn = { version = "0.8.0", optional = true }
 endpoints = { version = "0.2", optional = true }
 rustls-pemfile = "1.0.4"
 
 [features]
 default = ["tls"]
-tls = ["rustls", "tokio-rustls-wasi", "webpki-roots"]
+tls = ["rustls", "tokio-rustls", "webpki-roots"]
 img = ["image", "imageproc"]
 tensorflow = ["img"]
 wasi_nn = ["img"]
-ggml = ["chat-prompts", "dep:wasi-nn", "endpoints"]
+ggml = ["chat-prompts", "dep:wasmedge-wasi-nn", "endpoints"]
 cjs = []
 nodejs_crypto = ["crypto-wasi"]

@@ -1,7 +1,7 @@
+mod certs;
 mod poll;
 pub mod wasi_fs;
 mod wasi_sock;
-mod certs;
 
 use crate::{quickjs_sys as qjs, Context, JsClassTool, JsValue};
 use std::borrow::BorrowMut;
@@ -29,7 +29,9 @@ pub(crate) enum NetPollEvent {
 pub struct AsyncTcpServer(pub(crate) tokio::net::TcpListener);
 impl AsyncTcpServer {
     pub fn bind(port: u16) -> io::Result<Self> {
+        use std::os::fd::IntoRawFd;
         let listener = wasmedge_wasi_socket::TcpListener::bind(("0.0.0.0", port), true)?;
+        let listener = unsafe { std::net::TcpListener::from_raw_fd(listener.into_raw_fd()) };
         let async_listener = tokio::net::TcpListener::from_std(listener)?;
         Ok(AsyncTcpServer(async_listener))
     }

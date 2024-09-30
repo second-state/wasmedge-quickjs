@@ -6,6 +6,7 @@ use chat_prompts::{
 };
 use endpoints::chat::{ChatCompletionRequest, ChatCompletionRequestMessage, ChatCompletionRole};
 use wasi_nn::BackendError;
+use wasmedge_wasi_nn as wasi_nn;
 
 use crate::{
     register_class, AsObject, Context, JsClassDef, JsClassTool, JsModuleDef, JsObject, JsValue,
@@ -61,7 +62,7 @@ impl WasiNNGraph {
 }
 
 struct WasiNNGraphExecutionContext {
-    ctx: SelfRefJsValue<WasiNNGraph, wasi_nn::GraphExecutionContext<'static>>,
+    ctx: SelfRefJsValue<WasiNNGraph, wasi_nn::GraphExecutionContext>,
 }
 
 impl JsClassDef for WasiNNGraphExecutionContext {
@@ -134,6 +135,9 @@ fn ggml_error_to_js_error(ctx: &mut Context, error: wasi_nn::Error) -> JsValue {
         wasi_nn::Error::BackendError(BackendError::ContextFull) => ("BackendError", "ContextFull"),
         wasi_nn::Error::BackendError(BackendError::PromptTooLong) => {
             ("BackendError", "PromptTooLong")
+        }
+        wasi_nn::Error::BackendError(BackendError::ModelNotFound) => {
+            ("BackendError", "ModelNotFound")
         }
         wasi_nn::Error::BackendError(BackendError::UnknownError(i)) => {
             let mut js_err = ctx.new_error(format!("UnknownError:{i}").as_str());
