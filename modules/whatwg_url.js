@@ -1691,6 +1691,10 @@ var URLSearchParams$1 = /*@__PURE__*/(function () {
     return this._list[Symbol.iterator]();
   };
 
+  URLSearchParams.prototype.entries = function entries () {
+    return this._list[Symbol.iterator]();
+  };
+
   URLSearchParams.prototype.toString = function toString () {
     return urlencoded$1.serializeUrlencoded(this._list);
   };
